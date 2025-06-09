@@ -1,45 +1,39 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export default async function authenticate(req: NextApiRequest, res: NextApiResponse) {
-  const { password, correo } = req.body;
+export function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  const token = request.cookies.get('auth-token')?.value;
 
-  try {
-    // Busca al usuario por cédula o correo
-    const usuario = await prisma.usuario.findFirst({
-      where: {
-        OR: [
-          { password: password },
-          { correo: correo }
-        ]
-      }
-    });
+  // Rutas públicas
+  const publicPaths = ['/login', '/register'];
+  
+  // Rutas protegidas
+  const protectedPaths = ['/api/protected', '/dashboard'];
 
-    if (!usuario) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
+  // Redirigir si no está autenticado y accede a ruta protegida
+  if (protectedPaths.some(p => path.startsWith(p))) {
+    if (!token) {
+      return NextResponse.redirect(new URL('/login', request.nextUrl));
     }
-
-    // Utiliza un secreto seguro para firmar el token
-    const secretKey = process.env.JWT_SECRET;
-    if (!secretKey) {
-      console.error('No se ha configurado un secreto JWT');
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-
-    // Genera un token de acceso con una duración de 1 hora
-    const token = jwt.sign({ id:usuario.id,  cedula: usuario.cedula, rolId: usuario.rolId }, secretKey, { expiresIn: '1h' });
-
-    // Almacena el token en el encabezado de respuesta
-    res.setHeader('Authorization', `Bearer ${token}`);
-
-    // Retorna una respuesta exitosa con el token
-    return res.status(200).json({ success: true, token: token });
-
-  } catch (error) {
-    console.error('Error al autenticar usuario:', error);
-    return res.status(500).json({ error: 'Error interno del servidor' });
   }
+
+  // Si está autenticado y trata de acceder a login/register
+  if (publicPaths.includes(path)){
+    if (token) {
+      return NextResponse.redirect(new URL('/dashboard', request.nextUrl));
+    }
+  }
+
+  return NextResponse.next();
 }
+
+export const config = {
+  matcher: [
+    '/api/protected/:path*',
+    '/dashboard/:path*',
+    '/login',
+    '/register'
+  ]
+};

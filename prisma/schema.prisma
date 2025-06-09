@@ -1,31 +1,119 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../app/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgres"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-  posts Post[]
+model TipoUsuario {
+  id       Int       @id @default(autoincrement())
+  nombre   String    @unique @db.VarChar(50)
+  usuarios Usuario[]
 }
 
-model Post {
-  id        Int     @id @default(autoincrement())
-  title     String
-  content   String?
-  published Boolean @default(false)
-  authorId  Int
-  author    User    @relation(fields: [authorId], references: [id])
+model Usuario {
+  id               Int             @id @default(autoincrement())
+  nombre           String          @db.VarChar(255)
+  email            String          @unique @db.VarChar(255)
+  cedula           String          @unique @db.VarChar(20)
+  password         String          @db.VarChar(255)
+  password_iv      String          @db.VarChar(255)
+  fecha_nacimiento DateTime        @db.Date
+  id_tipo_usuario  Int
+  adolecente       Adolecente?
+  alarmas          Alarma[]
+  psicologo        Psicologo?
+  respuestas       RespuestaTest[]
+  tests            Test[]          @relation("TestUsuario")
+  tipo_usuario     TipoUsuario     @relation(fields: [id_tipo_usuario], references: [id])
+}
+
+model Tutor {
+  id                Int          @id @default(autoincrement())
+  cedula            String       @unique @db.VarChar(20)
+  nombre            String       @db.VarChar(255)
+  profesion_tutor   String?      @db.VarChar(100)
+  telefono_contacto String?      @db.VarChar(20)
+  correo_contacto   String?      @db.VarChar(255)
+  adolecentes       Adolecente[]
+}
+
+model Adolecente {
+  id_usuario Int     @id
+  id_tutor   Int?
+  tutor      Tutor?  @relation(fields: [id_tutor], references: [id])
+  usuario    Usuario @relation(fields: [id_usuario], references: [id])
+}
+
+model Alarma {
+  id             Int      @id @default(autoincrement())
+  tipo           String   @db.VarChar(50)
+  id_usuario     Int?
+  mensaje        String
+  fecha_creacion DateTime @default(now()) @db.Timestamp(0)
+  usuario        Usuario? @relation(fields: [id_usuario], references: [id])
+}
+
+model Psicologo {
+  id_usuario         Int                  @id
+  numero_de_titulo   String?              @db.VarChar(100)
+  nombre_universidad String?              @db.VarChar(255)
+  monto_consulta     Float?
+  telefono_trabajo   String?              @db.VarChar(20)
+  usuario            Usuario              @relation(fields: [id_usuario], references: [id])
+  redes_sociales     RedSocialPsicologo[]
+  tests              Test[]               @relation("TestPsicologo")
+}
+
+model Test {
+  id            Int             @id @default(autoincrement())
+  id_psicologo  Int?
+  id_usuario    Int?
+  codigo_sesion String?         @unique @db.VarChar(50)
+  preguntas     Pregunta[]
+  respuestas    RespuestaTest[]
+  psicologo     Psicologo?      @relation("TestPsicologo", fields: [id_psicologo], references: [id_usuario])
+  usuario       Usuario?        @relation("TestUsuario", fields: [id_usuario], references: [id])
+}
+
+model TipoInput {
+  id        Int        @id @default(autoincrement())
+  nombre    String     @unique @db.VarChar(50)
+  valor     String?    @db.VarChar(255)
+  preguntas Pregunta[]
+}
+
+model Pregunta {
+  id             Int             @id @default(autoincrement())
+  id_test        Int?
+  id_tipo_input  Int?
+  texto_pregunta String
+  test           Test?           @relation(fields: [id_test], references: [id])
+  tipo_input     TipoInput?      @relation(fields: [id_tipo_input], references: [id])
+  respuestas     RespuestaTest[]
+}
+
+model RedSocialPsicologo {
+  id           Int        @id @default(autoincrement())
+  id_psicologo Int?
+  nombre_red   String     @db.VarChar(50)
+  url_perfil   String     @db.VarChar(255)
+  psicologo    Psicologo? @relation(fields: [id_psicologo], references: [id_usuario])
+
+  @@unique([id_psicologo, nombre_red], name: "redsocial_unique")
+}
+
+model RespuestaTest {
+  id              Int       @id @default(autoincrement())
+  id_test         Int?
+  id_pregunta     Int?
+  id_usuario      Int?
+  respuesta       String?
+  fecha_respuesta DateTime  @default(now()) @db.Timestamp(0)
+  pregunta        Pregunta? @relation(fields: [id_pregunta], references: [id])
+  test            Test?     @relation(fields: [id_test], references: [id])
+  usuario         Usuario?  @relation(fields: [id_usuario], references: [id])
 }
