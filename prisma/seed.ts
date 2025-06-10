@@ -4,13 +4,16 @@ const prisma = new PrismaClient();
 
 const tipeUserData = [
   {
-    nombre: "Administrador",
+    nombre: "administrador",
   },
   {
     nombre: "psicologo",
   },
   {
-    nombre: "Usuario",
+    nombre: "adolecente",
+  },
+  {
+    nombre: "usuario",
   },
 ];
 

@@ -1,0 +1,32 @@
+## Comandos para la migración y la creación de datos
+
+Ejecutar los siguientes comandos desde la ruta `/src/scripts/prisma`:
+
+```sh
+# Migración de Prisma
+npx prisma migrate dev --name init 
+
+# Ejecución del script para crear datos
+npx ts-node create_data.ts
+```
+
+| API       | Método | Ruta                      | Descripción                                       | Campos Requeridos                                                                 | Request Body Example                                                                 | Response Example                                                                 |
+|-----------|--------|---------------------------|---------------------------------------------------|----------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| Usuarios  | GET    | `/api/usuarios`           | Obtiene todos los usuarios                       | -                                                                                | -                                                                                   | `[{id: 1, nombre: "Juan", ...}]`                                               |
+|           | GET    | `/api/usuarios?id=:id`    | Obtiene un usuario específico                    | `id` (query param)                                                               | -                                                                                   | `{id: 1, nombre: "Juan", ...}`                                                 |
+|           | GET    | `/api/usuarios?tipo=:tipo`| Filtra usuarios por tipo (usuario/adolescente/psicologo) | -                                                                                | -                                                                                   | `[{id: 2, nombre: "María", ..., adolecente: {...}}]`                           |
+|           | POST   | `/api/usuarios`           | Crea un nuevo usuario                            | `email`, `password`, `nombre`, `cedula`, `fecha_nacimiento`, `tipoRegistro`      | `{tipoRegistro: "adolescente", usuarioData: {...}, tutorData: {...}}`               | `{id: 1, email: "user@test.com", ...}`                                         |
+|           | PUT    | `/api/usuarios`           | Actualiza un usuario existente                   | `id` + campos a actualizar                                                       | `{id: 1, tipoRegistro: "psicologo", usuarioData: {...}, psicologoData: {...}}`      | `{...psicologo: {redes_sociales: [...]}}`                                      |
+|           | DELETE | `/api/usuarios?id=:id`    | Elimina un usuario                               | `id` (query param)                                                               | -                                                                                   | `{message: "Usuario eliminado"}`                                               |
+| Alarmas   | GET    | `/api/alarmas`            | Obtiene todas las alarmas                         | -                                     | -                                        | `[{id: 1, tipo: "emergencia", ...}]` |
+|           | GET    | `/api/alarmas?id=:id`     | Obtiene una alarma específica                     | `id` (query param)                    | -                                        | `{id: 1, tipo: "emergencia", ...}`   |
+|           | GET    | `/api/alarmas?usuarioId=:id` | Obtiene alarmas de un usuario específico        | `usuarioId` (query param)             | -                                        | `[{id: 1, tipo: "emergencia", ...}]` |
+|           | POST   | `/api/alarmas`            | Crea una nueva alarma                             | `tipo`, `mensaje`                     | `{tipo: "emergencia", mensaje: "Ayuda"}` | `{id: 1, tipo: "emergencia", ...}`   |
+|           | PUT    | `/api/alarmas`            | Actualiza una alarma existente                    | `id` + campos a actualizar            | `{id: 1, mensaje: "Nuevo mensaje"}`      | `{id: 1, tipo: "emergencia", ...}`   |
+|           | DELETE | `/api/alarmas?id=:id`     | Elimina una alarma                                | `id` (query param)                    | -                                        | `{message: "Alarma eliminada"}`      |
+| Tests     | GET    | `/api/tests`              | Obtiene todos los tests                          | -                                                                                | -                                                                                   | `[{id: 1, codigo_sesion: "SES123", ...}]`                                      |
+|           | GET    | `/api/tests?id=:id`       | Obtiene test por ID                              | `id` (query param)                                                               | -                                                                                   | `{id: 1, codigo_sesion: "SES123", preguntas: [...], ...}`                      |
+|           | GET    | `/api/tests?codigo_sesion=:codigo` | Obtiene test por código de sesión       | `codigo_sesion` (query param)                                                    | -                                                                                   | `{id: 1, codigo_sesion: "SES123", respuestas: [...], ...}`                     |
+|           | POST   | `/api/tests`              | Crea nuevo test                                  | `id_psicologo` o `id_usuario`                                                    | ```json<br>{<br>  "id_psicologo": 2,<br>  "preguntas": [...]<br>}```               | `{id: 2, codigo_sesion: "SES456", ...}`                                       |
+|           | PUT    | `/api/tests`              | Actualiza test                                   | `id`                                                                             | ```json<br>{<br>  "id": 1,<br>  "codigo_sesion": "SES123-UPDATED"<br>}```          | `{id: 1, codigo_sesion: "SES123-UPDATED", ...}`                              |
+|           | DELETE | `/api/tests?id=:id`       | Elimina test                                     | `id` (query param)                                                               | -                                                                                   | `{message: "Test eliminado"}`                                                 |
