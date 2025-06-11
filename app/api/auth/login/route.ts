@@ -23,9 +23,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    //  Buscar usuario por email
     const usuario = await prisma.usuario.findUnique({
-      where: { email }
+      where: { email },
+      include: { tipo_usuario: true } // Incluir el tipo de usuario
     });
 
     if (!usuario) {
@@ -35,13 +35,11 @@ export async function POST(request: Request) {
       );
     }
 
-    //  Desencriptar la contraseña almacenada
     const contraseñaDesencriptada = desencriptar({
-      iv: usuario.password_iv, // IV almacenado durante el registro
+      iv: usuario.password_iv,
       contenido: usuario.password
     });
 
-    // 3. Comparar contraseñas
     if (contraseñaDesencriptada !== password) {
       return NextResponse.json(
         { error: 'Credenciales inválidas' },
@@ -49,22 +47,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // Establecer cookies de autenticación
+    // Generar un token más seguro
+    const authToken = crypto.randomBytes(32).toString('hex');
+    
+    // Actualizar el usuario con el token en la base de datos
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: { authToken }
+    });
+
     const cookieStore = await cookies();
-    cookieStore.set('auth-token', 'tu-token-de-autenticacion', {
+    cookieStore.set('auth-token', authToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 7, // 1 semana
       path: '/',
     });
 
-    // Devolver respuesta sin datos sensibles
     return NextResponse.json({
       user: {
         id: usuario.id,
         email: usuario.email,
         nombre: usuario.nombre,
-        id_tipo_usuario: usuario.id_tipo_usuario
+        id_tipo_usuario: usuario.id_tipo_usuario,
+        tipoUsuario: usuario.tipo_usuario // Incluir información del tipo
       }
     });
 

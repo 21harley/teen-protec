@@ -5,7 +5,9 @@ import Image from "next/image"
 import svg from "./../../public/logos/logo_texto.svg"
 import Link from "next/link"
 import { useState } from "react"
-
+import { apiPost } from './../../lib/apiClient';
+import { StorageManager } from "@/app/lib/storageManager"
+import { AuthResponse } from "./../../types/user"
 export default function Login(){
   const [loginData, setLoginData] = useState({
     username: '',
@@ -57,13 +59,29 @@ export default function Login(){
     return valid;
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (validateForm()) {
       // Aquí iría la lógica para enviar los datos al servidor
       console.log('Datos de login:', loginData);
-      
+    try {
+        const response = await apiPost<AuthResponse>('/auth/login', { email: loginData.username, password: loginData.password });
+  
+        // Guardar datos del usuario en contexto o estado global
+        //console.log('Login exitoso:', response.user);
+        const localStorageManager = new StorageManager('local');
+        localStorageManager.save<AuthResponse>("userData",response);
+
+      // Redirigir al dashboard
+      window.location.href = '/dashboard';
+    } catch (err) {
+      console.log(err);
+      //setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      console.log("finally");
+      //setLoading(false);
+    }
       // Resetear formulario (opcional)
       // setLoginData({ username: '', password: '' });
     }

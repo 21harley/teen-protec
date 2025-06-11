@@ -5,138 +5,119 @@ import Link from "next/link"
 import logo from "./../../app/public/logos/logo_header.svg"
 import menu from "./../../app/public/logos/menu.svg"
 import close_menu from "./../../app/public/logos/close_menu.svg"
-
-// Tipos
-type User = {
-  id: string
+import { LogoutButton } from "../logoutButton/logoutButton"
+// Tipos actualizados
+type MenuItem = {
+  path: string
   name: string
-  accessLevel: 'guest' | 'basic' | 'premium' | 'admin'
+  icon?: string
 }
 
-type Route = {
-  path: string
-  label: string
-  allowedLevels: ('guest' | 'basic' | 'premium' | 'admin')[]
-  icon?: string
-  className?: string
+type TipoUsuario = {
+  id: number
+  nombre: string
+  menu: MenuItem[]
+}
+
+type User = {
+  id: number
+  email: string
+  nombre: string
+  id_tipo_usuario: number
+  tipoUsuario: TipoUsuario
 }
 
 export default function Header() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
 
-  // Array de rutas configuradas
-  const routes: Route[] = [
-    {
-      path: '/auth/login',
-      label: 'Iniciar Sesión',
-      allowedLevels: ['guest'],
-      className: 'bg-stone-100'
-    },
-    {
-      path: '/auth/register',
-      label: 'Registrarse',
-      allowedLevels: ['guest'],
-      className: 'bg-stone-100'
-    },
-    {
-      path: '/',
-      label: 'Sobre nosotros',
-      allowedLevels: ['guest', 'basic', 'premium', 'admin'],
-      className: 'bg-stone-100'
-    },
-    {
-      path: '/profile',
-      label: 'Mi Perfil',
-      allowedLevels: ['basic', 'premium', 'admin'],
-      className: 'bg-blue-100'
-    },
-    {
-      path: '/content',
-      label: 'Contenido Básico',
-      allowedLevels: ['basic'],
-      className: 'bg-green-100'
-    },
-    {
-      path: '/premium',
-      label: 'Contenido Premium 👑',
-      allowedLevels: ['premium', 'admin'],
-      className: 'bg-purple-100'
-    },
-    {
-      path: '/admin',
-      label: 'Panel Administrador',
-      allowedLevels: ['admin'],
-      className: 'bg-red-100'
-    },
-    {
-      path: '/logout',
-      label: 'Cerrar Sesión',
-      allowedLevels: ['basic', 'premium', 'admin'],
-      className: 'bg-gray-200'
-    }
-  ]
-
-  // Simular obtención del usuario
+  // Obtener datos del usuario al cargar el componente
   useEffect(() => {
-    // Ejemplo: usuario no logueado
-    setUser({
-      id: '',
-      name: '',
-      accessLevel: 'guest'
-    })
-    
-    // Ejemplo alternativo para probar diferentes niveles:
-    // setUser({
-    //   id: '123',
-    //   name: 'Ana López',
-    //   accessLevel: 'premium' // Cambiar a 'basic', 'admin' o 'guest' para probar
-    // })
+    // Verificar si hay datos de usuario en localStorage
+    const userData = localStorage.getItem('userData')
+    if (userData) {
+      try {
+        const parsedData = JSON.parse(userData)
+        if (parsedData.user) {
+          setUser(parsedData.user)
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error)
+      }
+    }
   }, [])
 
   const toggleModal = () => setIsModalOpen(!isModalOpen)
   const closeModal = () => setIsModalOpen(false)
 
-  // Método para filtrar rutas según nivel de acceso
-  const getFilteredRoutes = () => {
-    if (!user) return []
-    return routes.filter(route => 
-      route.allowedLevels.includes(user.accessLevel)
-    )
-  }
-
-  // Método para generar links
+  // Método para generar links basados en el menú del usuario
   const generateLinks = () => {
-    const filteredRoutes = getFilteredRoutes()
-    
-    return filteredRoutes.map((route, index) => (
-      <li key={index}>
-        {route.path === '/logout' ? (
+    if (!user) {
+      // Mostrar menú para usuarios no autenticados
+      return (
+        <>
+          <li>
+            <Link 
+              href="/auth/login"
+              onClick={closeModal}
+              className="block w-full py-3 px-4 text-center rounded transition bg-stone-100"
+            >
+              Iniciar Sesión
+            </Link>
+          </li>
+          <li>
+            <Link 
+              href="/auth/register"
+              onClick={closeModal}
+              className="block w-full py-3 px-4 text-center rounded transition bg-stone-100"
+            >
+              Registrarse
+            </Link>
+          </li>
+          <li>
+            <Link 
+              href="/"
+              onClick={closeModal}
+              className="block w-full py-3 px-4 text-center rounded transition bg-stone-100"
+            >
+              Sobre nosotros
+            </Link>
+          </li>
+        </>
+      )
+    }
+
+    // Mostrar menú del usuario autenticado
+    return (
+      <>
+        {user.tipoUsuario.menu.map((item, index) => (
+          <li key={index}>
+            <Link 
+              href={item.path}
+              onClick={closeModal}
+              className="block w-full py-3 px-4 text-center rounded transition bg-stone-100"
+            >
+              {item.name}
+            </Link>
+          </li>
+        ))}
+        <li>
           <button 
             onClick={() => {
               // Lógica para cerrar sesión
-              setUser({
-                id: '',
-                name: '',
-                accessLevel: 'guest'
-              })
+              localStorage.removeItem('userData')
+              setUser(null)
               closeModal()
+              // Redirigir al inicio o login si es necesario
+              window.location.href = '/auth/login'
             }}
-            className={`w-full py-3 px-4 rounded text-center transition ${route.className}`}
+            className="w-full py-3 px-4 rounded text-center transition bg-gray-200"
           >
-            {route.label}
+            Cerrar Sesión
           </button>
-        ) : (
-          <Link 
-            href={route.path}
-            onClick={closeModal}
-            className={`block w-full py-3 px-4 text-center rounded transition ${route.className}`}
-          >
-            {route.label}
-          </Link>
-        )}
-      </li>
-    ))
+        </li>
+      </>
+    )
   }
 
   return (
@@ -151,18 +132,25 @@ export default function Header() {
           />
         </Link>
         
-        <button 
-          onClick={toggleModal}
-          aria-label="Toggle menu"
-          className="p-1 focus:outline-none"
-        >
-          <Image
-            src={isModalOpen ? close_menu : menu}
-            width={20}
-            height={20}
-            alt="Menu icon"
-          />
-        </button>
+        <div className="flex items-center gap-4">
+          {user && (
+            <span className="text-sm hidden sm:block">
+              Hola, {user.nombre.split(' ')[0]} {/* Muestra solo el primer nombre */}
+            </span>
+          )}
+          <button 
+            onClick={toggleModal}
+            aria-label="Toggle menu"
+            className="p-1 focus:outline-none"
+          >
+            <Image
+              src={isModalOpen ? close_menu : menu}
+              width={20}
+              height={20}
+              alt="Menu icon"
+            />
+          </button>
+        </div>
       </div>
 
       {/* Modal */}
@@ -175,7 +163,7 @@ export default function Header() {
           
           <div className="flex items-center justify-center min-h-screen p-4">
             <div 
-              className="relative  rounded-lg max-w-md w-full p-6 "
+              className="relative rounded-lg max-w-md w-full p-6 bg-white"
               onClick={(e) => e.stopPropagation()}
             >   
               <nav>

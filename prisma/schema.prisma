@@ -12,6 +12,7 @@ model TipoUsuario {
   id       Int       @id @default(autoincrement())
   nombre   String    @unique @db.VarChar(50)
   usuarios Usuario[]
+  menu     Json[]    @default([]) // Array de JSON para las rutas del menú
 }
 
 model Usuario {
@@ -23,6 +24,7 @@ model Usuario {
   password_iv      String          @db.VarChar(255)
   fecha_nacimiento DateTime        @db.Date
   id_tipo_usuario  Int
+  authToken        String?         @db.VarChar(255) // Nuevo campo nullable
   adolecente       Adolecente?
   alarmas          Alarma[]
   psicologo        Psicologo?
