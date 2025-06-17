@@ -27,6 +27,15 @@ interface FullTestData extends TestBase {
   respuestas?: RespuestaData[];
 }
 
+// Tipos para la paginación
+interface PaginatedResponse {
+  data: any[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -35,8 +44,12 @@ export async function GET(request: Request) {
     const id_usuario = searchParams.get('id_usuario');
     const id_psicologo = searchParams.get('id_psicologo');
     
+    // Parámetros de paginación
+    const page = parseInt(searchParams.get('page') || '1');
+    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    
     if (id) {
-      // Obtener un test específico por ID
+      // Obtener un test específico por ID (sin paginación)
       const test = await prisma.test.findUnique({
         where: { id: parseInt(id) },
         include: {
@@ -70,7 +83,7 @@ export async function GET(request: Request) {
 
       return NextResponse.json(test);
     } else if (codigo_sesion) {
-      // Obtener test por código de sesión
+      // Obtener test por código de sesión (sin paginación)
       const test = await prisma.test.findUnique({
         where: { codigo_sesion },
         include: {
@@ -104,7 +117,7 @@ export async function GET(request: Request) {
 
       return NextResponse.json(test);
     } else {
-      // Obtener tests según filtros
+      // Obtener tests paginados según filtros
       let whereClause: any = {};
       
       if (id_usuario) {
@@ -115,6 +128,15 @@ export async function GET(request: Request) {
         whereClause.id_psicologo = parseInt(id_psicologo);
       }
 
+      // Obtener el total de tests que coinciden con los filtros
+      const total = await prisma.test.count({
+        where: whereClause
+      });
+
+      // Calcular el total de páginas
+      const totalPages = Math.ceil(total / pageSize);
+
+      // Obtener los tests paginados
       const tests = await prisma.test.findMany({
         where: whereClause,
         include: {
@@ -137,10 +159,21 @@ export async function GET(request: Request) {
         },
         orderBy: {
           id: 'asc'
-        }
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize
       });
 
-      return NextResponse.json(tests);
+      // Construir respuesta paginada
+      const paginatedResponse: PaginatedResponse = {
+        data: tests,
+        total,
+        page,
+        pageSize,
+        totalPages
+      };
+
+      return NextResponse.json(paginatedResponse);
     }
   } catch (error: any) {
     console.error('Error obteniendo tests:', error);

@@ -1,8 +1,8 @@
 import { Roboto } from 'next/font/google'
 import Footer from '@/components/footer/footer'; 
 import Header from '@/components/header/header';
-import Cart_Home from '@/components/cart_home/cart_Home';
-import Cart_Home_Mini from '@/components/cart_home_mini/cart_Home_Mini';
+import Cart_Home from '@/components/cartHome/cart_Home';
+import Cart_Home_Mini from '@/components/cartHomeMini/cart_Home_Mini';
 import Image from 'next/image';
 import home_image_consulta from "./../app/public/logos/psicologa_consulta_home.svg"
 import home_image_online from "./../app/public/logos/consulta_online.svg"

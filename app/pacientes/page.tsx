@@ -1,0 +1,14 @@
+'use client'
+import LayoutPage from "@/components/layoutPage/layoutPage"
+import CrudUser from "@/components/crudUser/crudUser"
+
+export default function Pacientes(){
+
+  return (
+    <>
+      <LayoutPage>
+        <h1>Pacientes</h1>
+      </LayoutPage>
+    </>
+  )
+}

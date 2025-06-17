@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from "./../../../app/generated/prisma";
+import { encriptar, generarTokenExpiry } from "@/app/lib/crytoManager";
+import { cookies } from 'next/headers';
 import crypto from 'crypto';
 
 interface EncryptedData {
@@ -7,26 +9,21 @@ interface EncryptedData {
   contenido: string;
 }
 
-// Configuración de Prisma
-const prisma = new PrismaClient()
-
-// Configuración de encriptación
-const algoritmo = 'aes-256-cbc';
-const rawEncryptionKey: string = process.env.ENCRYPTION_KEY || '';
-const claveEncriptacion = crypto.createHash('sha256').update(rawEncryptionKey).digest('base64').substr(0, 32);
-const iv: Buffer = crypto.randomBytes(16);
+const prisma = new PrismaClient();
 
 // Tipos para los datos
 interface UsuarioBase {
   email: string;
-  password: string;
+  password?: string;
   nombre: string;
   cedula: string;
   fecha_nacimiento: string;
-  id_tipo_usuario: number;
+  id_tipo_usuario?: number;
 }
 
 interface TutorData {
+  cedula_tutor?: string;
+  nombre_tutor?: string;
   profesion_tutor?: string;
   telefono_contacto?: string;
   correo_contacto?: string;
@@ -40,25 +37,9 @@ interface PsicologoData {
   redes_sociales?: { nombre_red: string; url_perfil: string }[];
 }
 
-// Tipos de registro
 type TipoRegistro = 'usuario' | 'adolescente' | 'psicologo';
 
-// Funciones de utilidad
-function encriptar(texto: string): EncryptedData {
-  try {
-    const cipher = crypto.createCipheriv(algoritmo, claveEncriptacion, iv);
-    let encriptado = cipher.update(texto, 'utf8', 'hex');
-    encriptado += cipher.final('hex');
-    return {
-      iv: iv.toString('hex'),
-      contenido: encriptado,
-    };
-  } catch (error) {
-    console.error('Error encriptando contraseña:', error);
-    throw new Error('Error al encriptar la contraseña');
-  }
-}
-
+// GET - Obtener usuarios
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -66,20 +47,15 @@ export async function GET(request: Request) {
     const tipo = searchParams.get('tipo') as TipoRegistro | null;
     
     if (id) {
-      // Obtener un usuario específico
       const usuario = await prisma.usuario.findUnique({
         where: { id: parseInt(id) },
         include: {
           tipo_usuario: true,
           adolecente: {
-            include: {
-              tutor: true
-            }
+            include: { tutor: true }
           },
           psicologo: {
-            include: {
-              redes_sociales: true
-            }
+            include: { redes_sociales: true }
           }
         }
       });
@@ -91,9 +67,10 @@ export async function GET(request: Request) {
         );
       }
 
-      return NextResponse.json(usuario);
+      // No devolver información sensible
+      const { password, password_iv, authToken, authTokenExpiry, ...safeUser } = usuario;
+      return NextResponse.json(safeUser);
     } else {
-      // Obtener usuarios según tipo si se especifica
       let whereClause = {};
       
       if (tipo === 'adolescente') {
@@ -114,27 +91,23 @@ export async function GET(request: Request) {
         include: {
           tipo_usuario: true,
           adolecente: {
-            include: {
-              tutor: true
-            }
+            include: { tutor: true }
           },
           psicologo: {
-            include: {
-              redes_sociales: true
-            }
+            include: { redes_sociales: true }
           }
         },
-        orderBy: {
-          id: 'asc'
-        }
+        orderBy: { id: 'asc' }
       });
 
-      return NextResponse.json(usuarios);
+      // Filtrar datos sensibles
+      const safeUsers = usuarios.map(({ password, password_iv, authToken, authTokenExpiry, ...user }) => user);
+      return NextResponse.json(safeUsers);
     }
   } catch (error: any) {
     console.error('Error obteniendo usuarios:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor', details: error.message },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   } finally {
@@ -142,6 +115,7 @@ export async function GET(request: Request) {
   }
 }
 
+// POST - Crear usuario
 export async function POST(request: Request) {
   try {
     const { 
@@ -156,7 +130,7 @@ export async function POST(request: Request) {
       psicologoData?: PsicologoData 
     } = await request.json();
 
-    // Validación básica
+    // Validaciones básicas
     if (!usuarioData.email || !usuarioData.password) {
       return NextResponse.json(
         { error: 'Email y contraseña son requeridos' },
@@ -164,7 +138,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validar tipo de registro
     if (!['usuario', 'adolescente', 'psicologo'].includes(tipoRegistro)) {
       return NextResponse.json(
         { error: 'Tipo de registro no válido' },
@@ -172,7 +145,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validar datos adicionales según tipo de registro
     if (tipoRegistro === 'adolescente' && !tutorData) {
       return NextResponse.json(
         { error: 'Datos del tutor son requeridos para registro de adolescente' },
@@ -187,7 +159,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verificar si el usuario ya existe
+    // Verificar usuario existente
     const usuarioExistente = await prisma.usuario.findFirst({
       where: { 
         OR: [
@@ -204,20 +176,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Encriptar la contraseña
-    const contraseñaEncriptada: EncryptedData = encriptar(usuarioData.password);
+    // Encriptar contraseña
+    const contraseñaEncriptada = encriptar(usuarioData.password!);
 
-    // Determinar el tipo de usuario según el tipo de registro
-    let idTipoUsuario = usuarioData.id_tipo_usuario;
-    if (!idTipoUsuario) {
-      if (tipoRegistro === 'psicologo') idTipoUsuario = 2; // Asumiendo que 2 es para psicólogos
-      else if (tipoRegistro === 'adolescente') idTipoUsuario = 3; // Asumiendo que 3 es para adolescentes
-      else idTipoUsuario = 1; // Usuario básico
-    }
+    // Determinar tipo de usuario
+    const idTipoUsuario = usuarioData.id_tipo_usuario || 
+                         (tipoRegistro === 'psicologo' ? 2 : 
+                          tipoRegistro === 'adolescente' ? 3 : 1);
 
-    // Crear transacción para asegurar la integridad de los datos
+    // Generar token de autenticación (opcional para registro)
+    const authToken = crypto.randomBytes(64).toString('hex');
+    const authTokenExpiry = generarTokenExpiry();
+
+    // Crear transacción
     const result = await prisma.$transaction(async (prisma) => {
-      // Crear nuevo usuario
+      // Crear usuario
       const nuevoUsuario = await prisma.usuario.create({
         data: {
           email: usuarioData.email,
@@ -226,22 +199,22 @@ export async function POST(request: Request) {
           cedula: usuarioData.cedula,
           fecha_nacimiento: new Date(usuarioData.fecha_nacimiento),
           id_tipo_usuario: idTipoUsuario,
-          password_iv: contraseñaEncriptada.iv
+          password_iv: contraseñaEncriptada.iv,
+          authToken,
+          authTokenExpiry
         }
       });
 
       // Procesar según tipo de registro
       switch (tipoRegistro) {
         case 'adolescente':
-          if (!tutorData) throw new Error('Datos del tutor son requeridos');
-          
           const tutor = await prisma.tutor.create({
             data: {
-              cedula: usuarioData.cedula,
-              nombre: usuarioData.nombre,
-              profesion_tutor: tutorData.profesion_tutor,
-              telefono_contacto: tutorData.telefono_contacto,
-              correo_contacto: tutorData.correo_contacto
+              cedula: tutorData?.cedula_tutor || usuarioData.cedula,
+              nombre: tutorData?.nombre_tutor || usuarioData.nombre,
+              profesion_tutor: tutorData?.profesion_tutor,
+              telefono_contacto: tutorData?.telefono_contacto,
+              correo_contacto: tutorData?.correo_contacto
             }
           });
 
@@ -254,20 +227,17 @@ export async function POST(request: Request) {
           break;
 
         case 'psicologo':
-          if (!psicologoData) throw new Error('Datos profesionales son requeridos');
-          
           const psicologo = await prisma.psicologo.create({
             data: {
               id_usuario: nuevoUsuario.id,
-              numero_de_titulo: psicologoData.numero_de_titulo,
-              nombre_universidad: psicologoData.nombre_universidad,
-              monto_consulta: psicologoData.monto_consulta,
-              telefono_trabajo: psicologoData.telefono_trabajo
+              numero_de_titulo: psicologoData?.numero_de_titulo,
+              nombre_universidad: psicologoData?.nombre_universidad,
+              monto_consulta: psicologoData?.monto_consulta,
+              telefono_trabajo: psicologoData?.telefono_trabajo
             }
           });
 
-          // Agregar redes sociales si existen
-          if (psicologoData.redes_sociales && psicologoData.redes_sociales.length > 0) {
+          if (psicologoData?.redes_sociales?.length) {
             await prisma.redSocialPsicologo.createMany({
               data: psicologoData.redes_sociales.map(red => ({
                 id_psicologo: psicologo.id_usuario,
@@ -277,39 +247,48 @@ export async function POST(request: Request) {
             });
           }
           break;
-
-        case 'usuario':
-          // No se necesita hacer nada adicional para usuario básico
-          break;
       }
 
       return nuevoUsuario;
     });
 
-    // Obtener el usuario con sus relaciones para la respuesta
+    // Configurar cookies de autenticación (opcional para registro)
+    const cookieStore = await cookies();
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+      sameSite: 'strict' as const
+    };
+
+    cookieStore.set('auth-token', authToken, cookieOptions);
+    cookieStore.set('auth-token-expiry', authTokenExpiry.toISOString(), cookieOptions);
+
+    // Obtener usuario completo sin datos sensibles
     const usuarioCompleto = await prisma.usuario.findUnique({
       where: { id: result.id },
       include: {
         tipo_usuario: true,
         adolecente: {
-          include: {
-            tutor: true
-          }
+          include: { tutor: true }
         },
         psicologo: {
-          include: {
-            redes_sociales: true
-          }
+          include: { redes_sociales: true }
         }
       }
     });
 
-    return NextResponse.json(usuarioCompleto, { status: 201 });
+    if (!usuarioCompleto) {
+      throw new Error('Usuario no encontrado después de creación');
+    }
+
+    const { password, password_iv, authToken: _, authTokenExpiry: __, ...safeUser } = usuarioCompleto;
+    return NextResponse.json(safeUser, { status: 201 });
 
   } catch (error: any) {
     console.error('Error creando usuario:', error);
     
-    // Manejo específico de errores de Prisma
     if (error.code === 'P2002') {
       return NextResponse.json(
         { error: 'El email o cédula ya están registrados' },
@@ -318,7 +297,7 @@ export async function POST(request: Request) {
     }
     
     return NextResponse.json(
-      { error: error.message || 'Error interno del servidor', details: error.message },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   } finally {
@@ -326,23 +305,21 @@ export async function POST(request: Request) {
   }
 }
 
+// PUT - Actualizar usuario
 export async function PUT(request: Request) {
   try {
     const { 
       id,
-      tipoRegistro,
       usuarioData, 
       tutorData, 
       psicologoData 
     }: { 
       id: number,
-      tipoRegistro?: TipoRegistro,
       usuarioData: Partial<UsuarioBase>, 
       tutorData?: TutorData, 
       psicologoData?: PsicologoData 
     } = await request.json();
 
-    // Validación básica
     if (!id) {
       return NextResponse.json(
         { error: 'ID de usuario es requerido' },
@@ -350,19 +327,15 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Verificar si el usuario existe
+    // Verificar usuario existente
     const usuarioExistente = await prisma.usuario.findUnique({
       where: { id },
       include: {
         adolecente: {
-          include: {
-            tutor: true
-          }
+          include: { tutor: true }
         },
         psicologo: {
-          include: {
-            redes_sociales: true
-          }
+          include: { redes_sociales: true }
         }
       }
     });
@@ -374,12 +347,6 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Determinar el tipo de registro actual si no se especifica
-    const currentType = usuarioExistente.psicologo ? 'psicologo' : 
-                       usuarioExistente.adolecente ? 'adolescente' : 'usuario';
-
-    const registroActual = tipoRegistro || currentType;
-
     // Preparar datos de actualización
     const datosActualizacion: any = {
       nombre: usuarioData.nombre,
@@ -390,12 +357,12 @@ export async function PUT(request: Request) {
 
     // Actualizar contraseña si se proporciona
     if (usuarioData.password) {
-      const contraseñaEncriptada: EncryptedData = encriptar(usuarioData.password);
+      const contraseñaEncriptada = encriptar(usuarioData.password);
       datosActualizacion.password = contraseñaEncriptada.contenido;
       datosActualizacion.password_iv = contraseñaEncriptada.iv;
     }
 
-    // Usar transacción para múltiples operaciones
+    // Transacción para actualización
     const result = await prisma.$transaction(async (prisma) => {
       // Actualizar usuario
       const usuarioActualizado = await prisma.usuario.update({
@@ -403,157 +370,69 @@ export async function PUT(request: Request) {
         data: datosActualizacion
       });
 
-      // Procesar según tipo de registro
-      switch (registroActual) {
-        case 'adolescente':
-          if (!usuarioExistente.adolecente) {
-            if (!tutorData) {
-              throw new Error('Datos del tutor son requeridos para convertir usuario a adolescente');
-            }
-            
-            // Crear nuevo tutor y relación adolescente
-            const tutor = await prisma.tutor.create({
-              data: {
-                cedula: usuarioData.cedula || usuarioExistente.cedula,
-                nombre: usuarioData.nombre || usuarioExistente.nombre,
-                profesion_tutor: tutorData.profesion_tutor,
-                telefono_contacto: tutorData.telefono_contacto,
-                correo_contacto: tutorData.correo_contacto
-              }
-            });
+      // Actualizar relaciones según tipo existente
+      if (usuarioExistente.adolecente && tutorData) {
+        await prisma.tutor.update({
+          where: { id: usuarioExistente.adolecente.id_tutor || undefined },
+          data: {
+            profesion_tutor: tutorData.profesion_tutor,
+            telefono_contacto: tutorData.telefono_contacto,
+            correo_contacto: tutorData.correo_contacto
+          }
+        });
+      }
 
-            await prisma.adolecente.create({
-              data: {
-                id_usuario: id,
-                id_tutor: tutor.id
-              }
-            });
-          } else if (tutorData) {
-            // Actualizar tutor existente
-            await prisma.tutor.update({
-              where: { id: usuarioExistente.adolecente.id_tutor || undefined },
-              data: {
-                profesion_tutor: tutorData.profesion_tutor,
-                telefono_contacto: tutorData.telefono_contacto,
-                correo_contacto: tutorData.correo_contacto
-              }
+      if (usuarioExistente.psicologo && psicologoData) {
+        await prisma.psicologo.update({
+          where: { id_usuario: id },
+          data: {
+            numero_de_titulo: psicologoData.numero_de_titulo,
+            nombre_universidad: psicologoData.nombre_universidad,
+            monto_consulta: psicologoData.monto_consulta,
+            telefono_trabajo: psicologoData.telefono_trabajo
+          }
+        });
+
+        if (psicologoData.redes_sociales) {
+          await prisma.redSocialPsicologo.deleteMany({
+            where: { id_psicologo: id }
+          });
+
+          if (psicologoData.redes_sociales.length > 0) {
+            await prisma.redSocialPsicologo.createMany({
+              data: psicologoData.redes_sociales.map(red => ({
+                id_psicologo: id,
+                nombre_red: red.nombre_red,
+                url_perfil: red.url_perfil
+              }))
             });
           }
-          break;
-
-        case 'psicologo':
-          if (!usuarioExistente.psicologo) {
-            if (!psicologoData) {
-              throw new Error('Datos profesionales son requeridos para convertir usuario a psicólogo');
-            }
-            
-            // Crear nuevo psicólogo
-            const psicologo = await prisma.psicologo.create({
-              data: {
-                id_usuario: id,
-                numero_de_titulo: psicologoData.numero_de_titulo,
-                nombre_universidad: psicologoData.nombre_universidad,
-                monto_consulta: psicologoData.monto_consulta,
-                telefono_trabajo: psicologoData.telefono_trabajo
-              }
-            });
-
-            // Agregar redes sociales si existen
-            if (psicologoData.redes_sociales && psicologoData.redes_sociales.length > 0) {
-              await prisma.redSocialPsicologo.createMany({
-                data: psicologoData.redes_sociales.map(red => ({
-                  id_psicologo: id,
-                  nombre_red: red.nombre_red,
-                  url_perfil: red.url_perfil
-                }))
-              });
-            }
-          } else if (psicologoData) {
-            // Actualizar psicólogo existente
-            await prisma.psicologo.update({
-              where: { id_usuario: id },
-              data: {
-                numero_de_titulo: psicologoData.numero_de_titulo,
-                nombre_universidad: psicologoData.nombre_universidad,
-                monto_consulta: psicologoData.monto_consulta,
-                telefono_trabajo: psicologoData.telefono_trabajo
-              }
-            });
-
-            // Actualizar redes sociales si se proporcionan
-            if (psicologoData.redes_sociales) {
-              // Eliminar redes existentes
-              await prisma.redSocialPsicologo.deleteMany({
-                where: { id_psicologo: id }
-              });
-
-              // Crear nuevas redes
-              if (psicologoData.redes_sociales.length > 0) {
-                await prisma.redSocialPsicologo.createMany({
-                  data: psicologoData.redes_sociales.map(red => ({
-                    id_psicologo: id,
-                    nombre_red: red.nombre_red,
-                    url_perfil: red.url_perfil
-                  }))
-                });
-              }
-            }
-          }
-          break;
-
-        case 'usuario':
-          // Si el usuario era psicólogo o adolescente, eliminar esas relaciones
-          if (usuarioExistente.psicologo) {
-            await prisma.redSocialPsicologo.deleteMany({
-              where: { id_psicologo: id }
-            });
-            await prisma.psicologo.delete({
-              where: { id_usuario: id }
-            });
-          }
-
-          if (usuarioExistente.adolecente) {
-            const tutorId = usuarioExistente.adolecente.id_tutor;
-            await prisma.adolecente.delete({
-              where: { id_usuario: id }
-            });
-
-            // Eliminar tutor si no está asociado a otros adolescentes
-            const otrosAdolescentes = await prisma.adolecente.count({
-              where: { id_tutor: tutorId }
-            });
-
-            if (otrosAdolescentes === 0) {
-              await prisma.tutor.delete({
-                where: { id: tutorId || undefined }
-              });
-            }
-          }
-          break;
+        }
       }
 
       return usuarioActualizado;
     });
 
-    // Obtener el usuario actualizado con sus relaciones
-    const usuarioCompleto = await prisma.usuario.findUnique({
+    // Obtener usuario actualizado sin datos sensibles
+    const usuarioActualizado = await prisma.usuario.findUnique({
       where: { id: result.id },
       include: {
         tipo_usuario: true,
         adolecente: {
-          include: {
-            tutor: true
-          }
+          include: { tutor: true }
         },
         psicologo: {
-          include: {
-            redes_sociales: true
-          }
+          include: { redes_sociales: true }
         }
       }
     });
 
-    return NextResponse.json(usuarioCompleto);
+    if (!usuarioActualizado) {
+      throw new Error('Usuario no encontrado después de actualización');
+    }
+
+    const { password, password_iv, authToken, authTokenExpiry, ...safeUser } = usuarioActualizado;
+    return NextResponse.json(safeUser);
 
   } catch (error: any) {
     console.error('Error actualizando usuario:', error);
@@ -566,7 +445,7 @@ export async function PUT(request: Request) {
     }
     
     return NextResponse.json(
-      { error: error.message || 'Error interno del servidor', details: error.message },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   } finally {
@@ -574,6 +453,7 @@ export async function PUT(request: Request) {
   }
 }
 
+// DELETE - Eliminar usuario
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -588,19 +468,15 @@ export async function DELETE(request: Request) {
 
     const userId = parseInt(id);
 
-    // Verificar si el usuario existe
+    // Verificar usuario existente
     const usuarioExistente = await prisma.usuario.findUnique({
       where: { id: userId },
       include: {
         adolecente: {
-          include: {
-            tutor: true
-          }
+          include: { tutor: true }
         },
         psicologo: {
-          include: {
-            redes_sociales: true
-          }
+          include: { redes_sociales: true }
         }
       }
     });
@@ -612,15 +488,14 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Usar transacción para eliminar relaciones primero
+    // Transacción para eliminación segura
     await prisma.$transaction(async (prisma) => {
-      // Eliminar adolescente si existe
+      // Eliminar relaciones primero
       if (usuarioExistente.adolecente) {
         await prisma.adolecente.delete({
-          where: { id_usuario: usuarioExistente.id }
+          where: { id_usuario: userId }
         });
 
-        // Eliminar tutor si no está asociado a otros adolescentes
         const tutorId = usuarioExistente.adolecente.id_tutor;
         if (tutorId) {
           const otrosAdolescentes = await prisma.adolecente.count({
@@ -635,20 +510,19 @@ export async function DELETE(request: Request) {
         }
       }
 
-      // Eliminar psicólogo si existe
       if (usuarioExistente.psicologo) {
         await prisma.redSocialPsicologo.deleteMany({
-          where: { id_psicologo: usuarioExistente.id }
+          where: { id_psicologo: userId }
         });
 
         await prisma.psicologo.delete({
-          where: { id_usuario: usuarioExistente.id }
+          where: { id_usuario: userId }
         });
       }
 
       // Finalmente eliminar el usuario
       await prisma.usuario.delete({
-        where: { id: usuarioExistente.id }
+        where: { id: userId }
       });
     });
 
@@ -660,7 +534,7 @@ export async function DELETE(request: Request) {
   } catch (error: any) {
     console.error('Error eliminando usuario:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor', details: error.message },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   } finally {

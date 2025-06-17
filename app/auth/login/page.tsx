@@ -8,7 +8,8 @@ import { useState } from "react"
 import { apiPost } from './../../lib/apiClient';
 import { StorageManager } from "@/app/lib/storageManager"
 import { AuthResponse } from "./../../types/user"
-export default function Login(){
+
+export default function Login() {
   const [loginData, setLoginData] = useState({
     username: '',
     password: ''
@@ -18,6 +19,8 @@ export default function Login(){
     username: '',
     password: ''
   });
+
+  const [isLoading, setIsLoading] = useState(false); // Estado para controlar la carga
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -63,27 +66,24 @@ export default function Login(){
     e.preventDefault();
     
     if (validateForm()) {
-      // Aquí iría la lógica para enviar los datos al servidor
-      console.log('Datos de login:', loginData);
-    try {
-        const response = await apiPost<AuthResponse>('/auth/login', { email: loginData.username, password: loginData.password });
-  
-        // Guardar datos del usuario en contexto o estado global
-        //console.log('Login exitoso:', response.user);
+      setIsLoading(true); // Activar estado de carga
+      
+      try {
+        const response = await apiPost<AuthResponse>('/auth/login', { 
+          email: loginData.username, 
+          password: loginData.password 
+        });
         const localStorageManager = new StorageManager('local');
-        localStorageManager.save<AuthResponse>("userData",response);
+        localStorageManager.save<AuthResponse>("userData", response);
 
-      // Redirigir al dashboard
-      window.location.href = '/dashboard';
-    } catch (err) {
-      console.log(err);
-      //setError(err instanceof Error ? err.message : 'Error desconocido');
-    } finally {
-      console.log("finally");
-      //setLoading(false);
-    }
-      // Resetear formulario (opcional)
-      // setLoginData({ username: '', password: '' });
+        // Redirigir al dashboard
+        window.location.href = '/';
+      } catch (err) {
+        console.log(err);
+        // Manejar errores específicos si es necesario
+      } finally {
+        setIsLoading(false); // Desactivar estado de carga
+      }
     }
   };
 
@@ -107,7 +107,7 @@ export default function Login(){
             </div>
             
             <div className="w-full max-w-[190px]">
-              <label htmlFor="username" className="text-sm">Nombre usuario o correo:</label>
+              <label htmlFor="username" className="text-sm">Correo:</label>
               <input 
                 required 
                 type="text" 
@@ -115,7 +115,8 @@ export default function Login(){
                 id="username" 
                 value={loginData.username}
                 onChange={handleChange}
-                className={`w-full border ${errors.username ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
+                disabled={isLoading} // Deshabilitar durante la carga
+                className={`w-full border ${errors.username ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2 disabled:opacity-75`}
               />
               {errors.username && (
                 <p className="text-red-500 text-xs mt-1">{errors.username}</p>
@@ -131,7 +132,8 @@ export default function Login(){
                 id="password" 
                 value={loginData.password}
                 onChange={handleChange}
-                className={`w-full border ${errors.password ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
+                disabled={isLoading} // Deshabilitar durante la carga
+                className={`w-full border ${errors.password ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2 disabled:opacity-75`}
               />
               {errors.password && (
                 <p className="text-red-500 text-xs mt-1">{errors.password}</p>
@@ -141,9 +143,21 @@ export default function Login(){
             <div className="w-full flex justify-center"> 
               <button
                 type="submit"
-                className="bg-blue-300 cursor-pointer text-stone-50 text-center rounded transition max-w-[180px] w-full h-8 hover:bg-blue-800"
+                disabled={isLoading} // Deshabilitar durante la carga
+                className="bg-blue-300 cursor-pointer text-stone-50 text-center rounded transition max-w-[180px] w-full h-8 hover:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                Iniciar sesión
+                {isLoading ? (
+                  // Animación de carga (puedes reemplazar con tu GIF)
+                  <div className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Procesando...
+                  </div>
+                ) : (
+                  'Iniciar sesión'
+                )}
               </button>
             </div>
             

@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from "./../../../app/generated/prisma";
+import { PrismaClient } from "./../../generated/prisma";
 
 const prisma = new PrismaClient();
 
 interface AlarmaData {
-  tipo: string;
-  id_usuario?: number;
+  id_usuario?: number | null;
+  id_tipo_alerta?: number | null;
   mensaje: string;
+  vista?: boolean;
+  url_destino?: string | null;
 }
 
 export async function GET(request: Request) {
@@ -14,9 +16,19 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const usuarioId = searchParams.get('usuarioId');
+    const tipoAlertaId = searchParams.get('tipoAlertaId');
+    const noVistas = searchParams.get('noVistas') === 'true';
+    const search = searchParams.get('search');
     
+    // Pagination parameters
+    const page = parseInt(searchParams.get('page') || '1');
+    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    const skip = (page - 1) * pageSize;
+    
+    let whereClause: any = {};
+    
+    // Get single alert by ID
     if (id) {
-      // Obtener una alarma específica
       const alarma = await prisma.alarma.findUnique({
         where: { id: parseInt(id) },
         include: {
@@ -24,56 +36,77 @@ export async function GET(request: Request) {
             include: {
               tipo_usuario: true
             }
-          }
+          },
+          tipo_alerta: true
         }
       });
-
+      
       if (!alarma) {
         return NextResponse.json(
           { error: 'Alarma no encontrada' },
           { status: 404 }
         );
       }
-
-      return NextResponse.json(alarma);
-    } else if (usuarioId) {
-      // Obtener alarmas de un usuario específico
-      const alarmas = await prisma.alarma.findMany({
-        where: { id_usuario: parseInt(usuarioId) },
-        include: {
-          usuario: {
-            include: {
-              tipo_usuario: true
-            }
-          }
-        },
-        orderBy: {
-          fecha_creacion: 'desc'
-        }
+      
+      return NextResponse.json({
+        data: [alarma],
+        total: 1,
+        page: 1,
+        pageSize: 1,
+        totalPages: 1
       });
-
-      return NextResponse.json(alarmas);
-    } else {
-      // Obtener todas las alarmas
-      const alarmas = await prisma.alarma.findMany({
-        include: {
-          usuario: {
-            include: {
-              tipo_usuario: true
-            }
-          }
-        },
-        orderBy: {
-          fecha_creacion: 'desc'
-        }
-      });
-
-      return NextResponse.json(alarmas);
     }
+    
+    // Apply filters
+    if (usuarioId) whereClause.id_usuario = parseInt(usuarioId);
+    if (tipoAlertaId) whereClause.id_tipo_alerta = parseInt(tipoAlertaId);
+    if (noVistas) whereClause.vista = false;
+    
+if (search) {
+  whereClause.OR = [
+    { mensaje: { contains: search, mode: 'insensitive' } },
+    { usuario: { nombre: { contains: search, mode: 'insensitive' } } },
+    { tipo_alerta: { nombre: { contains: search, mode: 'insensitive' } } }
+  ];
+}
+    
+    // Get total count for pagination
+    const total = await prisma.alarma.count({ where: whereClause });
+    const totalPages = Math.ceil(total / pageSize);
+    
+    // Get paginated results
+    const alarmas = await prisma.alarma.findMany({
+      where: whereClause,
+      include: {
+        usuario: {
+          include: {
+            tipo_usuario: true
+          }
+        },
+        tipo_alerta: true
+      },
+      orderBy: {
+        fecha_creacion: 'desc'
+      },
+      skip,
+      take: pageSize
+    });
+    
+    return NextResponse.json({
+      data: alarmas,
+      total,
+      page,
+      pageSize,
+      totalPages
+    });
+    
   } catch (error: any) {
-    console.error('Error obteniendo alarmas:', error);
+    console.error('Error fetching alarmas:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor', details: error.message },
+      { 
+        error: 'Error al obtener las alarmas',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {
@@ -85,15 +118,15 @@ export async function POST(request: Request) {
   try {
     const alarmaData: AlarmaData = await request.json();
 
-    // Validación básica
-    if (!alarmaData.tipo || !alarmaData.mensaje) {
+    // Basic validation
+    if (!alarmaData.mensaje) {
       return NextResponse.json(
-        { error: 'Tipo y mensaje son requeridos' },
+        { error: 'El mensaje es requerido' },
         { status: 400 }
       );
     }
 
-    // Verificar si el usuario existe si se proporciona id_usuario
+    // Validate user exists if provided
     if (alarmaData.id_usuario) {
       const usuarioExistente = await prisma.usuario.findUnique({
         where: { id: alarmaData.id_usuario }
@@ -107,26 +140,43 @@ export async function POST(request: Request) {
       }
     }
 
-    // Crear nueva alarma
+    // Validate alert type exists if provided
+    if (alarmaData.id_tipo_alerta) {
+      const tipoAlertaExistente = await prisma.tipoAlerta.findUnique({
+        where: { id: alarmaData.id_tipo_alerta }
+      });
+
+      if (!tipoAlertaExistente) {
+        return NextResponse.json(
+          { error: 'Tipo de alerta no encontrado' },
+          { status: 404 }
+        );
+      }
+    }
+
+    // Create new alert
     const nuevaAlarma = await prisma.alarma.create({
       data: {
-        tipo: alarmaData.tipo,
-        id_usuario: alarmaData.id_usuario,
-        mensaje: alarmaData.mensaje
+        id_usuario: alarmaData.id_usuario || null,
+        id_tipo_alerta: alarmaData.id_tipo_alerta || null,
+        mensaje: alarmaData.mensaje,
+        vista: alarmaData.vista || false,
+        url_destino: alarmaData.url_destino || null
       },
       include: {
         usuario: {
           include: {
             tipo_usuario: true
           }
-        }
+        },
+        tipo_alerta: true
       }
     });
 
     return NextResponse.json(nuevaAlarma, { status: 201 });
 
   } catch (error: any) {
-    console.error('Error creando alarma:', error);
+    console.error('Error creating alarma:', error);
     
     if (error.code === 'P2002') {
       return NextResponse.json(
@@ -136,7 +186,10 @@ export async function POST(request: Request) {
     }
     
     return NextResponse.json(
-      { error: error.message || 'Error interno del servidor', details: error.message },
+      { 
+        error: 'Error al crear la alarma',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {
@@ -144,11 +197,11 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+export async function PATCH(request: Request) {
   try {
     const { id, ...alarmaData }: { id: number } & Partial<AlarmaData> = await request.json();
 
-    // Validación básica
+    // Validate ID
     if (!id) {
       return NextResponse.json(
         { error: 'ID de alarma es requerido' },
@@ -156,7 +209,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Verificar si la alarma existe
+    // Check if alert exists
     const alarmaExistente = await prisma.alarma.findUnique({
       where: { id }
     });
@@ -168,7 +221,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Verificar si el usuario existe si se proporciona id_usuario
+    // Validate user exists if provided
     if (alarmaData.id_usuario) {
       const usuarioExistente = await prisma.usuario.findUnique({
         where: { id: alarmaData.id_usuario }
@@ -182,7 +235,21 @@ export async function PUT(request: Request) {
       }
     }
 
-    // Actualizar alarma
+    // Validate alert type exists if provided
+    if (alarmaData.id_tipo_alerta) {
+      const tipoAlertaExistente = await prisma.tipoAlerta.findUnique({
+        where: { id: alarmaData.id_tipo_alerta }
+      });
+
+      if (!tipoAlertaExistente) {
+        return NextResponse.json(
+          { error: 'Tipo de alerta no encontrado' },
+          { status: 404 }
+        );
+      }
+    }
+
+    // Update alert
     const alarmaActualizada = await prisma.alarma.update({
       where: { id },
       data: alarmaData,
@@ -191,14 +258,15 @@ export async function PUT(request: Request) {
           include: {
             tipo_usuario: true
           }
-        }
+        },
+        tipo_alerta: true
       }
     });
 
     return NextResponse.json(alarmaActualizada);
 
   } catch (error: any) {
-    console.error('Error actualizando alarma:', error);
+    console.error('Error updating alarma:', error);
     
     if (error.code === 'P2002') {
       return NextResponse.json(
@@ -208,7 +276,10 @@ export async function PUT(request: Request) {
     }
     
     return NextResponse.json(
-      { error: error.message || 'Error interno del servidor', details: error.message },
+      { 
+        error: 'Error al actualizar la alarma',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {
@@ -230,7 +301,7 @@ export async function DELETE(request: Request) {
 
     const alarmaId = parseInt(id);
 
-    // Verificar si la alarma existe
+    // Check if alert exists
     const alarmaExistente = await prisma.alarma.findUnique({
       where: { id: alarmaId }
     });
@@ -242,7 +313,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Eliminar la alarma
+    // Delete alert
     await prisma.alarma.delete({
       where: { id: alarmaId }
     });
@@ -253,9 +324,12 @@ export async function DELETE(request: Request) {
     );
 
   } catch (error: any) {
-    console.error('Error eliminando alarma:', error);
+    console.error('Error deleting alarma:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor', details: error.message },
+      { 
+        error: 'Error al eliminar la alarma',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {
