@@ -7,20 +7,26 @@ import Link from "next/link"
 import { useState } from "react"
 import { apiPost } from './../../lib/apiClient';
 import { StorageManager } from "@/app/lib/storageManager"
-import { AuthResponse } from "./../../types/user"
+import useUserStore from "./../../../app/store/store"
+import { LoginRequest, LoginResponse } from "./../../types/user/index"
+import { useRouter } from "next/navigation"
 
 export default function Login() {
-  const [loginData, setLoginData] = useState({
-    username: '',
+  const { login } = useUserStore();
+  const router = useRouter();
+  
+  const [loginData, setLoginData] = useState<LoginRequest>({
+    email: '',
     password: ''
   });
 
   const [errors, setErrors] = useState({
-    username: '',
+    email: '',
     password: ''
   });
 
-  const [isLoading, setIsLoading] = useState(false); // Estado para controlar la carga
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -29,24 +35,30 @@ export default function Login() {
       [name]: value
     }));
     
-    // Limpiar errores al escribir
     if (errors[name as keyof typeof errors]) {
       setErrors(prev => ({
         ...prev,
         [name]: ''
       }));
     }
+    
+    if (apiError) {
+      setApiError(null);
+    }
   };
 
   const validateForm = () => {
     let valid = true;
     const newErrors = {
-      username: '',
+      email: '',
       password: ''
     };
 
-    if (!loginData.username.trim()) {
-      newErrors.username = 'Este campo es requerido';
+    if (!loginData.email.trim()) {
+      newErrors.email = 'Este campo es requerido';
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginData.email)) {
+      newErrors.email = 'Por favor ingrese un email válido';
       valid = false;
     }
 
@@ -65,25 +77,33 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      setIsLoading(true); // Activar estado de carga
-      
-      try {
-        const response = await apiPost<AuthResponse>('/auth/login', { 
-          email: loginData.username, 
-          password: loginData.password 
-        });
-        const localStorageManager = new StorageManager('local');
-        localStorageManager.save<AuthResponse>("userData", response);
-
-        // Redirigir al dashboard
-        window.location.href = '/';
-      } catch (err) {
-        console.log(err);
-        // Manejar errores específicos si es necesario
-      } finally {
-        setIsLoading(false); // Desactivar estado de carga
+    if (!validateForm()) return;
+    
+    setIsLoading(true);
+    setApiError(null);
+    
+    try {
+      const response = await apiPost<LoginResponse>('/auth/login', loginData);
+ 
+      if (!response) {
+        throw new Error('Invalid server response');
       }
+
+      // Guardar en localStorage
+      const storage = new StorageManager('local');
+      storage.save<LoginResponse>("userData",response);
+
+      // Actualizar el store de Zustand
+      login(response);
+      // setIsAuthenticated(true); // Removed because setIsAuthenticated does not exist
+
+      // Redireccionar
+      router.push('/');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setApiError(err.response?.data?.message || 'Credenciales incorrectas. Por favor verifique su email y contraseña.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -106,20 +126,26 @@ export default function Login() {
               />
             </div>
             
+            {apiError && (
+              <div className="w-full max-w-[190px] text-red-500 text-sm text-center">
+                {apiError}
+              </div>
+            )}
+            
             <div className="w-full max-w-[190px]">
-              <label htmlFor="username" className="text-sm">Correo:</label>
+              <label htmlFor="email" className="text-sm">Correo:</label>
               <input 
                 required 
-                type="text" 
-                name="username" 
-                id="username" 
-                value={loginData.username}
+                type="email" 
+                name="email" 
+                id="email" 
+                value={loginData.email}
                 onChange={handleChange}
-                disabled={isLoading} // Deshabilitar durante la carga
-                className={`w-full border ${errors.username ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2 disabled:opacity-75`}
+                disabled={isLoading}
+                className={`w-full border ${errors.email ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2 disabled:opacity-75`}
               />
-              {errors.username && (
-                <p className="text-red-500 text-xs mt-1">{errors.username}</p>
+              {errors.email && (
+                <p className="text-red-500 text-xs mt-1">{errors.email}</p>
               )}
             </div>
             
@@ -132,7 +158,7 @@ export default function Login() {
                 id="password" 
                 value={loginData.password}
                 onChange={handleChange}
-                disabled={isLoading} // Deshabilitar durante la carga
+                disabled={isLoading}
                 className={`w-full border ${errors.password ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2 disabled:opacity-75`}
               />
               {errors.password && (
@@ -143,11 +169,10 @@ export default function Login() {
             <div className="w-full flex justify-center"> 
               <button
                 type="submit"
-                disabled={isLoading} // Deshabilitar durante la carga
+                disabled={isLoading}
                 className="bg-blue-300 cursor-pointer text-stone-50 text-center rounded transition max-w-[180px] w-full h-8 hover:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {isLoading ? (
-                  // Animación de carga (puedes reemplazar con tu GIF)
                   <div className="flex items-center justify-center">
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

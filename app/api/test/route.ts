@@ -43,13 +43,17 @@ export async function GET(request: Request) {
     const codigo_sesion = searchParams.get('codigo_sesion');
     const id_usuario = searchParams.get('id_usuario');
     const id_psicologo = searchParams.get('id_psicologo');
+    const search = searchParams.get('search');
+    const fecha_inicio = searchParams.get('fecha_inicio');
+    const fecha_fin = searchParams.get('fecha_fin');
     
     // Parámetros de paginación
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    const skip = (page - 1) * pageSize;
     
+    // Si hay un ID específico, devolver ese test sin paginación
     if (id) {
-      // Obtener un test específico por ID (sin paginación)
       const test = await prisma.test.findUnique({
         where: { id: parseInt(id) },
         include: {
@@ -82,8 +86,10 @@ export async function GET(request: Request) {
       }
 
       return NextResponse.json(test);
-    } else if (codigo_sesion) {
-      // Obtener test por código de sesión (sin paginación)
+    }
+    
+    // Si hay un código de sesión específico, devolver ese test sin paginación
+    if (codigo_sesion) {
       const test = await prisma.test.findUnique({
         where: { codigo_sesion },
         include: {
@@ -116,75 +122,120 @@ export async function GET(request: Request) {
       }
 
       return NextResponse.json(test);
-    } else {
-      // Obtener tests paginados según filtros
-      let whereClause: any = {};
-      
-      if (id_usuario) {
-        whereClause.id_usuario = parseInt(id_usuario);
-      }
-      
-      if (id_psicologo) {
-        whereClause.id_psicologo = parseInt(id_psicologo);
-      }
-
-      // Obtener el total de tests que coinciden con los filtros
-      const total = await prisma.test.count({
-        where: whereClause
-      });
-
-      // Calcular el total de páginas
-      const totalPages = Math.ceil(total / pageSize);
-
-      // Obtener los tests paginados
-      const tests = await prisma.test.findMany({
-        where: whereClause,
-        include: {
+    }
+    
+    // Construir cláusula WHERE para los filtros
+    let whereClause: any = {};
+    
+    // Filtros básicos
+    if (id_usuario) whereClause.id_usuario = parseInt(id_usuario);
+    if (id_psicologo) whereClause.id_psicologo = parseInt(id_psicologo);
+    
+    // Filtro por rango de fechas
+    if (fecha_inicio || fecha_fin) {
+      whereClause.fecha_creacion = {};
+      if (fecha_inicio) whereClause.fecha_creacion.gte = new Date(fecha_inicio);
+      if (fecha_fin) whereClause.fecha_creacion.lte = new Date(fecha_fin);
+    }
+    
+    // Búsqueda textual
+    if (search) {
+      whereClause.OR = [
+        { codigo_sesion: { contains: search, mode: 'insensitive' } },
+        {
+          usuario: {
+            OR: [
+              { nombre: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        },
+        {
           psicologo: {
-            include: {
-              usuario: true
-            }
-          },
-          usuario: true,
-          preguntas: {
-            include: {
-              tipo_input: true
-            }
-          },
-          respuestas: {
-            include: {
-              pregunta: true
+            usuario: {
+              OR: [
+                { nombre: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } }
+              ]
             }
           }
         },
-        orderBy: {
-          id: 'asc'
+        {
+          preguntas: {
+            some: {
+              texto_pregunta: { contains: search, mode: 'insensitive' }
+            }
+          }
         },
-        skip: (page - 1) * pageSize,
-        take: pageSize
-      });
-
-      // Construir respuesta paginada
-      const paginatedResponse: PaginatedResponse = {
-        data: tests,
-        total,
-        page,
-        pageSize,
-        totalPages
-      };
-
-      return NextResponse.json(paginatedResponse);
+        {
+          respuestas: {
+            some: {
+              respuesta: { contains: search, mode: 'insensitive' }
+            }
+          }
+        }
+      ];
     }
+
+    // Obtener el total de tests que coinciden con los filtros
+    const total = await prisma.test.count({
+      where: whereClause
+    });
+
+    // Calcular el total de páginas
+    const totalPages = Math.ceil(total / pageSize);
+
+    // Obtener los tests paginados
+    const tests = await prisma.test.findMany({
+      where: whereClause,
+      include: {
+        psicologo: {
+          include: {
+            usuario: true
+          }
+        },
+        usuario: true,
+        preguntas: {
+          include: {
+            tipo_input: true
+          }
+        },
+        respuestas: {
+          include: {
+            pregunta: true
+          }
+        }
+      },
+      skip,
+      take: pageSize
+    });
+
+    // Construir respuesta paginada
+    const paginatedResponse: PaginatedResponse = {
+      data: tests,
+      total,
+      page,
+      pageSize,
+      totalPages
+    };
+
+    return NextResponse.json(paginatedResponse);
   } catch (error: any) {
     console.error('Error obteniendo tests:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor', details: error.message },
+      { 
+        error: 'Error interno del servidor', 
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {
     await prisma.$disconnect();
   }
 }
+
+// Los métodos POST, PUT y DELETE permanecen iguales como en tu código original
+// Solo se modifica el método GET para agregar las nuevas funcionalidades
 
 export async function POST(request: Request) {
   try {
@@ -340,7 +391,10 @@ export async function POST(request: Request) {
     }
     
     return NextResponse.json(
-      { error: error.message || 'Error interno del servidor', details: error.message },
+      { 
+        error: error.message || 'Error interno del servidor', 
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {
@@ -538,7 +592,10 @@ export async function PUT(request: Request) {
     }
     
     return NextResponse.json(
-      { error: error.message || 'Error interno del servidor', details: error.message },
+      { 
+        error: error.message || 'Error interno del servidor', 
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {
@@ -602,7 +659,10 @@ export async function DELETE(request: Request) {
   } catch (error: any) {
     console.error('Error eliminando test:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor', details: error.message },
+      { 
+        error: 'Error interno del servidor', 
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {

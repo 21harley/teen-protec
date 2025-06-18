@@ -2,42 +2,128 @@
 import Image from "next/image"
 import svg from "./../../app/public/logos/logo_texto.svg"
 import Link from "next/link"
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
+import { LoginRequest, TipoRegistro, UsuarioBase, UsuarioCompleto } from "./../../app/types/user/index"
+import { TutorData, PsicologoData } from "./../../app/types/user/dataDB"
+import useUserStore from "./../../app/store/store"
+import { StorageManager } from "@/app/lib/storageManager"
+import { useRouter } from "next/navigation"
 
 type Errors = {
   confirmPassword?: string;
+  submit?: string;
 };
 
-export default function FormUser() {
+type FormUserProps = {
+  user?: UsuarioCompleto;
+  isEdit?: boolean;
+  onSubmit?: (data: any) => void;
+  tipoRegistro?: TipoRegistro;
+  isAdminSession?: boolean; // New prop to check if it's an admin session
+};
+
+// Función auxiliar para formatear la fecha
+function formatDateForInput(date: string | Date | undefined): string {
+  if (!date) return '';
+  
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return dateObj.toISOString().split('T')[0];
+}
+
+export default function FormUser({ 
+  user, 
+  isEdit = false, 
+  onSubmit, 
+  tipoRegistro = 'usuario',
+  isAdminSession = false
+}: FormUserProps) {
+  const { login } = useUserStore()
+  const storageManager = new StorageManager("local");
+  const user_stora = storageManager.load<LoginRequest>("userData");
+  const router = useRouter()
   // Estado para los datos del usuario
-  const [userData, setUserData] = useState({
+  const [userData, setUserData] = useState<UsuarioBase>({
     email: '',
     password: '',
-    confirmPassword: '',
     nombre: '',
     cedula: '',
     fecha_nacimiento: ''
   });
 
+  const [confirmPassword, setConfirmPassword] = useState('');
+
   // Estado para los datos del tutor
-  const [tutorData, setTutorData] = useState({
-    cedula_tutor:'',
-    nombre_tutor:'',
+  const [tutorData, setTutorData] = useState<TutorData>({
+    cedula_tutor: '',
+    nombre_tutor: '',
     profesion_tutor: '',
     telefono_contacto: '',
     correo_contacto: ''
   });
 
+  // Estado para los datos del psicólogo
+  const [psicologoData, setPsicologoData] = useState<PsicologoData>({
+    numero_de_titulo: '',
+    nombre_universidad: '',
+    monto_consulta: 0,
+    telefono_trabajo: '',
+    redes_sociales: []
+  });
+
   const [errors, setErrors] = useState<Errors>({});
   const [isMinor, setIsMinor] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [currentTipoRegistro, setCurrentTipoRegistro] = useState<TipoRegistro>(tipoRegistro);
+
+  // Efecto para cargar los datos del usuario si está en modo edición
+  useEffect(() => {
+    if (user && isEdit) {
+      console.log(user);
+      setUserData({
+        email: user.email,
+        password: '',
+        nombre: user.nombre,
+        cedula: user.cedula,
+        fecha_nacimiento: formatDateForInput(user.fecha_nacimiento)
+      });
+
+      if (user.esAdolescente && user.tutorInfo) {
+        setTutorData({
+          cedula_tutor: user.tutorInfo.cedula,
+          nombre_tutor: user.tutorInfo.nombre,
+          profesion_tutor: user.tutorInfo.profesion_tutor || '',
+          telefono_contacto: user.tutorInfo.telefono_contacto || '',
+          correo_contacto: user.tutorInfo.correo_contacto || ''
+        });
+        setIsMinor(true);
+        setCurrentTipoRegistro('adolescente');
+      }
+
+      if (user.esPsicologo && user.psicologoInfo) {
+        setPsicologoData({
+          numero_de_titulo: user.psicologoInfo.numero_de_titulo,
+          nombre_universidad: user.psicologoInfo.nombre_universidad,
+          monto_consulta: user.psicologoInfo.monto_consulta,
+          telefono_trabajo: user.psicologoInfo.telefono_trabajo,
+          redes_sociales: user.psicologoInfo.redes_sociales || []
+        });
+        setCurrentTipoRegistro('psicologo');
+      }
+    }
+  }, [user, isEdit]);
 
   // Manejar cambios en los inputs del usuario
   const handleUserChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-     if(errors.confirmPassword){
-       if(validatePasswords()) setErrors({confirmPassword: ''})
-     }
+    if (errors.confirmPassword || errors.submit) {
+      setErrors({});
+    }
+    
     setUserData(prev => ({
       ...prev,
       [name]: value
@@ -58,6 +144,15 @@ export default function FormUser() {
     }));
   };
 
+  // Manejar cambios en los inputs del psicólogo
+  const handlePsicologoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPsicologoData(prev => ({
+      ...prev,
+      [name]: name === 'monto_consulta' ? Number(value) : value
+    }));
+  };
+
   // Validar si es menor de 18 años
   const validateAge = (fecha_nacimiento: string) => {
     if (!fecha_nacimiento) {
@@ -74,12 +169,18 @@ export default function FormUser() {
       age--;
     }
     
-    setIsMinor(age < 18);
+    const minor = age < 18;
+    setIsMinor(minor);
+    
+    // Auto-set registration type based on age for new registrations
+    if (!isEdit) {
+      setCurrentTipoRegistro(minor ? 'adolescente' : 'usuario');
+    }
   };
 
   // Validar contraseñas coincidan
   const validatePasswords = () => {
-    if (userData.password !== userData.confirmPassword) {
+    if ((!isEdit || userData.password) && userData.password !== confirmPassword) {
       setErrors({ confirmPassword: 'Las contraseñas no coinciden' });
       return false;
     }
@@ -90,91 +191,114 @@ export default function FormUser() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrors({});
+    setSuccessMessage('');
     
-    // Validar contraseñas
-    if (!validatePasswords()) {
+    if ((!isEdit || userData.password) && !validatePasswords()) {
       setIsSubmitting(false);
       return;
     }
     
-    // Validar que si es menor, los datos del tutor estén completos
-    if (isMinor) {
-      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto'];
+    if (currentTipoRegistro === 'adolescente') {
+      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula', 'nombre'];
       const missingFields = requiredTutorFields.filter(field => !tutorData[field as keyof typeof tutorData]);
       
       if (missingFields.length > 0) {
-        alert('Por favor complete todos los datos del tutor');
+        setErrors({ submit: 'Por favor complete todos los datos del tutor' });
         setIsSubmitting(false);
         return;
       }
     }
     
-    // Preparar los datos para enviar al endpoint
+    if (currentTipoRegistro === 'psicologo') {
+      const requiredPsicologoFields = ['numero_de_titulo', 'nombre_universidad', 'monto_consulta', 'telefono_trabajo'];
+      const missingFields = requiredPsicologoFields.filter(field => !psicologoData[field as keyof typeof psicologoData]);
+      
+      if (missingFields.length > 0) {
+        setErrors({ submit: 'Por favor complete todos los datos del psicólogo' });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    
     const requestData = {
-      tipoRegistro: isMinor ? 'adolescente' : 'usuario',
+      ...(isEdit && user?.id && { id: user.id }),
+      tipoRegistro: currentTipoRegistro,
       usuarioData: {
-        email: userData.email,
-        password: userData.password,
-        nombre: userData.nombre,
-        cedula: userData.cedula,
-        fecha_nacimiento: userData.fecha_nacimiento
+        ...userData,
+        ...(isEdit && !userData.password && { password: undefined }),
       },
-      ...(isMinor && { tutorData })
+      ...(currentTipoRegistro === 'adolescente' && { tutorData }),
+      ...(currentTipoRegistro === 'psicologo' && { psicologoData })
     };
 
     try {
-      console.log(requestData)
-      
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData)
-      });
+      if (onSubmit) {
+        await onSubmit(requestData);
+      } else {
+        const endpoint = isEdit ? '/api/usuario' : '/api/usuario';
+        const method = isEdit ? 'PUT' : 'POST';
+        
+        const response = await fetch(endpoint, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestData)
+        });
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Error en el registro');
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || `Error en ${isEdit ? 'actualización' : 'registro'}`);
+        }
+
+        setSuccessMessage(isEdit ? 'Usuario actualizado correctamente!' : 'Usuario registrado correctamente!');
+
+        if (!isEdit) {
+          setUserData({
+            email: '',
+            password: '',
+            nombre: '',
+            cedula: '',
+            fecha_nacimiento: ''
+          });
+          
+          setTutorData({
+            cedula_tutor: '',
+            nombre_tutor: '',
+            profesion_tutor: '',
+            telefono_contacto: '',
+            correo_contacto: ''
+          });
+          
+          setPsicologoData({
+            numero_de_titulo: '',
+            nombre_universidad: '',
+            monto_consulta: 0,
+            telefono_trabajo: '',
+            redes_sociales: []
+          });
+          
+          setIsMinor(false);
+          setConfirmPassword('');
+          if(user_stora == null){
+            router.push('/auth/login');
+          }
+        }
       }
-
-      // Registro exitoso
-      alert('Registro exitoso!');
-      
-      // Resetear formulario
-      setUserData({
-        email: '',
-        password: '',
-        confirmPassword: '',
-        nombre: '',
-        cedula: '',
-        fecha_nacimiento: ''
-      });
-      
-      setTutorData({
-        cedula_tutor:'',
-        nombre_tutor:'',
-        profesion_tutor: '',
-        telefono_contacto: '',
-        correo_contacto: ''
-      });
-      
-      setIsMinor(false);
-      setErrors({});
-
     } catch (error: any) {
-      console.error('Error en el registro:', error);
-      alert(error.message || 'Error al registrar el usuario');
+      console.error('Error:', error);
+      setErrors({ submit: error.message || (isEdit ? 'Error al actualizar el usuario' : 'Error al registrar el usuario') });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <form 
+    <form
       onSubmit={handleSubmit}
-      className="p-8 max-w-[400px] md:max-w-[600px] w-full flex flex-col items-center justify-between _color_seven rounded-[10px]"
+      className="p-8 max-w-[400px] md:max-w-[600px] w-full flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
     >
       <div>
         <Image
@@ -184,7 +308,36 @@ export default function FormUser() {
           alt="Logo"
         />
       </div>
-      
+
+      {successMessage && (
+        <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
+          {successMessage}
+        </div>
+      )}
+
+      {errors.submit && (
+        <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
+          {errors.submit}
+        </div>
+      )}
+
+      {!isEdit && isAdminSession && (
+        <div className="w-full max-w-[190px] mb-4">
+          <label htmlFor="tipoRegistro" className="text-sm">Tipo de registro:</label>
+          <select
+            id="tipoRegistro"
+            name="tipoRegistro"
+            value={currentTipoRegistro}
+            onChange={(e) => setCurrentTipoRegistro(e.target.value as TipoRegistro)}
+            className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+          >
+            <option value="usuario">Usuario Adulto</option>
+            <option value="adolescente">Adolescente</option>
+            <option value="psicologo">Psicólogo</option>
+          </select>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-around p-5 gap-1 w-full max-w-[400px] md:max-w-[800px]">
         <div className="grid place-items-center">
           <div className="w-full max-w-[190px]">
@@ -213,34 +366,69 @@ export default function FormUser() {
             />
           </div>
           
-          <div className="w-full max-w-[190px]">
-            <label htmlFor="password" className="text-sm">Contraseña:</label>
-            <input 
-              required 
-              type="password" 
-              name="password" 
-              id="password" 
-              value={userData.password}
-              onChange={handleUserChange}
-              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-            />
-          </div>
-          
-          <div className="w-full max-w-[190px]">
-            <label htmlFor="confirmPassword" className="text-sm">Repetir contraseña:</label>
-            <input 
-              required 
-              type="password" 
-              name="confirmPassword" 
-              id="confirmPassword" 
-              value={userData.confirmPassword}
-              onChange={handleUserChange}
-              className={`max-w-[300px] w-full border ${errors.confirmPassword ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
-            />
-            {errors.confirmPassword && (
-              <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
-            )}
-          </div>
+          {!isEdit && (
+            <>
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="password" className="text-sm">Contraseña:</label>
+                <input 
+                  required
+                  type="password" 
+                  name="password" 
+                  id="password" 
+                  value={userData.password}
+                  onChange={handleUserChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+              
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="confirmPassword" className="text-sm">Repetir contraseña:</label>
+                <input 
+                  required
+                  type="password" 
+                  name="confirmPassword" 
+                  id="confirmPassword" 
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`max-w-[300px] w-full border ${errors.confirmPassword ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {isEdit && (
+            <>
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="password" className="text-sm">Nueva contraseña (opcional):</label>
+                <input 
+                  type="password" 
+                  name="password" 
+                  id="password" 
+                  value={userData.password}
+                  onChange={handleUserChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+              
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="confirmPassword" className="text-sm">Confirmar nueva contraseña:</label>
+                <input 
+                  type="password" 
+                  name="confirmPassword" 
+                  id="confirmPassword" 
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`max-w-[300px] w-full border ${errors.confirmPassword ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
+                )}
+              </div>
+            </>
+          )}
           
           <div className="w-full max-w-[190px]">
             <label htmlFor="cedula" className="text-sm">Cédula:</label>
@@ -252,6 +440,7 @@ export default function FormUser() {
               value={userData.cedula}
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              readOnly={isEdit}
             />
           </div>
           
@@ -262,22 +451,46 @@ export default function FormUser() {
               type="date" 
               name="fecha_nacimiento" 
               id="fecha_nacimiento" 
-              value={userData.fecha_nacimiento}
+              value={formatDateForInput(userData.fecha_nacimiento)}
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
-            {isMinor && (
-              <p className="text-yellow-600 text-xs mt-1">Menor de edad - Se requieren datos del tutor</p>
+            {isMinor && currentTipoRegistro !== 'adolescente' && !isAdminSession && (
+              <p className="text-yellow-600 text-xs mt-1">Se registrará como adolescente (requiere datos de tutor)</p>
             )}
           </div>
         </div>
         
-        {/* Formulario del tutor - Solo visible si es menor de edad */}
-        {isMinor && (
-          <div className="w-[240px]  border border-[#8f8f8f] rounded-[0.4rem] p-4">
+        {/* Formulario del tutor - Solo visible si es adolescente */}
+        {currentTipoRegistro === 'adolescente' && (
+          <div className="w-[240px] border border-[#8f8f8f] rounded-[0.4rem] p-4">
             <h2 className="text-sm">Datos de tutor:</h2>
             <hr className="my-1" />
             <div className="w-full h-[90%] grid place-items-center"> 
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="cedula_tutor" className="text-sm">Cédula del tutor:</label>
+                <input 
+                  required
+                  type="text" 
+                  name="cedula" 
+                  id="cedula_tutor" 
+                  value={tutorData.cedula_tutor}
+                  onChange={handleTutorChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="nombre_tutor" className="text-sm">Nombre completo del tutor:</label>
+                <input 
+                  required
+                  type="text" 
+                  name="nombre" 
+                  id="nombre_tutor" 
+                  value={tutorData.nombre_tutor}
+                  onChange={handleTutorChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
               <div className="w-full max-w-[190px]">
                 <label htmlFor="profesion_tutor" className="text-sm">Profesión del tutor:</label>
                 <input 
@@ -290,30 +503,6 @@ export default function FormUser() {
                   className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
                 />
               </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="cedula_tutor" className="text-sm">Cedula del tutor:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="cedula_tutor" 
-                  id="cedula_tutor" 
-                  value={tutorData.cedula_tutor}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="nombre_tutor" className="text-sm">Nombre completo del tutor:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="nombre_tutor" 
-                  id="nombre_tutor" 
-                  value={tutorData.nombre_tutor}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>              
               <div className="w-full max-w-[190px]">
                 <label htmlFor="telefono_contacto" className="text-sm">Teléfono contacto:</label>
                 <input 
@@ -342,6 +531,64 @@ export default function FormUser() {
             </div>
           </div>
         )}
+
+        {/* Formulario del psicólogo - Solo visible si es psicólogo y es admin session */}
+        {currentTipoRegistro === 'psicologo' && isAdminSession && (
+          <div className="w-[240px] border border-[#8f8f8f] rounded-[0.4rem] p-4">
+            <h2 className="text-sm">Datos de psicólogo:</h2>
+            <hr className="my-1" />
+            <div className="w-full h-[90%] grid place-items-center"> 
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="numero_de_titulo" className="text-sm">Número de título:</label>
+                <input 
+                  required
+                  type="text" 
+                  name="numero_de_titulo" 
+                  id="numero_de_titulo" 
+                  value={psicologoData.numero_de_titulo}
+                  onChange={handlePsicologoChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="nombre_universidad" className="text-sm">Universidad:</label>
+                <input 
+                  required
+                  type="text" 
+                  name="nombre_universidad" 
+                  id="nombre_universidad" 
+                  value={psicologoData.nombre_universidad}
+                  onChange={handlePsicologoChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="monto_consulta" className="text-sm">Monto de consulta ($):</label>
+                <input 
+                  required
+                  type="number" 
+                  name="monto_consulta" 
+                  id="monto_consulta" 
+                  value={psicologoData.monto_consulta}
+                  onChange={handlePsicologoChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="telefono_trabajo" className="text-sm">Teléfono de trabajo:</label>
+                <input 
+                  required
+                  type="tel" 
+                  name="telefono_trabajo" 
+                  id="telefono_trabajo" 
+                  value={psicologoData.telefono_trabajo}
+                  onChange={handlePsicologoChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="w-full max-w-[190px] flex justify-center mt-2 mb-5"> 
@@ -350,27 +597,31 @@ export default function FormUser() {
           disabled={isSubmitting}
           className="bg-blue-300 cursor-pointer text-stone-50 text-center rounded transition max-w-[180px] w-full h-8 hover:bg-blue-800 disabled:bg-gray-400"
         >
-          {isSubmitting ? 'Registrando...' : 'Registro'}
+          {isSubmitting 
+            ? (isEdit ? 'Actualizando...' : 'Registrando...') 
+            : (isEdit ? 'Actualizar' : 'Registrar')}
         </button>
       </div>
       
-      <div>
-        <label htmlFor="" className="text-[10px]">
-          ¿Ya tiene una cuenta?  
-          <Link
-            href="/auth/login"
-            className={`_text_color_eight hover:underline`}
-          > Iniciar sesión</Link>
-        </label>
-        <br/>
-        <label htmlFor="" className="text-[10px]">
-          ¿Olvidaste tu contraseña? 
-          <Link
-            href="/auth/recovery"
-            className={`_text_color_eight hover:underline`}
-          > Recuperala</Link>
-        </label>
-      </div>
+      {!isEdit && (
+        <div>
+          <label htmlFor="" className="text-[10px]">
+            ¿Ya tiene una cuenta?  
+            <Link
+              href="/auth/login"
+              className={`_text_color_eight hover:underline`}
+            > Iniciar sesión</Link>
+          </label>
+          <br/>
+          <label htmlFor="" className="text-[10px]">
+            ¿Olvidaste tu contraseña? 
+            <Link
+              href="/auth/recovery"
+              className={`_text_color_eight hover:underline`}
+            > Recuperala</Link>
+          </label>
+        </div>
+      )}
     </form>
   );
 }

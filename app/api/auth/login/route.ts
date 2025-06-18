@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { desencriptar, generarTokenExpiry } from "@/app/lib/crytoManager";
+import { LoginResponse } from "../../type";
 
-// Configuración de Prisma
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
@@ -27,6 +27,11 @@ export async function POST(request: Request) {
           include: {
             tutor: true
           }
+        },
+        psicologo: {
+          include: {
+            redes_sociales: true
+          }
         }
       }
     });
@@ -37,14 +42,6 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
-
-    // Verificar si la cuenta está activa/bloqueada (puedes agregar este campo al modelo)
-    // if (usuario.estado !== 'ACTIVO') {
-    //   return NextResponse.json(
-    //     { error: 'Tu cuenta está bloqueada o inactiva' },
-    //     { status: 403 }
-    //   );
-    // }
 
     const contraseñaDesencriptada = desencriptar({
       iv: usuario.password_iv,
@@ -58,11 +55,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generar token seguro y fecha de expiración
+    // Generate auth token
     const authToken = crypto.randomBytes(64).toString('hex');
     const authTokenExpiry = generarTokenExpiry();
     
-    // Actualizar el usuario con el token y su expiración
+    // Update user with new token
     await prisma.usuario.update({
       where: { id: usuario.id },
       data: { 
@@ -71,49 +68,78 @@ export async function POST(request: Request) {
       }
     });
 
+    // Set cookies
     const cookieStore = await cookies();
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 1 semana
+      maxAge: 60 * 60 * 24 * 7, // 1 week
       path: '/',
       sameSite: 'strict' as const
     };
 
-    // Configurar cookies de autenticación
     cookieStore.set('auth-token', authToken, cookieOptions);
     cookieStore.set('auth-token-expiry', authTokenExpiry.toISOString(), cookieOptions);
     
-    // Configurar cookie con información básica del usuario (opcional)
+    // Set user info cookie (accessible client-side)
     cookieStore.set('user-info', JSON.stringify({
       id: usuario.id,
       tipo: usuario.id_tipo_usuario,
-      nombre: usuario.nombre
+      nombre: usuario.nombre,
+      esAdolescente: !!usuario.adolecente,
+      esPsicologo: !!usuario.psicologo
     }), {
       ...cookieOptions,
-      httpOnly: false // Necesario para acceder desde el cliente
+      httpOnly: false
     });
 
-    // Preparar respuesta sin datos sensibles
-    const responseData = {
+    // Prepare response data
+    const responseData: LoginResponse = {
       user: {
         id: usuario.id,
         email: usuario.email,
         nombre: usuario.nombre,
+        cedula: usuario.cedula,
+        fecha_nacimiento: usuario.fecha_nacimiento,
         id_tipo_usuario: usuario.id_tipo_usuario,
         tipoUsuario: usuario.tipo_usuario,
-        esAdolescente: !!usuario.adolecente,
-        tutorInfo: usuario.adolecente?.tutor,
         tokenExpiry: authTokenExpiry
       }
     };
+
+    // Add adolescent-specific data if applicable
+    if (usuario.adolecente) {
+      responseData.user.esAdolescente = true;
+      if (usuario.adolecente.tutor) {
+        const tutor = usuario.adolecente.tutor;
+        responseData.user.tutorInfo = {
+          id: tutor.id,
+          cedula: tutor.cedula,
+          nombre: tutor.nombre,
+          profesion_tutor: tutor.profesion_tutor ?? undefined,
+          telefono_contacto: tutor.telefono_contacto ?? undefined,
+          correo_contacto: tutor.correo_contacto ?? undefined,
+        };
+      }
+    }
+
+    // Add psychologist-specific data if applicable
+    if (usuario.psicologo) {
+      responseData.user.esPsicologo = true;
+      responseData.user.psicologoInfo = {
+        numero_de_titulo: usuario.psicologo.numero_de_titulo ?? "",
+        nombre_universidad: usuario.psicologo.nombre_universidad ?? "",
+        monto_consulta: usuario.psicologo.monto_consulta ?? 0,
+        telefono_trabajo: usuario.psicologo.telefono_trabajo ?? "",
+        redes_sociales: usuario.psicologo.redes_sociales
+      };
+    }
 
     return NextResponse.json(responseData, { status: 200 });
 
   } catch (error: any) {
     console.error('Error en login:', error);
     
-    // Manejo específico de errores
     if (error.message.includes('Error al desencriptar')) {
       return NextResponse.json(
         { error: 'Problema con las credenciales almacenadas' },

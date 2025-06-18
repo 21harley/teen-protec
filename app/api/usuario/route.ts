@@ -1,50 +1,18 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from "./../../../app/generated/prisma";
-import { encriptar, generarTokenExpiry } from "@/app/lib/crytoManager";
+import { encriptar,EncryptedData, generarTokenExpiry } from "@/app/lib/crytoManager";
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
-
-interface EncryptedData {
-  iv: string;
-  contenido: string;
-}
+import { TipoRegistro, UsuarioBase,TutorData,PsicologoData} from '../type';
 
 const prisma = new PrismaClient();
 
-// Tipos para los datos
-interface UsuarioBase {
-  email: string;
-  password?: string;
-  nombre: string;
-  cedula: string;
-  fecha_nacimiento: string;
-  id_tipo_usuario?: number;
-}
-
-interface TutorData {
-  cedula_tutor?: string;
-  nombre_tutor?: string;
-  profesion_tutor?: string;
-  telefono_contacto?: string;
-  correo_contacto?: string;
-}
-
-interface PsicologoData {
-  numero_de_titulo?: string;
-  nombre_universidad?: string;
-  monto_consulta?: number;
-  telefono_trabajo?: string;
-  redes_sociales?: { nombre_red: string; url_perfil: string }[];
-}
-
-type TipoRegistro = 'usuario' | 'adolescente' | 'psicologo';
-
-// GET - Obtener usuarios
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const tipo = searchParams.get('tipo') as TipoRegistro | null;
+    const includePassword = searchParams.get('includePassword') === 'true';
     
     if (id) {
       const usuario = await prisma.usuario.findUnique({
@@ -67,7 +35,18 @@ export async function GET(request: Request) {
         );
       }
 
-      // No devolver información sensible
+      // Si se solicita incluir la contraseña (para edición)
+      if (includePassword) {
+        const { authToken, authTokenExpiry, ...userWithPassword } = usuario;
+        return NextResponse.json({
+          ...userWithPassword,
+          // Incluir la contraseña encriptada y su IV
+          password: userWithPassword.password,
+          password_iv: userWithPassword.password_iv
+        });
+      }
+
+      // No devolver información sensible por defecto
       const { password, password_iv, authToken, authTokenExpiry, ...safeUser } = usuario;
       return NextResponse.json(safeUser);
     } else {
@@ -114,7 +93,6 @@ export async function GET(request: Request) {
     await prisma.$disconnect();
   }
 }
-
 // POST - Crear usuario
 export async function POST(request: Request) {
   try {
@@ -182,7 +160,7 @@ export async function POST(request: Request) {
     // Determinar tipo de usuario
     const idTipoUsuario = usuarioData.id_tipo_usuario || 
                          (tipoRegistro === 'psicologo' ? 2 : 
-                          tipoRegistro === 'adolescente' ? 3 : 1);
+                          tipoRegistro === 'adolescente' ? 3 : 4);
 
     // Generar token de autenticación (opcional para registro)
     const authToken = crypto.randomBytes(64).toString('hex');
@@ -355,13 +333,13 @@ export async function PUT(request: Request) {
       id_tipo_usuario: usuarioData.id_tipo_usuario
     };
 
-    // Actualizar contraseña si se proporciona
-    if (usuarioData.password) {
+    // Actualizar contraseña solo si se proporciona una nueva
+    if (usuarioData.password && usuarioData.password !== '') {
       const contraseñaEncriptada = encriptar(usuarioData.password);
       datosActualizacion.password = contraseñaEncriptada.contenido;
       datosActualizacion.password_iv = contraseñaEncriptada.iv;
     }
-
+    
     // Transacción para actualización
     const result = await prisma.$transaction(async (prisma) => {
       // Actualizar usuario

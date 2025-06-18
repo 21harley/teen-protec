@@ -1,27 +1,9 @@
 import { PrismaClient } from "./../../../../app/generated/prisma";
 import { NextResponse } from 'next/server';
 import { encriptar, generarTokenExpiry } from "@/app/lib/crytoManager";
+import { UsuarioBase,TutorData,PsicologoData,TipoRegistro } from "../../type";
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
-
-interface UsuarioBase {
-  email: string;
-  password: string;
-  nombre: string;
-  cedula: string;
-  fecha_nacimiento: string;
-  id_tipo_usuario?: number;
-}
-
-interface TutorData {
-  cedula_tutor?: string;
-  nombre_tutor?: string;
-  profesion_tutor?: string;
-  telefono_contacto?: string;
-  correo_contacto?: string;
-}
-
-type TipoRegistroPermitido = 'usuario' | 'adolescente';
 
 const prisma = new PrismaClient();
 
@@ -30,11 +12,13 @@ export async function POST(request: Request) {
     const { 
       tipoRegistro,
       usuarioData, 
-      tutorData 
+      tutorData,
+      psicologoData
     }: { 
-      tipoRegistro: TipoRegistroPermitido,
+      tipoRegistro: TipoRegistro,
       usuarioData: UsuarioBase, 
-      tutorData?: TutorData 
+      tutorData?: TutorData,
+      psicologoData?: PsicologoData
     } = await request.json();
 
     // Validaciones básicas
@@ -45,7 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!['usuario', 'adolescente'].includes(tipoRegistro)) {
+    if (!['usuario', 'adolescente', 'psicologo'].includes(tipoRegistro)) {
       return NextResponse.json(
         { error: 'Tipo de registro no válido' },
         { status: 400 }
@@ -55,6 +39,13 @@ export async function POST(request: Request) {
     if (tipoRegistro === 'adolescente' && !tutorData) {
       return NextResponse.json(
         { error: 'Datos del tutor son requeridos para registro de adolescente' },
+        { status: 400 }
+      );
+    }
+
+    if (tipoRegistro === 'psicologo' && !psicologoData) {
+      return NextResponse.json(
+        { error: 'Datos del psicólogo son requeridos para este registro' },
         { status: 400 }
       );
     }
@@ -77,11 +68,22 @@ export async function POST(request: Request) {
     }
 
     // Encriptar contraseña
-    const contraseñaEncriptada = encriptar(usuarioData.password);
+    const contraseñaEncriptada = encriptar(usuarioData.password!);
 
-    // Determinar tipo de usuario
-    const idTipoUsuario = usuarioData.id_tipo_usuario || 
-                         (tipoRegistro === 'adolescente' ? 3 : 1);
+    // Determinar tipo de usuario según el registro
+    let idTipoUsuario = usuarioData.id_tipo_usuario;
+    if (!idTipoUsuario) {
+      switch (tipoRegistro) {
+        case 'adolescente':
+          idTipoUsuario = 3;
+          break;
+        case 'psicologo':
+          idTipoUsuario = 2;
+          break;
+        default:
+          idTipoUsuario = 4; // Usuario regular
+      }
+    }
 
     // Generar token de autenticación
     const authToken = crypto.randomBytes(64).toString('hex');
@@ -89,7 +91,7 @@ export async function POST(request: Request) {
 
     // Crear transacción
     const result = await prisma.$transaction(async (prisma) => {
-      // Crear usuario
+      // Crear usuario base
       const nuevoUsuario = await prisma.usuario.create({
         data: {
           email: usuarioData.email,
@@ -124,6 +126,27 @@ export async function POST(request: Request) {
         });
       }
 
+      // Registrar psicólogo si aplica
+      if (tipoRegistro === 'psicologo' && psicologoData) {
+        await prisma.psicologo.create({
+          data: {
+            id_usuario: nuevoUsuario.id,
+            numero_de_titulo: psicologoData.numero_de_titulo || '',
+            nombre_universidad: psicologoData.nombre_universidad || '',
+            monto_consulta: psicologoData.monto_consulta || 0,
+            telefono_trabajo: psicologoData.telefono_trabajo || '',
+            redes_sociales: psicologoData.redes_sociales
+              ? {
+                  create: psicologoData.redes_sociales.map(red => ({
+                    nombre_red: red.nombre_red,
+                    url_perfil: red.url_perfil
+                  }))
+                }
+              : undefined
+          }
+        });
+      }
+
       return nuevoUsuario;
     });
 
@@ -140,32 +163,48 @@ export async function POST(request: Request) {
     cookieStore.set('auth-token', authToken, cookieOptions);
     cookieStore.set('auth-token-expiry', authTokenExpiry.toISOString(), cookieOptions);
 
-    // Obtener datos completos del usuario
+    // Obtener datos completos del usuario según su tipo
     const usuarioCompleto = await prisma.usuario.findUnique({
       where: { id: result.id },
       include: {
         tipo_usuario: true,
-        adolecente: {
-          include: {
-            tutor: true
-          }
-        }
+        adolecente: tipoRegistro === 'adolescente'
+          ? {
+              include: {
+                tutor: true
+              }
+            }
+          : false,
+        psicologo: tipoRegistro === 'psicologo'
       }
     });
 
-    // Preparar respuesta
-    const responseData = {
+    // Preparar respuesta según el tipo de usuario
+    let responseData: any = {
       user: {
         id: usuarioCompleto?.id,
         email: usuarioCompleto?.email,
         nombre: usuarioCompleto?.nombre,
         id_tipo_usuario: usuarioCompleto?.id_tipo_usuario,
         tipoUsuario: usuarioCompleto?.tipo_usuario,
-        esAdolescente: !!usuarioCompleto?.adolecente,
-        tutorInfo: usuarioCompleto?.adolecente?.tutor,
         tokenExpiry: authTokenExpiry
       }
     };
+
+    // Agregar datos específicos según el tipo de registro
+    if (tipoRegistro === 'adolescente') {
+      responseData.user.esAdolescente = true;
+      responseData.user.tutorInfo = usuarioCompleto?.adolecente && 'tutor' in usuarioCompleto.adolecente
+        ? (usuarioCompleto.adolecente as any).tutor
+        : {};
+    } else if (tipoRegistro === 'psicologo') {
+      responseData.user.esPsicologo = true;
+      responseData.user.psicologoInfo = usuarioCompleto?.psicologo;
+      if (responseData.user.psicologoInfo?.redes_sociales) {
+        responseData.user.psicologoInfo.redes_sociales = 
+          JSON.parse(responseData.user.psicologoInfo.redes_sociales);
+      }
+    }
 
     return NextResponse.json(responseData, { status: 201 });
 

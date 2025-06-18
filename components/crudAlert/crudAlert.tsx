@@ -659,34 +659,6 @@ export default function CrudAlert() {
                   placeholder="Ej: /test, /pacientes/1"
                 />
               </div>
-              
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="paraMi"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  checked={alertaForm.para_mi}
-                  onChange={(e) => setAlertaForm({...alertaForm, para_mi: e.target.checked})}
-                />
-                <label htmlFor="paraMi" className="ml-2 block text-sm text-gray-700">
-                  Es para mí
-                </label>
-              </div>
-              
-              {alertaForm.id && (
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="vista"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    checked={alertaForm.vista}
-                    onChange={(e) => setAlertaForm({...alertaForm, vista: e.target.checked})}
-                  />
-                  <label htmlFor="vista" className="ml-2 block text-sm text-gray-700">
-                    Marcar como vista
-                  </label>
-                </div>
-              )}
             </div>
             
             <div className="flex justify-end space-x-2 mt-6">

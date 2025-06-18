@@ -23,6 +23,8 @@ export interface TipoUsuario {
 interface UserLogin {
   id: number;
   email: string;
+  cedula:string;
+  fecha_nacimiento:Date;
   nombre: string;
   id_tipo_usuario: number;
   tipoUsuario: TipoUsuario;
