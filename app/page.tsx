@@ -1,3 +1,4 @@
+"use client"
 import { Roboto } from 'next/font/google'
 import Footer from '@/components/footer/footer'; 
 import Header from '@/components/header/header';
@@ -7,8 +8,28 @@ import Image from 'next/image';
 import home_image_consulta from "./../app/public/logos/psicologa_consulta_home.svg"
 import home_image_online from "./../app/public/logos/consulta_online.svg"
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { StorageManager } from "@/app/lib/storageManager"
+import { AuthResponse } from "./../app/types/user"
 
 export default function Home() {
+    const [isClient, setIsClient] = useState(false)
+    const router = useRouter()
+  
+    useEffect(() => {
+      setIsClient(true)
+    }, [])
+  
+    if (!isClient) {
+      return null // o un loader mientras se carga
+    }
+  
+    const storageManager = new StorageManager('local')
+    const data = storageManager.load<AuthResponse>('userData')
+    let initUser = false
+    if(data)  initUser = true
+    
   return (
     <>
 <Header />
@@ -18,11 +39,11 @@ export default function Home() {
       <div className="md:w-1/2 flex justify-center order-2 sm:order-1 md:order-1">
       <div>
       <Cart_Home  /> 
-        <Link 
-            href="/auth/login"
+          <Link 
+            href={initUser ? "/test" : "/iniciar-sesion"}
             className={`_color_seven block  p-3 px-4 text-center rounded transition m-auto mt-2 max-w-[200px]`}
           >
-            Iniciar sesión
+            {initUser ? "Hacer Test" : "Iniciar sesión"}
           </Link>
       </div>
     </div>

@@ -5,7 +5,6 @@ import { AlarmaData } from "@/app/types/alarma";
 
 export default function CeldaAlert({
   id,
-  tipo,
   id_usuario,
   mensaje,
   vista,

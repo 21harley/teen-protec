@@ -1,7 +1,7 @@
 import { PrismaClient } from "./../../../../app/generated/prisma";
 import { NextResponse } from 'next/server';
-import { encriptar, generarTokenExpiry } from "@/app/lib/crytoManager";
-import { UsuarioBase,TutorData,PsicologoData,TipoRegistro } from "../../type";
+import { encriptar, generarTokenExpiry, desencriptar } from "@/app/lib/crytoManager";
+import { UsuarioBase, TutorData, PsicologoData, TipoRegistro, LoginResponse } from "../../type";
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 
@@ -150,7 +150,29 @@ export async function POST(request: Request) {
       return nuevoUsuario;
     });
 
-    // Configurar cookies
+    // Obtener datos completos del usuario según su tipo
+    const usuarioCompleto = await prisma.usuario.findUnique({
+      where: { id: result.id },
+      include: {
+        tipo_usuario: true,
+        adolecente: {
+          include: {
+            tutor: true
+          }
+        },
+        psicologo: {
+          include: {
+            redes_sociales: true
+          }
+        }
+      }
+    });
+
+    if (!usuarioCompleto) {
+      throw new Error('Usuario no encontrado después de creación');
+    }
+
+    // Configurar cookies (igual que en login)
     const cookieStore = await cookies();
     const cookieOptions = {
       httpOnly: true,
@@ -162,48 +184,71 @@ export async function POST(request: Request) {
 
     cookieStore.set('auth-token', authToken, cookieOptions);
     cookieStore.set('auth-token-expiry', authTokenExpiry.toISOString(), cookieOptions);
-
-    // Obtener datos completos del usuario según su tipo
-    const usuarioCompleto = await prisma.usuario.findUnique({
-      where: { id: result.id },
-      include: {
-        tipo_usuario: true,
-        adolecente: tipoRegistro === 'adolescente'
-          ? {
-              include: {
-                tutor: true
-              }
-            }
-          : false,
-        psicologo: tipoRegistro === 'psicologo'
-      }
+    
+    // Set user info cookie (accessible client-side)
+    cookieStore.set('user-info', JSON.stringify({
+      id: usuarioCompleto.id,
+      tipo: usuarioCompleto.id_tipo_usuario,
+      nombre: usuarioCompleto.nombre,
+      esAdolescente: !!usuarioCompleto.adolecente,
+      esPsicologo: !!usuarioCompleto.psicologo
+    }), {
+      ...cookieOptions,
+      httpOnly: false
     });
 
-    // Preparar respuesta según el tipo de usuario
-    let responseData: any = {
+    // Preparar respuesta según el tipo de usuario (igual que en login)
+    const responseData: LoginResponse = {
       user: {
-        id: usuarioCompleto?.id,
-        email: usuarioCompleto?.email,
-        nombre: usuarioCompleto?.nombre,
-        id_tipo_usuario: usuarioCompleto?.id_tipo_usuario,
-        tipoUsuario: usuarioCompleto?.tipo_usuario,
+        id: usuarioCompleto.id,
+        email: usuarioCompleto.email,
+        nombre: usuarioCompleto.nombre,
+        cedula: usuarioCompleto.cedula,
+        fecha_nacimiento: usuarioCompleto.fecha_nacimiento,
+        id_tipo_usuario: usuarioCompleto.id_tipo_usuario,
+        tipoUsuario: {
+          ...usuarioCompleto.tipo_usuario,
+          menu: Array.isArray(usuarioCompleto.tipo_usuario.menu)
+            ? usuarioCompleto.tipo_usuario.menu
+                .filter((item: any): item is { path: string; name: string; icon: string } =>
+                  item &&
+                  typeof item === 'object' &&
+                  typeof item.path === 'string' &&
+                  typeof item.name === 'string' &&
+                  typeof item.icon === 'string'
+                )
+            : []
+        },
         tokenExpiry: authTokenExpiry
       }
     };
 
-    // Agregar datos específicos según el tipo de registro
-    if (tipoRegistro === 'adolescente') {
+    // Add adolescent-specific data if applicable (igual que en login)
+    if (usuarioCompleto.adolecente) {
       responseData.user.esAdolescente = true;
-      responseData.user.tutorInfo = usuarioCompleto?.adolecente && 'tutor' in usuarioCompleto.adolecente
-        ? (usuarioCompleto.adolecente as any).tutor
-        : {};
-    } else if (tipoRegistro === 'psicologo') {
-      responseData.user.esPsicologo = true;
-      responseData.user.psicologoInfo = usuarioCompleto?.psicologo;
-      if (responseData.user.psicologoInfo?.redes_sociales) {
-        responseData.user.psicologoInfo.redes_sociales = 
-          JSON.parse(responseData.user.psicologoInfo.redes_sociales);
+      if (usuarioCompleto.adolecente.tutor) {
+        const tutor = usuarioCompleto.adolecente.tutor;
+        responseData.user.tutorInfo = {
+          id: tutor.id,
+          cedula: tutor.cedula,
+          nombre: tutor.nombre,
+          profesion_tutor: tutor.profesion_tutor ?? undefined,
+          telefono_contacto: tutor.telefono_contacto ?? undefined,
+          correo_contacto: tutor.correo_contacto ?? undefined,
+        };
       }
+    }
+
+    // Add psychologist-specific data if applicable (igual que en login)
+    if (usuarioCompleto.psicologo) {
+      responseData.user.esPsicologo = true;
+      responseData.user.psicologoInfo = {
+        numero_de_titulo: usuarioCompleto.psicologo.numero_de_titulo ?? "",
+        nombre_universidad: usuarioCompleto.psicologo.nombre_universidad ?? "",
+        monto_consulta: usuarioCompleto.psicologo.monto_consulta ?? 0,
+        telefono_trabajo: usuarioCompleto.psicologo.telefono_trabajo ?? "",
+        redes_sociales: usuarioCompleto.psicologo.redes_sociales
+      };
     }
 
     return NextResponse.json(responseData, { status: 201 });

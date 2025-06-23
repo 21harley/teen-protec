@@ -102,7 +102,19 @@ export async function POST(request: Request) {
         cedula: usuario.cedula,
         fecha_nacimiento: usuario.fecha_nacimiento,
         id_tipo_usuario: usuario.id_tipo_usuario,
-        tipoUsuario: usuario.tipo_usuario,
+        tipoUsuario: {
+          ...usuario.tipo_usuario,
+          menu: Array.isArray(usuario.tipo_usuario.menu)
+            ? usuario.tipo_usuario.menu.filter(
+                (item): item is { path: string; name: string; icon: string } =>
+                  !!item &&
+                  typeof item === "object" &&
+                  "path" in item &&
+                  "name" in item &&
+                  "icon" in item
+              )
+            : [],
+        },
         tokenExpiry: authTokenExpiry
       }
     };

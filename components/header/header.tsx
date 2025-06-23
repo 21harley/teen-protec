@@ -9,6 +9,9 @@ import { LogoutButton } from "../logoutButton/logoutButton"
 import IconAlerta from "./../../app/public/logos/icono_alerta.svg"
 import useUserStore from "@/app/store/store"
 import { UsuarioCompleto, LoginResponse } from "./../../app/types/user/index"
+import { StorageManager } from "@/app/lib/storageManager"
+import {adaptLoginResponseToUsuarioCompleto} from "./../../app/lib/utils"
+import { usePathname } from 'next/navigation'
 
 export default function Header() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -16,34 +19,28 @@ export default function Header() {
   const [isHydrated, setIsHydrated] = useState(false)
   const user = useUserStore((state) => state.user)
   const login = useUserStore((state) => state.login)
-  const token = useUserStore((state) => state.token)
-  const tokenExpiry = useUserStore((state) => state.tokenExpiry)
+  const storageManager = new StorageManager("local");
+  const pathname = usePathname()
 
   // Efecto para hidratar el store con los datos del localStorage
   useEffect(() => {
     const loadUserData = () => {
       try {
-        const storedData = localStorage.getItem('userData')
-        console.log(storedData);
+        const storedData = storageManager.load<LoginResponse>("userData");
         if (storedData) {
-          const parsedData = JSON.parse(storedData)
-          
-          // Verificar si el token aún no ha expirad
-          
-          if (parsedData.user ) {
-            const loginResponse: LoginResponse = {
-              user: parsedData.user,
-              token: parsedData.token,
-              tokenExpiry: parsedData.tokenExpiry ? new Date(parsedData.tokenExpiry) : undefined
-            }
-            login(loginResponse)
-          } else {
-            localStorage.removeItem('userData')
-          }
+          //console.log(storedData.user.tipoUsuario.id);
+          login({
+            user: adaptLoginResponseToUsuarioCompleto(storedData),
+            token: '',
+            tokenExpiry: undefined
+          })
+            
+          //console.log(user);
         }
+        
       } catch (error) {
         console.error('Error loading user data:', error)
-        localStorage.removeItem('userData')
+        //localStorage.removeItem('userData')
       } finally {
         setIsHydrated(true)
       }
@@ -52,17 +49,6 @@ export default function Header() {
     loadUserData()
   }, [login])
 
-  // Efecto para guardar datos en localStorage cuando cambian
-  useEffect(() => {
-    if (user && token) {
-      const dataToStore = {
-        user,
-        token,
-        tokenExpiry: tokenExpiry instanceof Date ? tokenExpiry.toISOString() : null
-      }
-      localStorage.setItem('userData', JSON.stringify(dataToStore))
-    }
-  }, [user, token, tokenExpiry])
 
   // Efecto para cargar las alertas
   useEffect(() => {
@@ -71,7 +57,8 @@ export default function Header() {
         const response = await fetch(`/api/alerta?usuarioId=${userId}&noVistas=true`)
         if (response.ok) {
           const data = await response.json()
-          setAlertCount(data.length)
+          setAlertCount(data.data.length)
+          console.log(data.data.length);
         }
       } catch (error) {
         console.error('Error fetching alert count:', error)
@@ -113,20 +100,25 @@ export default function Header() {
       <>
         {user.tipoUsuario.menu.map((item, index) => (
           <li key={index}>
-            <Link 
-              href={item.path}
-              onClick={closeModal}
-              className={`block w-full py-3 px-4 text-center rounded transition bg-stone-50 ${
-                item.name === "Alertas" ? "flex justify-center items-center gap-2" : ""
-              }`}
-            >
-              {item.name}
-              {item.name === "Alertas" && alertCount > 0 && (user?.id_tipo_usuario !== 1) && (
-                <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  {alertCount > 9 ? '9+' : alertCount}
-                </span>
-              )}
-            </Link>
+              <Link 
+                href={item.path}
+                onClick={closeModal}
+                className={`block w-full py-3 px-4 text-center rounded transition bg-stone-50 relative ${
+                  item.name === "Alertas" ? "flex justify-center items-center gap-2" : ""
+                }`}
+              >
+                {item.name}
+                {item.name === "Alertas" && alertCount > 0 && (user?.id_tipo_usuario !== 1)  && pathname != "/alertas" &&(
+                  <div className="absolute top-[5px]  transform translate-x-9/5">
+                    <div className="relative">
+                      <Image src={IconAlerta} alt="Alerta" width={24} height={24} />
+                      <span className="absolute top-[1px] w-full left-[-5px] text-white text-xs font-bold rounded-full h-5  flex items-center justify-center transform translate-x-1/4 -translate-y-1/4">
+                        {alertCount > 9 ? '9+' : alertCount}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </Link>
           </li>
         ))}
         <li>
@@ -162,32 +154,30 @@ export default function Header() {
             </span>
           )}
           
-          <div className="">
-            {(user?.id_tipo_usuario !== 1) && !isModalOpen && alertCount > 0 && (
+            
+          <div className="relative">
+            <button onClick={toggleModal} aria-label="Toggle menu" className="p-1 focus:outline-none cursor-pointer">
+            {(user?.id_tipo_usuario !== 1) && !isModalOpen && alertCount > 0 && pathname != "/alertas" &&(
               <div className="absolute">
-                <div className="absolute left-3 z-10 w-[21px] h-6">
+                <div className="absolute left-[10px] top-[-10px] z-10 w-[21px] h-6">
                   <Image src={IconAlerta} alt="Alerta" width={24} height={24} />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center transform translate-x-1/4 -translate-y-1/4">
+                  <span className="absolute top-[1px] left-[-5px] text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center transform translate-x-1/4 -translate-y-1/4">
                     {alertCount > 9 ? '9+' : alertCount}
                   </span>
                 </div>
               </div>
             )}
-            
-            <div className="relative">
-              <button onClick={toggleModal} aria-label="Toggle menu" className="p-1 focus:outline-none">
-                <Image src={isModalOpen ? close_menu : menu} width={20} height={20} alt="Menu icon" />
-              </button>
-            </div>
+              <Image src={isModalOpen ? close_menu : menu} width={20} height={20} alt="Menu icon" />
+            </button>
           </div>
         </div>
       </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto" onClick={closeModal}>
-          <div className="fixed inset-0 bg-black opacity-15 transition-opacity" />
+          <div className="fixed inset-0 bg-black opacity-35 transition-opacity" />
           <div className="flex items-center justify-center min-h-screen p-4">
-            <div className="relative rounded-lg max-w-md w-full p-6 bg-white" onClick={(e) => e.stopPropagation()}>   
+            <div className="relative rounded-lg max-w-md w-full p-6 " onClick={(e) => e.stopPropagation()}>   
               <nav>
                 <ul className="space-y-4">
                   {generateLinks()}

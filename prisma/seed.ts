@@ -43,21 +43,35 @@ const tipoUsuarioData = [
     ]
   }
 ];
+
 const tipoAlertaData = [
+  { nombre: "Test" },
+  { nombre: "Asignación de test" },
+  { nombre: "Test finalizado" },
+  { nombre: "Test por revisar" },
+  { nombre: "Alarma" }
+];
+
+const tiposPreguntaData = [
   {
-    nombre: "Test",
+    nombre: "radio",
+    descripcion: "Pregunta con opciones de selección única"
   },
   {
-    nombre: "Asignación de test",
+    nombre: "checkbox",
+    descripcion: "Pregunta con opciones de selección múltiple"
   },
   {
-    nombre: "Test finalizado",
+    nombre: "text",
+    descripcion: "Pregunta con respuesta de texto"
   },
   {
-    nombre: "Test por revisar",
+    nombre: "select",
+    descripcion: "Pregunta con desplegable de opciones"
   },
   {
-    nombre: "Alarma",
+    nombre: "range",
+    descripcion: "Pregunta con respuesta en rango numérico"
   }
 ];
 
@@ -172,7 +186,7 @@ const dataUsuarios = [
       }
     }
   },
-  // Adolescente 3 (nuevo adolescente con tutor)
+  // Adolescente 3
   {
     email: "adolescente3@example.com",
     password: contraseñaEncriptada.contenido,
@@ -210,9 +224,9 @@ const dataUsuarios = [
 ];
 
 async function main() {
-  // Eliminar datos existentes para evitar duplicados
-  await prisma.tipoAlerta.deleteMany({});
-  await prisma.respuestaTest.deleteMany({});
+  // Eliminar datos existentes
+  await prisma.respuesta.deleteMany({});
+  await prisma.opcion.deleteMany({});
   await prisma.pregunta.deleteMany({});
   await prisma.test.deleteMany({});
   await prisma.redSocialPsicologo.deleteMany({});
@@ -221,24 +235,35 @@ async function main() {
   await prisma.tutor.deleteMany({});
   await prisma.alarma.deleteMany({});
   await prisma.usuario.deleteMany({});
-  await prisma.tipoInput.deleteMany({});
+  await prisma.tipoPregunta.deleteMany({});
+  await prisma.tipoAlerta.deleteMany({});
   await prisma.tipoUsuario.deleteMany({});
 
-  // Crear tipos de input
-  await prisma.tipoInput.createMany({
-    data: [
-      { id: 1, nombre: "text", valor: "text" },
-      { id: 2, nombre: "radio", valor: "radio" },
-      { id: 3, nombre: "select", valor: "select" }
-    ]
-  });
-
-  // Crear los tipos de usuario con sus menús
+  // Crear tipos de usuario
   for (const tipoUsuario of tipoUsuarioData) {
     await prisma.tipoUsuario.create({
       data: {
         nombre: tipoUsuario.nombre,
         menu: tipoUsuario.menu
+      }
+    });
+  }
+
+  // Crear tipos de alerta
+  for (const tipoAlerta of tipoAlertaData) {
+    await prisma.tipoAlerta.create({
+      data: {
+        nombre: tipoAlerta.nombre
+      }
+    });
+  }
+
+  // Crear tipos de pregunta
+  for (const tipoPregunta of tiposPreguntaData) {
+    await prisma.tipoPregunta.create({
+      data: {
+        nombre: tipoPregunta.nombre,
+        descripcion: tipoPregunta.descripcion
       }
     });
   }
@@ -250,119 +275,207 @@ async function main() {
     });
   }
 
-for (const tipoAlerta of tipoAlertaData) {
-  await prisma.tipoAlerta.create({
-    data: {
-      nombre: tipoAlerta.nombre
-    }
-  });
-}
-
   // Crear alarmas de prueba
-await prisma.alarma.createMany({
-  data: [
+  await prisma.alarma.createMany({
+    data: [
+      {
+        id_usuario: 4,
+        id_tipo_alerta: 1,
+        mensaje: "Posibles síntomas de depresión detectados",
+        url_destino: "/test",
+        vista: false,
+        fecha_vista: null
+      },
+      {
+        id_usuario: 4,
+        id_tipo_alerta: 2,
+        mensaje: "Se te ha asignado un nuevo test",
+        url_destino: "/test",
+        vista: false,
+        fecha_vista: null
+      },
+      {
+        id_usuario: 5,
+        id_tipo_alerta: 3,
+        mensaje: "Test completado exitosamente",
+        url_destino: "/test",
+        vista: false,
+        fecha_vista: null
+      },
+      {
+        id_usuario: 2,
+        id_tipo_alerta: 4,
+        mensaje: "Tienes tests pendientes de revisión",
+        url_destino: "/pacientes",
+        vista: false,
+        fecha_vista: null
+      },
+      {
+        id_usuario: 1, 
+        id_tipo_alerta: 5,
+        mensaje: "Nuevo test disponible para todos los usuarios",
+        url_destino: "/test",
+        vista: false,
+        fecha_vista: null
+      }
+    ]
+  });
+
+  // Datos de preguntas y opciones para tests
+  const preguntasTest = [
     {
-      id_usuario: 1, // Adolescente 1
-      id_tipo_alerta: 1, // Test
-      mensaje: "Posibles síntomas de depresión detectados",
-      url_destino: "/test",
-      vista: false,
-      fecha_vista: null
+      texto_pregunta: "¿Cómo te has sentido durante la última semana?",
+      id_tipo: 1, // radio
+      orden: 1,
+      obligatoria: true,
+      opciones: [
+        { texto: "Muy bien", valor: "muy_bien", orden: 1 },
+        { texto: "Bien", valor: "bien", orden: 2 },
+        { texto: "Regular", valor: "regular", orden: 3 },
+        { texto: "Mal", valor: "mal", orden: 4 },
+        { texto: "Muy mal", valor: "muy_mal", orden: 5 }
+      ]
     },
     {
-      id_usuario: 4, // Adolescente 1
-      id_tipo_alerta: 2, // Asignación de test
-      mensaje: "Se te ha asignado un nuevo test",
-      url_destino: "/test",
-      vista: false,
-      fecha_vista: null
+      texto_pregunta: "¿Qué emociones has experimentado recientemente? (Selecciona todas las que apliquen)",
+      id_tipo: 2, // checkbox
+      orden: 2,
+      obligatoria: false,
+      opciones: [
+        { texto: "Alegría", valor: "alegria", orden: 1 },
+        { texto: "Tristeza", valor: "tristeza", orden: 2 },
+        { texto: "Enojo", valor: "enojo", orden: 3 },
+        { texto: "Miedo", valor: "miedo", orden: 4 },
+        { texto: "Ansiedad", valor: "ansiedad", orden: 5 }
+      ]
     },
     {
-      id_usuario: 5, // Adolescente 2
-      id_tipo_alerta: 3, // Test finalizado
-      mensaje: "Test completado exitosamente",
-      url_destino: "/test",
-      vista: false,
-      fecha_vista: null
+      texto_pregunta: "Describe cómo ha sido tu día hoy",
+      id_tipo: 3, // text
+      orden: 3,
+      obligatoria: false,
+      placeholder: "Escribe aquí tu respuesta..."
     },
     {
-      id_usuario: 2, // Psicólogo 1
-      id_tipo_alerta: 4, // Test por revisar
-      mensaje: "Tienes tests pendientes de revisión",
-      url_destino: "/pacientes",
-      vista: false,
-      fecha_vista: null
+      texto_pregunta: "¿Cómo calificarías tu nivel de estrés actual?",
+      id_tipo: 5, // range
+      orden: 4,
+      obligatoria: true,
+      min: 1,
+      max: 10,
+      paso: 1
     },
     {
-      id_usuario: 1, 
-      id_tipo_alerta: 5, // Alarma
-      mensaje: "Nuevo test disponible para todos los usuarios",
-      url_destino: "/test",
-      vista: false,
-      fecha_vista: null
+      texto_pregunta: "¿Con qué frecuencia te sientes abrumado/a?",
+      id_tipo: 4, // select
+      orden: 5,
+      obligatoria: true,
+      opciones: [
+        { texto: "Nunca", valor: "nunca", orden: 1 },
+        { texto: "Rara vez", valor: "rara_vez", orden: 2 },
+        { texto: "A veces", valor: "a_veces", orden: 3 },
+        { texto: "Frecuentemente", valor: "frecuentemente", orden: 4 },
+        { texto: "Siempre", valor: "siempre", orden: 5 }
+      ]
     }
-  ]
-});
-  // Crear test con preguntas
-  const test1 = await prisma.test.create({
-    data: {
-      id_psicologo: 2, // Psicólogo 1
-      codigo_sesion: "TEST123",
-      preguntas: {
-        create: [
-          {
-            texto_pregunta: "¿Cómo te sientes hoy?",
-            id_tipo_input: 1,
-          },
-          {
-            texto_pregunta: "¿Con qué frecuencia experimentas estos sentimientos?",
-            id_tipo_input: 2,
-          },
-          {
-            texto_pregunta: "¿Qué tipo de apoyo necesitarías?",
-            id_tipo_input: 3,
-          },
-          {
-            texto_pregunta: "Describe una situación reciente que te haya causado estrés",
-            id_tipo_input: 1,
+  ];
+
+  // Función para crear tests con preguntas y opciones
+  async function crearTestCompleto(idPsicologo: number, idUsuario: number, estado: 'no_iniciado' | 'en_progreso' | 'completado', progreso: number) {
+    const codigoSesion = `TEST-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    
+    const test = await prisma.test.create({
+      data: {
+        id_psicologo: idPsicologo,
+        id_usuario: idUsuario,
+        nombre: codigoSesion,
+        estado: estado,
+        progreso: progreso,
+        fecha_creacion: new Date(),
+        fecha_ultima_respuesta: estado !== 'no_iniciado' ? new Date() : null,
+        preguntas: {
+          create: preguntasTest.map(pregunta => ({
+            texto_pregunta: pregunta.texto_pregunta,
+            id_tipo: pregunta.id_tipo,
+            orden: pregunta.orden,
+            obligatoria: pregunta.obligatoria,
+            placeholder: pregunta.placeholder,
+            min: pregunta.min,
+            max: pregunta.max,
+            paso: pregunta.paso,
+            opciones: pregunta.opciones ? {
+              create: pregunta.opciones.map(opcion => ({
+                texto: opcion.texto,
+                valor: opcion.valor,
+                orden: opcion.orden,
+                es_otro: false
+              }))
+            } : undefined
+          }))
+        }
+      },
+      include: {
+        preguntas: {
+          include: {
+            opciones: true
           }
-        ]
+        }
+      }
+    });
+
+    // Si el test está completado o en progreso, añadir respuestas
+    if (estado !== 'no_iniciado') {
+      for (const pregunta of test.preguntas) {
+        if (pregunta.opciones.length > 0) {
+          // Para preguntas con opciones, seleccionar una al azar
+          const opcionSeleccionada = pregunta.opciones[Math.floor(Math.random() * pregunta.opciones.length)];
+          
+          await prisma.respuesta.create({
+            data: {
+              id_test: test.id,
+              id_pregunta: pregunta.id,
+              id_usuario: idUsuario,
+              id_opcion: opcionSeleccionada.id,
+              texto_respuesta: pregunta.id_tipo === 2 ? "Otra información" : null, // Para checkbox
+              valor_rango: pregunta.id_tipo === 5 ? Math.floor(Math.random() * 10) + 1 : null // Para range
+            }
+          });
+        } else if (pregunta.id_tipo === 3) {
+          // Para preguntas de texto
+          await prisma.respuesta.create({
+            data: {
+              id_test: test.id,
+              id_pregunta: pregunta.id,
+              id_usuario: idUsuario,
+              texto_respuesta: "Esta es una respuesta de ejemplo para la pregunta de texto."
+            }
+          });
+        }
       }
     }
-  });
 
-  // Obtener preguntas creadas
-  const preguntasCreadas = await prisma.pregunta.findMany({
-    where: { id_test: test1.id }
-  });
-
-  // Crear respuestas para el adolescente 1
-  for (const pregunta of preguntasCreadas) {
-    let respuesta: string | null = null;
-    
-    if (pregunta.texto_pregunta.includes("sientes hoy")) {
-      respuesta = "Me siento un poco cansado";
-    } else if (pregunta.texto_pregunta.includes("frecuencia")) {
-      respuesta = "A veces";
-    } else if (pregunta.texto_pregunta.includes("apoyo")) {
-      respuesta = "Apoyo emocional";
-    } else if (pregunta.texto_pregunta.includes("situación")) {
-      respuesta = "Tuve un examen difícil la semana pasada";
-    }
-
-    if (respuesta) {
-      await prisma.respuestaTest.create({
-        data: {
-          id_test: test1.id,
-          id_pregunta: pregunta.id,
-          id_usuario: 4, // Adolescente 1
-          respuesta: respuesta
-        }
-      });
-    }
+    return test;
   }
 
-  console.log("Seed completado exitosamente!");
+  // Crear tests para diferentes usuarios
+  console.log("Creando tests de ejemplo...");
+  
+  // Test completado para adolescente 1
+  await crearTestCompleto(2, 4, 'completado', 100);
+  
+  // Test en progreso para adolescente 2
+  await crearTestCompleto(3, 5, 'en_progreso', 50);
+  
+  // Test no iniciado para adolescente 3
+  await crearTestCompleto(2, 6, 'no_iniciado', 0);
+  
+  // Test completado para usuario adulto
+  await crearTestCompleto(3, 7, 'completado', 100);
+  
+  // Test en progreso para admin
+  await crearTestCompleto(2, 1, 'en_progreso', 75);
+
+  console.log("✅ Seed completado exitosamente!");
 }
 
 main()

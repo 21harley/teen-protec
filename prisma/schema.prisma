@@ -37,7 +37,7 @@ model Usuario {
   adolecente               Adolecente?
   alarmas                  Alarma[]
   psicologo                Psicologo?
-  respuestas               RespuestaTest[]
+  respuestas               Respuesta[]
   tests                    Test[]          @relation("TestUsuario")
   tipo_usuario             TipoUsuario     @relation(fields: [id_tipo_usuario], references: [id])
 }
@@ -84,31 +84,86 @@ model Psicologo {
 }
 
 model Test {
-  id            Int             @id @default(autoincrement())
-  id_psicologo  Int?
-  id_usuario    Int?
-  codigo_sesion String?         @unique @db.VarChar(50)
-  preguntas     Pregunta[]
-  respuestas    RespuestaTest[]
-  psicologo     Psicologo?      @relation("TestPsicologo", fields: [id_psicologo], references: [id_usuario])
-  usuario       Usuario?        @relation("TestUsuario", fields: [id_usuario], references: [id])
+  id                  Int          @id @default(autoincrement())
+  id_psicologo        Int?
+  id_usuario          Int?
+  nombre             String?       @db.VarChar(50)
+  estado              TestStatus   @default(no_iniciado)
+  progreso            Int          @default(0) // 0-100%
+  fecha_creacion      DateTime     @default(now())
+  fecha_ultima_respuesta DateTime?
+  preguntas           Pregunta[]
+  respuestas          Respuesta[]
+  psicologo           Psicologo?   @relation("TestPsicologo", fields: [id_psicologo], references: [id_usuario])
+  usuario             Usuario?     @relation("TestUsuario", fields: [id_usuario], references: [id])
+
+  @@index([id_psicologo])
+  @@index([id_usuario])
+  @@index([nombre])
+  @@index([fecha_creacion])
+  @@index([estado])
 }
 
-model TipoInput {
-  id        Int        @id @default(autoincrement())
-  nombre    String     @unique @db.VarChar(50)
-  valor     String?    @db.VarChar(255)
-  preguntas Pregunta[]
+enum TestStatus {
+  no_iniciado
+  en_progreso
+  completado
+}
+
+model TipoPregunta {
+  id          Int        @id @default(autoincrement())
+  nombre      String     @unique @db.VarChar(50) // radio, checkbox, text, select, range
+  descripcion String     @db.VarChar(255)
+  preguntas   Pregunta[]
 }
 
 model Pregunta {
-  id             Int             @id @default(autoincrement())
-  id_test        Int?
-  id_tipo_input  Int?
+  id             Int          @id @default(autoincrement())
+  id_test        Int
+  id_tipo        Int
   texto_pregunta String
-  test           Test?           @relation(fields: [id_test], references: [id])
-  tipo_input     TipoInput?      @relation(fields: [id_tipo_input], references: [id])
-  respuestas     RespuestaTest[]
+  orden          Int
+  obligatoria    Boolean      @default(false)
+  placeholder    String?      @db.VarChar(255) // Para inputs de texto
+  min            Int?         // Para rangos
+  max            Int?         // Para rangos
+  paso           Int?         // Para rangos (ej. de 1 en 1, de 5 en 5)
+  
+  test           Test         @relation(fields: [id_test], references: [id])
+  tipo           TipoPregunta @relation(fields: [id_tipo], references: [id])
+  opciones       Opcion[]     // Para radio/checkbox/select
+  respuestas     Respuesta[]
+}
+
+model Opcion {
+  id           Int       @id @default(autoincrement())
+  id_pregunta  Int
+  texto        String    @db.VarChar(255)
+  valor        String    @db.VarChar(100)
+  orden        Int
+  es_otro      Boolean   @default(false) // Para opción "Otro" con input
+
+  pregunta     Pregunta  @relation(fields: [id_pregunta], references: [id])
+  respuestas   Respuesta[] // Opposite relation to Respuesta.opcion
+}
+
+model Respuesta {
+  id              Int       @id @default(autoincrement())
+  id_test         Int
+  id_pregunta     Int
+  id_usuario      Int
+  id_opcion       Int?      // Para radio/checkbox/select
+  texto_respuesta String?   // Para text o cuando es_otro=true
+  valor_rango     Int?      // Para preguntas de rango
+  fecha           DateTime  @default(now())
+  
+  test            Test      @relation(fields: [id_test], references: [id])
+  pregunta        Pregunta  @relation(fields: [id_pregunta], references: [id])
+  usuario         Usuario   @relation(fields: [id_usuario], references: [id])
+  opcion          Opcion?   @relation(fields: [id_opcion], references: [id])
+  
+  @@index([id_test, id_usuario])
+  @@index([id_pregunta])
 }
 
 model RedSocialPsicologo {
@@ -119,16 +174,4 @@ model RedSocialPsicologo {
   psicologo    Psicologo? @relation(fields: [id_psicologo], references: [id_usuario])
 
   @@unique([id_psicologo, nombre_red], name: "redsocial_unique")
-}
-
-model RespuestaTest {
-  id              Int       @id @default(autoincrement())
-  id_test         Int?
-  id_pregunta     Int?
-  id_usuario      Int?
-  respuesta       String?
-  fecha_respuesta DateTime  @default(now()) @db.Timestamp(0)
-  pregunta        Pregunta? @relation(fields: [id_pregunta], references: [id])
-  test            Test?     @relation(fields: [id_test], references: [id])
-  usuario         Usuario?  @relation(fields: [id_usuario], references: [id])
 }

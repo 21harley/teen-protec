@@ -1,28 +1,36 @@
 'use client'
 import React, { useState, useEffect } from "react"
 import { StorageManager } from "@/app/lib/storageManager"
-import { AuthResponse } from "./../../app/types/user"
+import { LoginResponse  } from "./../../app/types/user/index"
 import CeldaAlert from "../celdaAlerta/celdaAlerta"
 import { AlarmaData } from "@/app/types/alarma"
+import useUserStore from "@/app/store/store"
 
 export default function UserAlert() {
-  const storageManager = new StorageManager('local');
+
   const [alertas, setAlertas] = useState<AlarmaData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Obtener datos del usuario del storage
-  const userData = storageManager.load<AuthResponse>('userData');
-  const userId = userData?.user?.id;
-
+  const user = useUserStore((state) => state.user)
+  let userId = user?.id;
+  
   useEffect(() => {
     if (!userId) {
-      setError("No se pudo obtener el ID del usuario");
-      setLoading(false);
+      const storageManager = new StorageManager('local')
+      const data = storageManager.load<LoginResponse>('userData');
+      if(data){
+        userId = data.user.id;
+      }else{
+       setError("No se pudo obtener el ID del usuario");
+       setLoading(false);
+      }
       return;
     }
 
     const fetchAlertas = async () => {
+      
       try {
         setLoading(true);
         const response = await fetch(`/api/alerta?usuarioId=${userId}`);
@@ -32,13 +40,15 @@ export default function UserAlert() {
         }
 
         const data = await response.json();
-        setAlertas(data);
+        //console.log(data.data);
+        setAlertas(data.data);
       } catch (err) {
         console.error("Error fetching alerts:", err);
         setError("Error al cargar las alertas");
       } finally {
         setLoading(false);
       }
+        
     };
 
     fetchAlertas();
@@ -47,7 +57,7 @@ export default function UserAlert() {
   if (loading) {
     return (
       <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start">
-        <h1 className="text-xl font-bold mb-4">Alertas</h1>
+        <h1 className="text-xl font-medium mb-4">Alertas</h1>
         <hr className="mb-4" />
         <p>Cargando alertas...</p>
       </div>
@@ -57,7 +67,7 @@ export default function UserAlert() {
   if (error) {
     return (
       <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start">
-        <h1 className="text-xl font-bold mb-4">Alertas</h1>
+        <h1 className="text-xl font-medium mb-4">Alertas</h1>
         <hr className="mb-4" />
         <p className="text-red-500">{error}</p>
       </div>
@@ -66,7 +76,7 @@ export default function UserAlert() {
 
   return (
     <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start">
-      <h1 className="text-xl font-bold mb-4">Alertas</h1>
+      <h1 className="text-xl font-medium mb-4">Alertas</h1>
       <hr className="mb-4" />
       
       {alertas.length === 0 ? (
@@ -77,7 +87,6 @@ export default function UserAlert() {
             <CeldaAlert
               key={alerta.id}
               id={alerta.id}
-              tipo={alerta.tipo}
               id_usuario={alerta.id_usuario}
               mensaje={alerta.mensaje}
               vista={alerta.vista}

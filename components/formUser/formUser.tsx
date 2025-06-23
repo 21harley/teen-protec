@@ -3,7 +3,7 @@ import Image from "next/image"
 import svg from "./../../app/public/logos/logo_texto.svg"
 import Link from "next/link"
 import React, { useState, useEffect } from "react"
-import { LoginRequest, TipoRegistro, UsuarioBase, UsuarioCompleto } from "./../../app/types/user/index"
+import { LoginRequest, TipoRegistro, UsuarioBase, UsuarioCompleto, LoginResponse } from "./../../app/types/user/index"
 import { TutorData, PsicologoData } from "./../../app/types/user/dataDB"
 import useUserStore from "./../../app/store/store"
 import { StorageManager } from "@/app/lib/storageManager"
@@ -19,10 +19,11 @@ type FormUserProps = {
   isEdit?: boolean;
   onSubmit?: (data: any) => void;
   tipoRegistro?: TipoRegistro;
-  isAdminSession?: boolean; // New prop to check if it's an admin session
+  isAdminSession?: boolean;
+  endEditandCreate?: boolean;
+  onToggleEditAndCreate?: (newValue: boolean) => void; 
 };
 
-// Función auxiliar para formatear la fecha
 function formatDateForInput(date: string | Date | undefined): string {
   if (!date) return '';
   
@@ -37,15 +38,15 @@ function formatDateForInput(date: string | Date | undefined): string {
 export default function FormUser({ 
   user, 
   isEdit = false, 
-  onSubmit, 
   tipoRegistro = 'usuario',
-  isAdminSession = false
+  isAdminSession = false,
+  onToggleEditAndCreate
 }: FormUserProps) {
   const { login } = useUserStore()
   const storageManager = new StorageManager("local");
   const user_stora = storageManager.load<LoginRequest>("userData");
   const router = useRouter()
-  // Estado para los datos del usuario
+  
   const [userData, setUserData] = useState<UsuarioBase>({
     email: '',
     password: '',
@@ -55,8 +56,6 @@ export default function FormUser({
   });
 
   const [confirmPassword, setConfirmPassword] = useState('');
-
-  // Estado para los datos del tutor
   const [tutorData, setTutorData] = useState<TutorData>({
     cedula_tutor: '',
     nombre_tutor: '',
@@ -65,7 +64,6 @@ export default function FormUser({
     correo_contacto: ''
   });
 
-  // Estado para los datos del psicólogo
   const [psicologoData, setPsicologoData] = useState<PsicologoData>({
     numero_de_titulo: '',
     nombre_universidad: '',
@@ -80,10 +78,9 @@ export default function FormUser({
   const [successMessage, setSuccessMessage] = useState('');
   const [currentTipoRegistro, setCurrentTipoRegistro] = useState<TipoRegistro>(tipoRegistro);
 
-  // Efecto para cargar los datos del usuario si está en modo edición
   useEffect(() => {
     if (user && isEdit) {
-      console.log(user);
+      console.log(user,"Form-Edit");
       setUserData({
         email: user.email,
         password: '',
@@ -92,7 +89,8 @@ export default function FormUser({
         fecha_nacimiento: formatDateForInput(user.fecha_nacimiento)
       });
 
-      if (user.esAdolescente && user.tutorInfo) {
+      if ( user.tutorInfo) {
+        console.log("Tutor");
         setTutorData({
           cedula_tutor: user.tutorInfo.cedula,
           nombre_tutor: user.tutorInfo.nombre,
@@ -104,7 +102,8 @@ export default function FormUser({
         setCurrentTipoRegistro('adolescente');
       }
 
-      if (user.esPsicologo && user.psicologoInfo) {
+      if ( user.psicologoInfo) {
+         console.log("Psicologo");
         setPsicologoData({
           numero_de_titulo: user.psicologoInfo.numero_de_titulo,
           nombre_universidad: user.psicologoInfo.nombre_universidad,
@@ -117,7 +116,6 @@ export default function FormUser({
     }
   }, [user, isEdit]);
 
-  // Manejar cambios en los inputs del usuario
   const handleUserChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (errors.confirmPassword || errors.submit) {
@@ -129,13 +127,11 @@ export default function FormUser({
       [name]: value
     }));
 
-    // Validación especial para la fecha de nacimiento
     if (name === 'fecha_nacimiento') {
       validateAge(value);
     }
   };
 
-  // Manejar cambios en los inputs del tutor
   const handleTutorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setTutorData(prev => ({
@@ -144,7 +140,6 @@ export default function FormUser({
     }));
   };
 
-  // Manejar cambios en los inputs del psicólogo
   const handlePsicologoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setPsicologoData(prev => ({
@@ -153,7 +148,6 @@ export default function FormUser({
     }));
   };
 
-  // Validar si es menor de 18 años
   const validateAge = (fecha_nacimiento: string) => {
     if (!fecha_nacimiento) {
       setIsMinor(false);
@@ -172,13 +166,11 @@ export default function FormUser({
     const minor = age < 18;
     setIsMinor(minor);
     
-    // Auto-set registration type based on age for new registrations
     if (!isEdit) {
       setCurrentTipoRegistro(minor ? 'adolescente' : 'usuario');
     }
   };
 
-  // Validar contraseñas coincidan
   const validatePasswords = () => {
     if ((!isEdit || userData.password) && userData.password !== confirmPassword) {
       setErrors({ confirmPassword: 'Las contraseñas no coinciden' });
@@ -187,7 +179,6 @@ export default function FormUser({
     return true;
   };
 
-  // Manejar el envío del formulario
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -200,9 +191,8 @@ export default function FormUser({
     }
     
     if (currentTipoRegistro === 'adolescente') {
-      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula', 'nombre'];
+      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula_tutor', 'nombre_tutor'];
       const missingFields = requiredTutorFields.filter(field => !tutorData[field as keyof typeof tutorData]);
-      
       if (missingFields.length > 0) {
         setErrors({ submit: 'Por favor complete todos los datos del tutor' });
         setIsSubmitting(false);
@@ -233,9 +223,6 @@ export default function FormUser({
     };
 
     try {
-      if (onSubmit) {
-        await onSubmit(requestData);
-      } else {
         const endpoint = isEdit ? '/api/usuario' : '/api/usuario';
         const method = isEdit ? 'PUT' : 'POST';
         
@@ -248,13 +235,17 @@ export default function FormUser({
         });
 
         const data = await response.json();
-        
         if (!response.ok) {
           throw new Error(data.error || `Error en ${isEdit ? 'actualización' : 'registro'}`);
         }
 
         setSuccessMessage(isEdit ? 'Usuario actualizado correctamente!' : 'Usuario registrado correctamente!');
-
+        
+        if((isEdit || user_stora == null) && !isAdminSession){
+          login(data);
+          storageManager.save<LoginResponse>("userData", data);
+        }
+        
         if (!isEdit) {
           setUserData({
             email: '',
@@ -282,11 +273,13 @@ export default function FormUser({
           
           setIsMinor(false);
           setConfirmPassword('');
-          if(user_stora == null){
-            router.push('/auth/login');
+  
+          if(user_stora == null && !isAdminSession) router.push('/');
+          
+          if(isAdminSession && typeof onToggleEditAndCreate === 'function'){
+            onToggleEditAndCreate(true)
           }
         }
-      }
     } catch (error: any) {
       console.error('Error:', error);
       setErrors({ submit: error.message || (isEdit ? 'Error al actualizar el usuario' : 'Error al registrar el usuario') });
@@ -298,8 +291,10 @@ export default function FormUser({
   return (
     <form
       onSubmit={handleSubmit}
-      className="p-8 max-w-[400px] md:max-w-[600px] w-full flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
+      className="md:p-8 max-w-[400px] md:max-w-[600px] w-full flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
     >
+      {
+        (isAdminSession)?(<></>):(
       <div>
         <Image
           src={svg}
@@ -308,6 +303,9 @@ export default function FormUser({
           alt="Logo"
         />
       </div>
+        )
+      }
+
 
       {successMessage && (
         <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
@@ -321,8 +319,12 @@ export default function FormUser({
         </div>
       )}
 
-      {!isEdit && isAdminSession && (
-        <div className="w-full max-w-[190px] mb-4">
+
+
+      <div className="flex flex-col justify-center md:flex-row md:justify-around p-5 gap-2 md:gap-2 w-full max-w-[400px] md:max-w-[800px]">
+        <div className="grid place-items-center w-[240px] m-auto">
+                        {!isEdit && isAdminSession && (
+        <div className="w-full max-w-[190px]">
           <label htmlFor="tipoRegistro" className="text-sm">Tipo de registro:</label>
           <select
             id="tipoRegistro"
@@ -337,9 +339,6 @@ export default function FormUser({
           </select>
         </div>
       )}
-
-      <div className="flex flex-col md:flex-row justify-around p-5 gap-1 w-full max-w-[400px] md:max-w-[800px]">
-        <div className="grid place-items-center">
           <div className="w-full max-w-[190px]">
             <label htmlFor="email" className="text-sm">Correo electrónico:</label>
             <input 
@@ -461,18 +460,21 @@ export default function FormUser({
           </div>
         </div>
         
-        {/* Formulario del tutor - Solo visible si es adolescente */}
-        {currentTipoRegistro === 'adolescente' && (
-          <div className="w-[240px] border border-[#8f8f8f] rounded-[0.4rem] p-4">
+        {/* Formulario del tutor - Mostrar si es adolescente o si estamos editando un adolescente */}
+        {(currentTipoRegistro == 'adolescente' &&  isEdit  ) && (
+          <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
+            <div>
             <h2 className="text-sm">Datos de tutor:</h2>
             <hr className="my-1" />
+            </div>
+          <div className="w-[240px] border border-[#8f8f8f] rounded-[0.4rem] p-4 pt-1 m-auto">
             <div className="w-full h-[90%] grid place-items-center"> 
               <div className="w-full max-w-[190px]">
                 <label htmlFor="cedula_tutor" className="text-sm">Cédula del tutor:</label>
                 <input 
                   required
                   type="text" 
-                  name="cedula" 
+                  name="cedula_tutor" 
                   id="cedula_tutor" 
                   value={tutorData.cedula_tutor}
                   onChange={handleTutorChange}
@@ -484,7 +486,7 @@ export default function FormUser({
                 <input 
                   required
                   type="text" 
-                  name="nombre" 
+                  name="nombre_tutor" 
                   id="nombre_tutor" 
                   value={tutorData.nombre_tutor}
                   onChange={handleTutorChange}
@@ -530,14 +532,18 @@ export default function FormUser({
               </div>
             </div>
           </div>
+          </div>
         )}
 
-        {/* Formulario del psicólogo - Solo visible si es psicólogo y es admin session */}
-        {currentTipoRegistro === 'psicologo' && isAdminSession && (
-          <div className="w-[240px] border border-[#8f8f8f] rounded-[0.4rem] p-4">
+        {/* Formulario del psicólogo - Mostrar si es psicólogo y es admin session o si estamos editando un psicólogo */}
+        {(currentTipoRegistro == 'psicologo' && isEdit )  && (
+          <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
+            <div>
             <h2 className="text-sm">Datos de psicólogo:</h2>
             <hr className="my-1" />
-            <div className="w-full h-[90%] grid place-items-center"> 
+            </div>
+            <div className="w-full h-[90%] border border-[#8f8f8f] rounded-[0.4rem]  p-4 pt-0.5">
+            <div className="w-full h-full grid place-items-center"> 
               <div className="w-full max-w-[190px]">
                 <label htmlFor="numero_de_titulo" className="text-sm">Número de título:</label>
                 <input 
@@ -588,6 +594,7 @@ export default function FormUser({
               </div>
             </div>
           </div>
+          </div>
         )}
       </div>
 
@@ -603,7 +610,7 @@ export default function FormUser({
         </button>
       </div>
       
-      {!isEdit && (
+      {!isEdit && !isAdminSession && (
         <div>
           <label htmlFor="" className="text-[10px]">
             ¿Ya tiene una cuenta?  

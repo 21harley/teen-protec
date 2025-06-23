@@ -1,25 +1,48 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from "./../../../app/generated/prisma";
 
-// Configuración de Prisma
 const prisma = new PrismaClient()
 
-// Tipos para los datos
+enum TestStatus {
+  NoIniciado = 'no_iniciado',
+  EnProgreso = 'en_progreso',
+  Completado = 'completado'
+}
+
 interface TestBase {
   id_psicologo?: number;
   id_usuario?: number;
-  codigo_sesion?: string;
+  nombre?: string;
+  estado?: TestStatus;
+  progreso?: number;
+  fecha_creacion?: Date | string;
+  fecha_ultima_respuesta?: Date | string;
 }
 
 interface PreguntaData {
   texto_pregunta: string;
-  id_tipo_input?: number;
-  tipo_input_nombre?: string;
+  id_tipo: number;
+  orden: number;
+  obligatoria?: boolean;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  paso?: number;
+  opciones?: OpcionData[];
+}
+
+interface OpcionData {
+  texto: string;
+  valor: string;
+  orden: number;
+  es_otro?: boolean;
 }
 
 interface RespuestaData {
   id_pregunta: number;
-  respuesta: string;
+  id_opcion?: number;
+  texto_respuesta?: string;
+  valor_rango?: number;
 }
 
 interface FullTestData extends TestBase {
@@ -27,7 +50,6 @@ interface FullTestData extends TestBase {
   respuestas?: RespuestaData[];
 }
 
-// Tipos para la paginación
 interface PaginatedResponse {
   data: any[];
   total: number;
@@ -36,16 +58,317 @@ interface PaginatedResponse {
   totalPages: number;
 }
 
+// Helper mejorado para calcular progreso
+async function calcularProgreso(testId: number, usuarioId?: number): Promise<number> {
+  try {
+    // Obtener todas las preguntas con sus tipos
+    const preguntas = await prisma.pregunta.findMany({
+      where: { id_test: testId },
+      include: { tipo: true }
+    });
+    
+    if (preguntas.length === 0) {
+      console.log('[calcularProgreso] No hay preguntas para este test');
+      return 0;
+    }
+    
+    // Obtener todas las respuestas
+    const whereClause = usuarioId ? 
+      { id_test: testId, id_usuario: usuarioId } : 
+      { id_test: testId };
+    
+    const respuestas = await prisma.respuesta.findMany({
+      where: whereClause
+    });
+
+    console.log(`[calcularProgreso] Preguntas: ${preguntas.length}, Respuestas encontradas: ${respuestas.length}`);
+    
+    // Agrupar respuestas por pregunta
+    const respuestasPorPregunta: Record<number, any[]> = {};
+    respuestas.forEach(r => {
+      if (!respuestasPorPregunta[r.id_pregunta]) {
+        respuestasPorPregunta[r.id_pregunta] = [];
+      }
+      respuestasPorPregunta[r.id_pregunta].push(r);
+    });
+
+    console.log(`[calcularProgreso] Preguntas con respuestas: ${Object.keys(respuestasPorPregunta).length}`);
+    
+    // Contar preguntas válidamente respondidas
+    let respondidas = 0;
+    
+    for (const pregunta of preguntas) {
+      const respuestasPreg = respuestasPorPregunta[pregunta.id] || [];
+      
+      console.log(`[calcularProgreso] Procesando pregunta ${pregunta.id} (${pregunta.tipo.nombre}), respuestas: ${respuestasPreg.length}, obligatoria: ${pregunta.obligatoria}`);
+      
+      // Verificar si está respondida adecuadamente según el tipo
+      let estaRespondida = false;
+      
+      switch (pregunta.tipo.nombre) {
+        case 'radio':
+        case 'select':
+          estaRespondida = respuestasPreg.some(r => r.id_opcion !== null);
+          break;
+        
+        case 'checkbox':
+          // Para checkbox, con que haya al menos una opción seleccionada cuenta como respondida
+          estaRespondida = respuestasPreg.length > 0;
+          break;
+        
+        case 'text':
+          estaRespondida = respuestasPreg.some(r => 
+            r.texto_respuesta && r.texto_respuesta.trim() !== ''
+          );
+          break;
+        
+        case 'range':
+          estaRespondida = respuestasPreg.some(r => r.valor_rango !== null);
+          break;
+        
+        default:
+          estaRespondida = true;
+      }
+      
+      console.log(`[calcularProgreso] Pregunta ${pregunta.id} respondida: ${estaRespondida}`);
+      
+      // Si es obligatoria y no está respondida, no cuenta
+      if (pregunta.obligatoria && !estaRespondida) {
+        console.log(`[calcularProgreso] Pregunta obligatoria ${pregunta.id} no respondida - no cuenta`);
+        continue;
+      }
+      
+      if (estaRespondida) {
+        respondidas++;
+        console.log(`[calcularProgreso] Pregunta ${pregunta.id} cuenta como respondida`);
+      }
+    }
+    
+    const progreso = Math.round((respondidas / preguntas.length) * 100);
+    console.log(`[calcularProgreso] Progreso calculado: ${respondidas}/${preguntas.length} = ${progreso}%`);
+    return progreso;
+  } catch (error) {
+    console.error('[calcularProgreso] Error al calcular progreso:', error);
+    return 0; // En caso de error, retornar 0 para no afectar el estado actual
+  }
+}
+
+// Helper mejorado para verificar si todas las preguntas están respondidas
+async function todasPreguntasRespondidas(testId: number, usuarioId: number): Promise<boolean> {
+  // Obtener todas las preguntas obligatorias
+  const preguntasObligatorias = await prisma.pregunta.findMany({
+    where: { 
+      id_test: testId,
+      obligatoria: true 
+    },
+    include: {
+      tipo: true
+    }
+  });
+
+  if (preguntasObligatorias.length === 0) {
+    console.log('[todasPreguntasRespondidas] No hay preguntas obligatorias - considerando como completado');
+    return true;
+  }
+
+  // Obtener todas las respuestas válidas agrupadas por pregunta
+  const respuestasValidas = await prisma.respuesta.groupBy({
+    by: ['id_pregunta'],
+    where: { 
+      id_test: testId,
+      id_usuario: usuarioId,
+      OR: [
+        { texto_respuesta: { not: null } },
+        { valor_rango: { not: null } },
+        { id_opcion: { not: null } }
+      ]
+    }
+  });
+
+  console.log('[todasPreguntasRespondidas] Preguntas obligatorias:', preguntasObligatorias.map(p => p.id));
+  console.log('[todasPreguntasRespondidas] Preguntas respondidas:', respuestasValidas.map(r => r.id_pregunta));
+
+  // Verificar que todas las preguntas obligatorias estén respondidas
+  const todasObligatoriasRespondidas = preguntasObligatorias.every(pregunta => {
+    const tieneRespuesta = respuestasValidas.some(respuesta => respuesta.id_pregunta === pregunta.id);
+    
+    if (!tieneRespuesta) {
+      console.log(`[todasPreguntasRespondidas] Pregunta obligatoria ${pregunta.id} no tiene respuesta`);
+    }
+    
+    return tieneRespuesta;
+  });
+
+  console.log(`[todasPreguntasRespondidas] Todas obligatorias respondidas: ${todasObligatoriasRespondidas}`);
+  return todasObligatoriasRespondidas;
+}
+
+// Helper para determinar estado basado en progreso
+// Función auxiliar para determinar estado
+function determinarEstado(progreso: number, todasRespondidas: boolean): TestStatus {
+  console.log(`[determinarEstado] Progreso: ${progreso}, TodasRespondidas: ${todasRespondidas}`);
+  
+  if (progreso === 100 || todasRespondidas) {
+    return TestStatus.Completado;
+  }
+  if (progreso === 0) {
+    return TestStatus.NoIniciado;
+  }
+  return TestStatus.EnProgreso;
+}
+
+// Función auxiliar para calcular progreso con respuestas proporcionadas
+async function calcularProgresoConRespuestas(testId: number, usuarioId: number, respuestas: any[]): Promise<number> {
+  try {
+    // Obtener todas las preguntas con sus tipos
+    const preguntas = await prisma.pregunta.findMany({
+      where: { id_test: testId },
+      include: { tipo: true }
+    });
+    
+    if (preguntas.length === 0) {
+      console.log('[calcularProgresoConRespuestas] No hay preguntas para este test');
+      return 0;
+    }
+    
+    console.log(`[calcularProgresoConRespuestas] Preguntas: ${preguntas.length}, Respuestas proporcionadas: ${respuestas.length}`);
+    
+    // Agrupar respuestas por pregunta
+    const respuestasPorPregunta: Record<number, any[]> = {};
+    respuestas.forEach(r => {
+      if (!respuestasPorPregunta[r.id_pregunta]) {
+        respuestasPorPregunta[r.id_pregunta] = [];
+      }
+      respuestasPorPregunta[r.id_pregunta].push(r);
+    });
+
+    console.log(`[calcularProgresoConRespuestas] Preguntas con respuestas: ${Object.keys(respuestasPorPregunta).length}`);
+    
+    // Contar preguntas válidamente respondidas
+    let respondidas = 0;
+    
+    for (const pregunta of preguntas) {
+      const respuestasPreg = respuestasPorPregunta[pregunta.id] || [];
+      
+      console.log(`[calcularProgresoConRespuestas] Procesando pregunta ${pregunta.id} (${pregunta.tipo.nombre}), respuestas: ${respuestasPreg.length}, obligatoria: ${pregunta.obligatoria}`);
+      
+      // Verificar si está respondida adecuadamente según el tipo
+      let estaRespondida = false;
+      
+      switch (pregunta.tipo.nombre) {
+        case 'radio':
+        case 'select':
+          estaRespondida = respuestasPreg.some(r => r.id_opcion !== null);
+          break;
+        
+        case 'checkbox':
+          estaRespondida = respuestasPreg.length > 0;
+          break;
+        
+        case 'text':
+          estaRespondida = respuestasPreg.some(r => 
+            r.texto_respuesta && r.texto_respuesta.trim() !== ''
+          );
+          break;
+        
+        case 'range':
+          estaRespondida = respuestasPreg.some(r => r.valor_rango !== null);
+          break;
+        
+        default:
+          estaRespondida = true;
+      }
+      
+      console.log(`[calcularProgresoConRespuestas] Pregunta ${pregunta.id} respondida: ${estaRespondida}`);
+      
+      // Si es obligatoria y no está respondida, no cuenta
+      if (pregunta.obligatoria && !estaRespondida) {
+        console.log(`[calcularProgresoConRespuestas] Pregunta obligatoria ${pregunta.id} no respondida - no cuenta`);
+        continue;
+      }
+      
+      if (estaRespondida) {
+        respondidas++;
+        console.log(`[calcularProgresoConRespuestas] Pregunta ${pregunta.id} cuenta como respondida`);
+      }
+    }
+    
+    const progreso = Math.round((respondidas / preguntas.length) * 100);
+    console.log(`[calcularProgresoConRespuestas] Progreso calculado: ${respondidas}/${preguntas.length} = ${progreso}%`);
+    return progreso;
+  } catch (error) {
+    console.error('[calcularProgresoConRespuestas] Error al calcular progreso:', error);
+    return 0;
+  }
+}
+
+// Función auxiliar para verificar preguntas obligatorias con respuestas proporcionadas
+async function todasPreguntasRespondidasConRespuestas(testId: number, usuarioId: number, respuestas: any[]): Promise<boolean> {
+  try {
+    // Obtener todas las preguntas obligatorias
+    const preguntasObligatorias = await prisma.pregunta.findMany({
+      where: { 
+        id_test: testId,
+        obligatoria: true 
+      }
+    });
+
+    if (preguntasObligatorias.length === 0) {
+      console.log('[todasPreguntasRespondidasConRespuestas] No hay preguntas obligatorias - considerando como completado');
+      return true;
+    }
+
+    // Filtrar respuestas válidas para este usuario
+    const respuestasValidas = respuestas.filter(r => 
+      r.id_usuario === usuarioId && 
+      (r.texto_respuesta !== null || r.valor_rango !== null || r.id_opcion !== null)
+    );
+
+    // Agrupar por pregunta
+    const respuestasPorPregunta: Record<number, any[]> = {};
+    respuestasValidas.forEach(r => {
+      if (!respuestasPorPregunta[r.id_pregunta]) {
+        respuestasPorPregunta[r.id_pregunta] = [];
+      }
+      respuestasPorPregunta[r.id_pregunta].push(r);
+    });
+
+    console.log('[todasPreguntasRespondidasConRespuestas] Preguntas obligatorias:', preguntasObligatorias.map(p => p.id));
+    console.log('[todasPreguntasRespondidasConRespuestas] Preguntas respondidas:', Object.keys(respuestasPorPregunta));
+
+    // Verificar que todas las preguntas obligatorias estén respondidas
+    const todasObligatoriasRespondidas = preguntasObligatorias.every(pregunta => {
+      const respuestasPreg = respuestasPorPregunta[pregunta.id] || [];
+      const tieneRespuesta = respuestasPreg.length > 0;
+      
+      if (!tieneRespuesta) {
+        console.log(`[todasPreguntasRespondidasConRespuestas] Pregunta obligatoria ${pregunta.id} no tiene respuesta`);
+      }
+      
+      return tieneRespuesta;
+    });
+
+    console.log(`[todasPreguntasRespondidasConRespuestas] Todas obligatorias respondidas: ${todasObligatoriasRespondidas}`);
+    return todasObligatoriasRespondidas;
+  } catch (error) {
+    console.error('[todasPreguntasRespondidasConRespuestas] Error:', error);
+    return false;
+  }
+}
+
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const codigo_sesion = searchParams.get('codigo_sesion');
+    const nombre = searchParams.get('nombre');
     const id_usuario = searchParams.get('id_usuario');
     const id_psicologo = searchParams.get('id_psicologo');
+    const estado = searchParams.get('estado') as TestStatus | null;
     const search = searchParams.get('search');
     const fecha_inicio = searchParams.get('fecha_inicio');
     const fecha_fin = searchParams.get('fecha_fin');
+    const es_psicologa = searchParams.get('es_psicologa') === 'true';
     
     // Parámetros de paginación
     const page = parseInt(searchParams.get('page') || '1');
@@ -66,13 +389,18 @@ export async function GET(request: Request) {
           usuario: true,
           preguntas: {
             include: {
-              tipo_input: true
+              tipo: true,
+              opciones: true
+            },
+            orderBy: {
+              orden: 'asc'
             }
           },
           respuestas: {
             include: {
               pregunta: true,
-              usuario: true
+              usuario: true,
+              opcion: true
             }
           }
         }
@@ -89,9 +417,9 @@ export async function GET(request: Request) {
     }
     
     // Si hay un código de sesión específico, devolver ese test sin paginación
-    if (codigo_sesion) {
-      const test = await prisma.test.findUnique({
-        where: { codigo_sesion },
+    if (nombre) {
+      const test = await prisma.test.findFirst({
+        where: { nombre },
         include: {
           psicologo: {
             include: {
@@ -102,13 +430,18 @@ export async function GET(request: Request) {
           usuario: true,
           preguntas: {
             include: {
-              tipo_input: true
+              tipo: true,
+              opciones: true
+            },
+            orderBy: {
+              orden: 'asc'
             }
           },
           respuestas: {
             include: {
               pregunta: true,
-              usuario: true
+              usuario: true,
+              opcion: true
             }
           }
         }
@@ -124,12 +457,107 @@ export async function GET(request: Request) {
       return NextResponse.json(test);
     }
     
-    // Construir cláusula WHERE para los filtros
+    // Lógica especial para psicólogas
+    if (es_psicologa && id_usuario) {
+      // Verificar que el usuario es realmente psicóloga
+      const usuario = await prisma.usuario.findUnique({
+        where: { id: parseInt(id_usuario) },
+        include: { psicologo: true }
+      });
+
+      if (!usuario || !usuario.psicologo) {
+        return NextResponse.json(
+          { error: 'El usuario no tiene permisos de psicóloga' },
+          { status: 403 }
+        );
+      }
+
+      // Construir cláusula WHERE para psicóloga
+      let whereClause: any = {
+        id_psicologo: usuario.psicologo.id_usuario
+      };
+      
+      // Aplicar filtros adicionales
+      if (estado) whereClause.estado = estado;
+      if (search) {
+        whereClause.OR = [
+          { nombre: { contains: search, mode: 'insensitive' } },
+          {
+            usuario: {
+              OR: [
+                { nombre: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } }
+              ]
+            }
+          }
+        ];
+      }
+      
+      // Filtro por rango de fechas
+      if (fecha_inicio || fecha_fin) {
+        whereClause.fecha_creacion = {};
+        if (fecha_inicio) whereClause.fecha_creacion.gte = new Date(fecha_inicio);
+        if (fecha_fin) whereClause.fecha_creacion.lte = new Date(fecha_fin);
+      }
+
+      // Obtener el total de tests para paginación
+      const total = await prisma.test.count({ where: whereClause });
+      const totalPages = Math.ceil(total / pageSize);
+
+      // Obtener tests con relaciones completas
+      const tests = await prisma.test.findMany({
+        where: whereClause,
+        include: {
+          usuario: true,
+          psicologo: {
+            include: {
+              usuario: true
+            }
+          },
+          preguntas: {
+            include: {
+              tipo: true,
+              opciones: {
+                orderBy: {
+                  orden: 'asc'
+                }
+              }
+            },
+            orderBy: {
+              orden: 'asc'
+            }
+          },
+          respuestas: {
+            include: {
+              pregunta: true,
+              opcion: true,
+              usuario: true
+            }
+          }
+        },
+        orderBy: {
+          fecha_creacion: 'desc'
+        },
+        skip,
+        take: pageSize
+      });
+
+      return NextResponse.json({
+        data: tests,
+        total,
+        page,
+        pageSize,
+        totalPages
+      });
+    }
+    
+    // Construir cláusula WHERE para los filtros normales
     let whereClause: any = {};
     
     // Filtros básicos
     if (id_usuario) whereClause.id_usuario = parseInt(id_usuario);
     if (id_psicologo) whereClause.id_psicologo = parseInt(id_psicologo);
+    if (estado) whereClause.estado = estado;
     
     // Filtro por rango de fechas
     if (fecha_inicio || fecha_fin) {
@@ -141,12 +569,13 @@ export async function GET(request: Request) {
     // Búsqueda textual
     if (search) {
       whereClause.OR = [
-        { codigo_sesion: { contains: search, mode: 'insensitive' } },
+        { nombre: { contains: search, mode: 'insensitive' } },
         {
           usuario: {
             OR: [
               { nombre: { contains: search, mode: 'insensitive' } },
-              { email: { contains: search, mode: 'insensitive' } }
+              { email: { contains: search, mode: 'insensitive' } },
+              { cedula: { contains: search, mode: 'insensitive' } }
             ]
           }
         },
@@ -155,7 +584,8 @@ export async function GET(request: Request) {
             usuario: {
               OR: [
                 { nombre: { contains: search, mode: 'insensitive' } },
-                { email: { contains: search, mode: 'insensitive' } }
+                { email: { contains: search, mode: 'insensitive' } },
+                { cedula: { contains: search, mode: 'insensitive' } }
               ]
             }
           }
@@ -170,7 +600,14 @@ export async function GET(request: Request) {
         {
           respuestas: {
             some: {
-              respuesta: { contains: search, mode: 'insensitive' }
+              OR: [
+                { texto_respuesta: { contains: search, mode: 'insensitive' } },
+                {
+                  opcion: {
+                    texto: { contains: search, mode: 'insensitive' }
+                  }
+                }
+              ]
             }
           }
         }
@@ -191,20 +628,33 @@ export async function GET(request: Request) {
       include: {
         psicologo: {
           include: {
-            usuario: true
+            usuario: true,
+            redes_sociales: true
           }
         },
         usuario: true,
         preguntas: {
           include: {
-            tipo_input: true
+            tipo: true,
+            opciones: {
+              orderBy: {
+                orden: 'asc'
+              }
+            }
+          },
+          orderBy: {
+            orden: 'asc'
           }
         },
         respuestas: {
           include: {
-            pregunta: true
+            pregunta: true,
+            opcion: true
           }
         }
+      },
+      orderBy: {
+        fecha_ultima_respuesta: 'desc'
       },
       skip,
       take: pageSize
@@ -233,16 +683,16 @@ export async function GET(request: Request) {
     await prisma.$disconnect();
   }
 }
-
-// Los métodos POST, PUT y DELETE permanecen iguales como en tu código original
-// Solo se modifica el método GET para agregar las nuevas funcionalidades
-
 export async function POST(request: Request) {
   try {
     const { 
       id_psicologo,
       id_usuario,
-      codigo_sesion,
+      nombre,
+      estado,
+      progreso,
+      fecha_creacion,
+      fecha_ultima_respuesta,
       preguntas,
       respuestas
     }: FullTestData = await request.json();
@@ -251,6 +701,14 @@ export async function POST(request: Request) {
     if (!id_psicologo && !id_usuario) {
       return NextResponse.json(
         { error: 'Se requiere al menos un psicólogo o usuario asociado al test' },
+        { status: 400 }
+      );
+    }
+
+    // Validar progreso si se proporciona
+    if (progreso !== undefined && (progreso < 0 || progreso > 100)) {
+      return NextResponse.json(
+        { error: 'El progreso debe estar entre 0 y 100' },
         { status: 400 }
       );
     }
@@ -284,9 +742,9 @@ export async function POST(request: Request) {
     }
 
     // Verificar código de sesión único si se proporciona
-    if (codigo_sesion) {
+    if (nombre) {
       const codigoExistente = await prisma.test.findFirst({
-        where: { codigo_sesion }
+        where: { nombre }
       });
 
       if (codigoExistente) {
@@ -299,55 +757,97 @@ export async function POST(request: Request) {
 
     // Crear transacción para asegurar la integridad de los datos
     const result = await prisma.$transaction(async (prisma) => {
+      // Calcular progreso inicial si hay respuestas
+      const progresoInicial = respuestas && respuestas.length > 0 ? 
+        await calcularProgreso(0, id_usuario) : 0;
+      
+      // Determinar estado inicial
+      const estadoInicial = estado || determinarEstado(progresoInicial, false);
+
       // Crear nuevo test
       const nuevoTest = await prisma.test.create({
         data: {
           id_psicologo,
           id_usuario,
-          codigo_sesion
+          nombre,
+          estado: estadoInicial,
+          progreso: progreso || progresoInicial,
+          fecha_creacion: fecha_creacion ? new Date(fecha_creacion) : new Date(),
+          fecha_ultima_respuesta: fecha_ultima_respuesta ? new Date(fecha_ultima_respuesta) : new Date()
         }
       });
 
       // Procesar preguntas si existen
       if (preguntas && preguntas.length > 0) {
         for (const preguntaData of preguntas) {
-          let tipoInputId = preguntaData.id_tipo_input;
-          
-          // Si se proporciona nombre de tipo input pero no ID, buscarlo o crearlo
-          if (preguntaData.tipo_input_nombre && !tipoInputId) {
-            const tipoInput = await prisma.tipoInput.upsert({
-              where: { nombre: preguntaData.tipo_input_nombre },
-              create: { 
-                nombre: preguntaData.tipo_input_nombre 
-              },
-              update: {}
-            });
-            
-            tipoInputId = tipoInput.id;
+          // Verificar que el tipo de pregunta existe
+          const tipoPregunta = await prisma.tipoPregunta.findUnique({
+            where: { id: preguntaData.id_tipo }
+          });
+
+          if (!tipoPregunta) {
+            throw new Error(`Tipo de pregunta con ID ${preguntaData.id_tipo} no encontrado`);
           }
 
-          await prisma.pregunta.create({
+          const preguntaCreada = await prisma.pregunta.create({
             data: {
               id_test: nuevoTest.id,
-              id_tipo_input: tipoInputId,
-              texto_pregunta: preguntaData.texto_pregunta
+              id_tipo: preguntaData.id_tipo,
+              texto_pregunta: preguntaData.texto_pregunta,
+              orden: preguntaData.orden,
+              obligatoria: preguntaData.obligatoria || false,
+              placeholder: preguntaData.placeholder,
+              min: preguntaData.min,
+              max: preguntaData.max,
+              paso: preguntaData.paso
             }
           });
+
+          // Procesar opciones si existen
+          if (preguntaData.opciones && preguntaData.opciones.length > 0) {
+            for (const opcionData of preguntaData.opciones) {
+              await prisma.opcion.create({
+                data: {
+                  id_pregunta: preguntaCreada.id,
+                  texto: opcionData.texto,
+                  valor: opcionData.valor,
+                  orden: opcionData.orden,
+                  es_otro: opcionData.es_otro || false
+                }
+              });
+            }
+          }
         }
       }
 
       // Procesar respuestas si existen
       if (respuestas && respuestas.length > 0) {
         for (const respuestaData of respuestas) {
-          await prisma.respuestaTest.create({
+          await prisma.respuesta.create({
             data: {
               id_test: nuevoTest.id,
               id_pregunta: respuestaData.id_pregunta,
-              id_usuario,
-              respuesta: respuestaData.respuesta
+              id_usuario: id_usuario!,
+              id_opcion: respuestaData.id_opcion,
+              texto_respuesta: respuestaData.texto_respuesta,
+              valor_rango: respuestaData.valor_rango,
+              fecha: new Date()
             }
           });
         }
+
+        // Actualizar progreso y estado después de agregar respuestas
+        const nuevoProgreso = await calcularProgreso(nuevoTest.id, id_usuario);
+        const completado = await todasPreguntasRespondidas(nuevoTest.id, id_usuario!);
+        
+        await prisma.test.update({
+          where: { id: nuevoTest.id },
+          data: {
+            progreso: nuevoProgreso,
+            estado: determinarEstado(nuevoProgreso, completado),
+            fecha_ultima_respuesta: new Date()
+          }
+        });
       }
 
       return nuevoTest;
@@ -359,18 +859,28 @@ export async function POST(request: Request) {
       include: {
         psicologo: {
           include: {
-            usuario: true
+            usuario: true,
+            redes_sociales: true
           }
         },
         usuario: true,
         preguntas: {
           include: {
-            tipo_input: true
+            tipo: true,
+            opciones: {
+              orderBy: {
+                orden: 'asc'
+              }
+            }
+          },
+          orderBy: {
+            orden: 'asc'
           }
         },
         respuestas: {
           include: {
             pregunta: true,
+            opcion: true,
             usuario: true
           }
         }
@@ -404,16 +914,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const { 
-      id,
-      id_psicologo,
-      id_usuario,
-      codigo_sesion,
-      preguntas,
-      respuestas
-    }: FullTestData & { id: number } = await request.json();
-
-    // Validación básica
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
     if (!id) {
       return NextResponse.json(
         { error: 'ID de test es requerido' },
@@ -421,12 +924,26 @@ export async function PUT(request: Request) {
       );
     }
 
+    const testId = parseInt(id);
+    const { 
+      id_psicologo,
+      id_usuario,
+      nombre,
+      estado,
+      preguntas,
+      respuestas
+    }: FullTestData = await request.json();
+
     // Verificar si el test existe
     const testExistente = await prisma.test.findUnique({
-      where: { id },
+      where: { id: testId },
       include: {
-        preguntas: true,
-        respuestas: true
+        preguntas: {
+          include: {
+            tipo: true,
+            opciones: true
+          }
+        }
       }
     });
 
@@ -437,12 +954,11 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Verificar que el psicólogo existe si se proporciona
+    // Validación de psicólogo (si se proporciona)
     if (id_psicologo) {
       const psicologoExistente = await prisma.psicologo.findUnique({
         where: { id_usuario: id_psicologo }
       });
-
       if (!psicologoExistente) {
         return NextResponse.json(
           { error: 'Psicólogo no encontrado' },
@@ -451,12 +967,11 @@ export async function PUT(request: Request) {
       }
     }
 
-    // Verificar que el usuario existe si se proporciona
-    if (id_usuario) {
+    // Validación de usuario (si se proporciona)
+    if (id_usuario !== undefined) {
       const usuarioExistente = await prisma.usuario.findUnique({
         where: { id: id_usuario }
       });
-
       if (!usuarioExistente) {
         return NextResponse.json(
           { error: 'Usuario no encontrado' },
@@ -465,114 +980,169 @@ export async function PUT(request: Request) {
       }
     }
 
-    // Verificar código de sesión único si se proporciona
-    if (codigo_sesion && codigo_sesion !== testExistente.codigo_sesion) {
-      const codigoExistente = await prisma.test.findFirst({
-        where: { 
-          codigo_sesion,
-          NOT: { id }
-        }
+    // Validación de nombre único (si se cambia)
+    if (nombre && nombre !== testExistente.nombre) {
+      const nombreExistente = await prisma.test.findFirst({
+        where: { nombre, NOT: { id: testId } }
       });
-
-      if (codigoExistente) {
+      if (nombreExistente) {
         return NextResponse.json(
-          { error: 'El código de sesión ya está en uso' },
+          { error: 'El nombre del test ya está en uso' },
           { status: 409 }
         );
       }
     }
 
-    // Usar transacción para múltiples operaciones
-    const result = await prisma.$transaction(async (prisma) => {
-      // Actualizar test
-      const testActualizado = await prisma.test.update({
-        where: { id },
+    // Usar transacción para operaciones atómicas
+    const testActualizado = await prisma.$transaction(async (prisma) => {
+      // Actualizar datos básicos del test
+      const test = await prisma.test.update({
+        where: { id: testId },
         data: {
-          id_psicologo,
-          id_usuario,
-          codigo_sesion
+          id_psicologo: id_psicologo !== undefined ? id_psicologo : testExistente.id_psicologo,
+          id_usuario: id_usuario !== undefined ? id_usuario : testExistente.id_usuario,
+          nombre: nombre !== undefined ? nombre : testExistente.nombre,
+          estado: estado !== undefined ? estado : testExistente.estado
         }
       });
 
-      // Procesar preguntas si se proporcionan
+      // Procesar actualización de preguntas si se proporcionan
       if (preguntas) {
-        // Eliminar preguntas existentes
+        // Primero eliminar respuestas asociadas a las preguntas existentes
+        await prisma.respuesta.deleteMany({
+          where: { 
+            id_pregunta: { 
+              in: testExistente.preguntas.map(p => p.id) 
+            } 
+          }
+        });
+
+        // Luego eliminar opciones de preguntas existentes
+        await prisma.opcion.deleteMany({
+          where: { 
+            id_pregunta: { 
+              in: testExistente.preguntas.map(p => p.id) 
+            } 
+          }
+        });
+        
+        // Finalmente eliminar las preguntas existentes
         await prisma.pregunta.deleteMany({
-          where: { id_test: id }
+          where: { id_test: testId }
         });
 
         // Crear nuevas preguntas
-        if (preguntas.length > 0) {
-          for (const preguntaData of preguntas) {
-            let tipoInputId = preguntaData.id_tipo_input;
-            
-            // Si se proporciona nombre de tipo input pero no ID, buscarlo o crearlo
-            if (preguntaData.tipo_input_nombre && !tipoInputId) {
-              const tipoInput = await prisma.tipoInput.upsert({
-                where: { nombre: preguntaData.tipo_input_nombre },
-                create: { 
-                  nombre: preguntaData.tipo_input_nombre 
-                },
-                update: {}
-              });
-              
-              tipoInputId = tipoInput.id;
-            }
+        for (const preguntaData of preguntas) {
+          const tipoPregunta = await prisma.tipoPregunta.findUnique({
+            where: { id: preguntaData.id_tipo }
+          });
 
-            await prisma.pregunta.create({
-              data: {
-                id_test: id,
-                id_tipo_input: tipoInputId,
-                texto_pregunta: preguntaData.texto_pregunta
-              }
-            });
+          if (!tipoPregunta) {
+            throw new Error(`Tipo de pregunta con ID ${preguntaData.id_tipo} no encontrado`);
+          }
+
+          const preguntaCreada = await prisma.pregunta.create({
+            data: {
+              id_test: testId,
+              id_tipo: preguntaData.id_tipo,
+              texto_pregunta: preguntaData.texto_pregunta,
+              orden: preguntaData.orden,
+              obligatoria: preguntaData.obligatoria || false,
+              placeholder: preguntaData.placeholder,
+              min: preguntaData.min,
+              max: preguntaData.max,
+              paso: preguntaData.paso
+            }
+          });
+
+          // Crear opciones si existen
+          if (preguntaData.opciones && preguntaData.opciones.length > 0) {
+            for (const opcionData of preguntaData.opciones) {
+              await prisma.opcion.create({
+                data: {
+                  id_pregunta: preguntaCreada.id,
+                  texto: opcionData.texto,
+                  valor: opcionData.valor,
+                  orden: opcionData.orden,
+                  es_otro: opcionData.es_otro || false
+                }
+              });
+            }
           }
         }
       }
 
-      // Procesar respuestas si se proporcionan
-      if (respuestas) {
-        // Eliminar respuestas existentes
-        await prisma.respuestaTest.deleteMany({
-          where: { id_test: id }
+      // Procesar respuestas si se proporcionan y hay un usuario asociado
+      if (respuestas && id_usuario) {
+        // Eliminar respuestas existentes de este usuario
+        await prisma.respuesta.deleteMany({
+          where: { 
+            id_test: testId,
+            id_usuario: id_usuario
+          }
         });
 
         // Crear nuevas respuestas
-        if (respuestas.length > 0) {
-          for (const respuestaData of respuestas) {
-            await prisma.respuestaTest.create({
-              data: {
-                id_test: id,
-                id_pregunta: respuestaData.id_pregunta,
-                id_usuario,
-                respuesta: respuestaData.respuesta
-              }
-            });
-          }
+        for (const respuestaData of respuestas) {
+          await prisma.respuesta.create({
+            data: {
+              id_test: testId,
+              id_pregunta: respuestaData.id_pregunta,
+              id_usuario: id_usuario,
+              id_opcion: respuestaData.id_opcion,
+              texto_respuesta: respuestaData.texto_respuesta,
+              valor_rango: respuestaData.valor_rango,
+              fecha: new Date()
+            }
+          });
         }
+
+        // Calcular progreso y estado
+        const nuevoProgreso = await calcularProgreso(testId, id_usuario);
+        const completado = await todasPreguntasRespondidas(testId, id_usuario);
+        
+        await prisma.test.update({
+          where: { id: testId },
+          data: {
+            progreso: nuevoProgreso,
+            estado: determinarEstado(nuevoProgreso, completado),
+            fecha_ultima_respuesta: new Date()
+          }
+        });
       }
 
-      return testActualizado;
+      return test;
     });
 
-    // Obtener el test actualizado con sus relaciones
+    // Obtener el test actualizado con relaciones
     const testCompleto = await prisma.test.findUnique({
-      where: { id: result.id },
+      where: { id: testActualizado.id },
       include: {
         psicologo: {
           include: {
-            usuario: true
+            usuario: true,
+            redes_sociales: true
           }
         },
         usuario: true,
         preguntas: {
           include: {
-            tipo_input: true
+            tipo: true,
+            opciones: {
+              orderBy: {
+                orden: 'asc'
+              }
+            }
+          },
+          orderBy: {
+            orden: 'asc'
           }
         },
         respuestas: {
+          where: id_usuario ? { id_usuario } : undefined,
           include: {
             pregunta: true,
+            opcion: true,
             usuario: true
           }
         }
@@ -586,7 +1156,7 @@ export async function PUT(request: Request) {
     
     if (error.code === 'P2002') {
       return NextResponse.json(
-        { error: 'El código de sesión ya está en uso' },
+        { error: 'Conflicto de datos únicos' },
         { status: 409 }
       );
     }
@@ -602,7 +1172,6 @@ export async function PUT(request: Request) {
     await prisma.$disconnect();
   }
 }
-
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -621,7 +1190,11 @@ export async function DELETE(request: Request) {
     const testExistente = await prisma.test.findUnique({
       where: { id: testId },
       include: {
-        preguntas: true,
+        preguntas: {
+          include: {
+            opciones: true
+          }
+        },
         respuestas: true
       }
     });
@@ -635,8 +1208,14 @@ export async function DELETE(request: Request) {
 
     // Usar transacción para eliminar relaciones primero
     await prisma.$transaction(async (prisma) => {
+      // Eliminar opciones de preguntas asociadas
+      const preguntaIds = testExistente.preguntas.map(p => p.id);
+      await prisma.opcion.deleteMany({
+        where: { id_pregunta: { in: preguntaIds } }
+      });
+
       // Eliminar respuestas asociadas
-      await prisma.respuestaTest.deleteMany({
+      await prisma.respuesta.deleteMany({
         where: { id_test: testId }
       });
 

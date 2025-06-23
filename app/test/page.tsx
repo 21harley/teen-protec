@@ -3,42 +3,51 @@ import { StorageManager } from "@/app/lib/storageManager"
 import { AuthResponse } from "./../types/user"
 import CrudTest from "@/components/crudTest/crudTest";
 import PsychologistTest from "@/components/psychologistTest/psychologistTest";
-import UserTest from "@/components/userTest/userTest";
+import UserTest from "@/components/testUser/testUser";
 import LayoutPage from "@/components/layoutPage/layoutPage";
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 export default function Test(){
-  const storageManager = new StorageManager('local');
-  const data = storageManager.load<AuthResponse>('userData');
-   
-  if(data){
-    switch(data.user.tipoUsuario.nombre){
-    case "administrador":
-        return(
-        <>
-        <LayoutPage>
-           <CrudTest/>
-        </LayoutPage>
-        </>
-        )
-    case "psicologo":
-       return(
-        <>
-         <LayoutPage>
-            <PsychologistTest/>
-         </LayoutPage>
-        </>
-       )
-    case "usuario":case "adolecente":
-        return(
-        <>
-         <LayoutPage>
-            <UserTest/>
-         </LayoutPage>
-        </>
-       )
-    }
-  }else{
-    window.location.href="/"
+  const [isClient, setIsClient] = useState(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) {
+    return null // o un loader mientras se carga
   }
 
+  const storageManager = new StorageManager('local')
+  const data = storageManager.load<AuthResponse>('userData')
+
+  if(data){
+    switch(data.user.tipoUsuario.nombre){
+      case "administrador":
+        return (
+          <LayoutPage>
+            <CrudTest/>
+          </LayoutPage>
+        )
+      case "psicologo":
+        return (
+          <LayoutPage>
+            <PsychologistTest/>
+          </LayoutPage>
+        )
+      case "usuario": case "adolecente":
+        return (
+          <LayoutPage>
+            <UserTest/>
+          </LayoutPage>
+        )
+    }
+  } else {
+    router.push("/")
+    return null
+  }
 }
+
+

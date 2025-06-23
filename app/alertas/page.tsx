@@ -1,23 +1,30 @@
 'use client'
 import { StorageManager } from "@/app/lib/storageManager"
-import { AuthResponse } from "./../types/user"
 import UserAlert from "@/components/alertUser/userAlert";
 import CrudAlert from "@/components/crudAlert/crudAlert";
 import LayoutPage from "@/components/layoutPage/layoutPage";
-import useUserStore from "../store/store";
-import { LoginResponse } from "../api/type";
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react";
+import { AuthResponse } from "./../types/user"
 
 export default function Alert(){
-   let { user } = useUserStore();
-   console.log(user);
-  if(!user){
-     const storageManager = new StorageManager('local');
-     const data = storageManager.load<LoginResponse>('userData');
-     user = data?.user ?? null
-  }
+     const [isClient, setIsClient] = useState(false)
+     const router = useRouter()
    
-  if(user && user.tipoUsuario && user.tipoUsuario.nombre){
-    switch(user.tipoUsuario.nombre){
+     useEffect(() => {
+       setIsClient(true)
+     }, [])
+   
+     if (!isClient) {
+       return null // o un loader mientras se carga
+     }
+
+    const storageManager = new StorageManager('local')
+    const data = storageManager.load<AuthResponse>('userData')
+
+
+  if(data){
+    switch(data.user.tipoUsuario.nombre){
     case "administrador":
         return(
         <>
@@ -37,7 +44,8 @@ export default function Alert(){
     
     }
   }else{
-    window.location.href="/"
+   router.push("/")
+   return null
   }
 
 }
