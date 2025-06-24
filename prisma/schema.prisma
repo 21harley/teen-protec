@@ -81,6 +81,7 @@ model Psicologo {
   usuario            Usuario              @relation(fields: [id_usuario], references: [id])
   redes_sociales     RedSocialPsicologo[]
   tests              Test[]               @relation("TestPsicologo")
+  plantillas         TestPlantilla[] 
 }
 
 model Test {
@@ -115,6 +116,7 @@ model TipoPregunta {
   nombre      String     @unique @db.VarChar(50) // radio, checkbox, text, select, range
   descripcion String     @db.VarChar(255)
   preguntas   Pregunta[]
+  preguntasPlantilla PreguntaPlantilla[]
 }
 
 model Pregunta {
@@ -175,3 +177,46 @@ model RedSocialPsicologo {
 
   @@unique([id_psicologo, nombre_red], name: "redsocial_unique")
 }
+
+
+model TestPlantilla {
+  id                  Int          @id @default(autoincrement())
+  id_psicologo        Int?
+  nombre              String       @db.VarChar(50)
+  estado              TestStatus   @default(no_iniciado)
+  fecha_creacion      DateTime     @default(now())
+  psicologo           Psicologo?   @relation(fields: [id_psicologo], references: [id_usuario])
+  preguntas           PreguntaPlantilla[]
+  
+  @@index([id_psicologo])
+  @@index([nombre])
+}
+
+model PreguntaPlantilla {
+  id             Int          @id @default(autoincrement())
+  id_test        Int
+  id_tipo        Int
+  texto_pregunta String
+  orden          Int
+  obligatoria    Boolean      @default(false)
+  placeholder    String?      @db.VarChar(255)
+  min            Int?
+  max            Int?
+  paso           Int?
+  
+  test           TestPlantilla @relation(fields: [id_test], references: [id])
+  tipo           TipoPregunta  @relation(fields: [id_tipo], references: [id])
+  opciones       OpcionPlantilla[]
+}
+
+model OpcionPlantilla {
+  id           Int       @id @default(autoincrement())
+  id_pregunta  Int
+  texto        String    @db.VarChar(255)
+  valor        String    @db.VarChar(100)
+  orden        Int
+  es_otro      Boolean   @default(false)
+
+  pregunta     PreguntaPlantilla @relation(fields: [id_pregunta], references: [id])
+}
+

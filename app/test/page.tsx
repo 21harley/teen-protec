@@ -2,7 +2,8 @@
 import { StorageManager } from "@/app/lib/storageManager"
 import { AuthResponse } from "./../types/user"
 import CrudTest from "@/components/crudTest/crudTest";
-import PsychologistTest from "@/components/psychologistTest/psychologistTest";
+//import PsychologistTest from "@/components/psychologistTest/psychologistTest";
+import PsychologistTestPlantilla from "@/components/psychologistTestPlantilla/psychologistTestPlantilla";
 import UserTest from "@/components/testUser/testUser";
 import LayoutPage from "@/components/layoutPage/layoutPage";
 import { useRouter } from "next/navigation"
@@ -34,7 +35,10 @@ export default function Test(){
       case "psicologo":
         return (
           <LayoutPage>
-            <PsychologistTest/>
+            {/*
+             <PsychologistTest/>
+            */}
+            <PsychologistTestPlantilla/>
           </LayoutPage>
         )
       case "usuario": case "adolecente":

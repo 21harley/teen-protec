@@ -1,27 +1,26 @@
 'use client'
 import React from 'react'
-import { PreguntaResponse, TipoPreguntaNombre } from "@/app/types/test"
-import svg from "./../../app/public/logos/logo_texto.svg"
+import { PreguntaPlantilla, TipoPreguntaNombre, TestPlantilla } from "@/app/types/plantilla"
 import IconLogoTexto from "./../../app/public/logos/logo_texto.svg";
 import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
 import IconLogoEditar from "./../../app/public/logos/icon_editar.svg";
 import Image from 'next/image'
 
-interface ModalVerPreguntasProps {
-  preguntas: PreguntaResponse[]
-  testId: number // ID del test para eliminar
+interface ModalVerPreguntasPlantillaProps {
+  plantilla: TestPlantilla
   onClose: () => void
-  onEdit: () => void // Función para manejar la edición
+  onEdit: () => void
+  onDelete: () => Promise<void>
 }
 
-export function ModalVerPreguntas({ preguntas, testId, onClose, onEdit }: ModalVerPreguntasProps) {
+export function ModalVerPreguntasPlantilla({ plantilla, onClose, onEdit, onDelete }: ModalVerPreguntasPlantillaProps) {
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [deleteError, setDeleteError] = React.useState<string | null>(null)
 
-  const renderEjemploRespuesta = (pregunta: PreguntaResponse) => {
-    switch (pregunta.tipo.nombre) {
-      case TipoPreguntaNombre.radio:
-      case TipoPreguntaNombre.select:
+  const renderEjemploRespuesta = (pregunta: PreguntaPlantilla) => {
+    switch (pregunta.tipo?.nombre) {
+      case TipoPreguntaNombre.Radio:
+      case TipoPreguntaNombre.Select:
         return (
           <div className="text-sm text-gray-500 italic">
             {pregunta.opciones?.length ? 
@@ -30,7 +29,7 @@ export function ModalVerPreguntas({ preguntas, testId, onClose, onEdit }: ModalV
           </div>
         )
       
-      case TipoPreguntaNombre.checkbox:
+      case TipoPreguntaNombre.Checkbox:
         return (
           <div className="text-sm text-gray-500 italic">
             {pregunta.opciones?.length ? 
@@ -39,22 +38,22 @@ export function ModalVerPreguntas({ preguntas, testId, onClose, onEdit }: ModalV
           </div>
         )
       
-      case TipoPreguntaNombre.text:
+      case TipoPreguntaNombre.Text:
         return (
           <div className="text-sm text-gray-500 italic">
-            Campo de texto libre
+            Campo de texto libre{pregunta.placeholder ? ` (${pregunta.placeholder})` : ''}
           </div>
         )
       
-      case TipoPreguntaNombre.range:
+      case TipoPreguntaNombre.Range:
         return (
           <div className="text-sm text-gray-500 italic">
-            Escala de {pregunta.min || 0} a {pregunta.max || 100}
+            Escala de {pregunta.min || 0} a {pregunta.max || 100}{pregunta.paso ? `, paso ${pregunta.paso}` : ''}
           </div>
         )
       
       default:
-        return <div className="text-sm text-gray-500 italic">Tipo de pregunta: {pregunta.tipo.nombre}</div>
+        return <div className="text-sm text-gray-500 italic">Tipo de pregunta: {pregunta.tipo?.nombre || 'Desconocido'}</div>
     }
   }
 
@@ -67,27 +66,19 @@ export function ModalVerPreguntas({ preguntas, testId, onClose, onEdit }: ModalV
     setDeleteError(null)
 
     try {
-      const response = await fetch(`/api/test?id=${testId}`, {
-        method: 'DELETE'
-      })
-
-      if (!response.ok) {
-        throw new Error('Error al eliminar el test')
-      }
-
-      // Cerrar el modal después de eliminar
+      await onDelete()
       onClose()
     } catch (error) {
       console.error('Error eliminando test:', error)
-      setDeleteError('Error al eliminar el test. Por favor, inténtalo de nuevo.')
+      setDeleteError('Error al eliminar la test. Por favor, inténtalo de nuevo.')
     } finally {
       setIsDeleting(false)
     }
   }
 
   const handleEdit = () => {
-    onEdit() // Llama a la función de edición del padre
-    onClose() // Cierra el modal
+    onEdit()
+    onClose()
   }
 
   return (
@@ -98,14 +89,19 @@ export function ModalVerPreguntas({ preguntas, testId, onClose, onEdit }: ModalV
             <div className='flex flex-col m-auto'>
               <div>
                 <Image
-                  src={svg}
+                  src={IconLogoTexto}
                   width={180}
                   height={90}
                   alt="Logo de la empresa"
                   priority
                 />
               </div>
-              <h2 className="text-xl font-medium text-gray-900">Preguntas del Test</h2>
+              <h2 className="text-xl font-medium text-gray-900">
+                Test: {plantilla.nombre}
+              </h2>
+              <div className="text-sm text-gray-500 mt-1">
+                Estado: {plantilla.estado}
+              </div>
             </div>
             <button
               onClick={onClose}
@@ -119,21 +115,32 @@ export function ModalVerPreguntas({ preguntas, testId, onClose, onEdit }: ModalV
           </div>
 
           <div className="mt-6 space-y-6">
-            {preguntas.map((pregunta, index) => (
+            {plantilla.preguntas?.map((pregunta, index) => (
               <div key={pregunta.id} className="space-y-2 border-b pb-4 last:border-b-0">
-                <h3 className="text-sm font-medium text-gray-700">
-                  {index + 1}. {pregunta.texto_pregunta}
-                </h3>
-                <div className="text-xs text-gray-500">
-                  Tipo: {pregunta.tipo.nombre}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700">
+                      {index + 1}. {pregunta.texto_pregunta}
+                      {pregunta.obligatoria && (
+                        <span className="ml-2 text-xs text-red-500">(Obligatoria)</span>
+                      )}
+                    </h3>
+                    <div className="text-xs text-gray-500">
+                      Tipo: {pregunta.tipo?.nombre || 'Desconocido'}
+                    </div>
+                    {renderEjemploRespuesta(pregunta)}
+                  </div>
                 </div>
-                {renderEjemploRespuesta(pregunta)}
-                {pregunta.opciones?.length > 0 && (
+                
+                {(pregunta.opciones?.length ?? 0) > 0 && (
                   <div className="mt-2">
                     <h4 className="text-xs font-medium text-gray-600">Opciones:</h4>
                     <ul className="list-disc list-inside text-xs text-gray-500 pl-2">
-                      {pregunta.opciones.map(opcion => (
-                        <li key={opcion.id}>{opcion.texto}</li>
+                      {pregunta.opciones?.map(opcion => (
+                        <li key={opcion.id}>
+                          {opcion.texto}
+                          {opcion.es_otro && <span className="text-gray-400 ml-1">(Opción "Otro")</span>}
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -148,39 +155,41 @@ export function ModalVerPreguntas({ preguntas, testId, onClose, onEdit }: ModalV
             </div>
           )}
 
-          <div className="flex flex-col h-[150px] sm:h-auto sm:flex-row sm:gap-4  justify-between pt-6 space-x-4">
+          <div className="flex flex-col h-[150px] sm:h-auto sm:flex-row sm:gap-4 justify-between pt-6 space-x-4">
             <button
               onClick={onClose}
-              className="w-full max-w-[180px] m-auto cursor-pointer p-2  bg-blue-500 text-white text-sm rounded-md transition hover:bg-blue-600 "
+              className="w-full max-w-[180px] m-auto cursor-pointer p-2 bg-blue-500 text-white text-sm rounded-md transition hover:bg-blue-600"
             >
               Volver
             </button>
             <button
               onClick={handleEdit}
-              className="w-full max-w-[180px] m-auto cursor-pointer p-2   text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-10"
+              className="w-full max-w-[180px] m-auto cursor-pointer p-2 text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-10 items-center"
             >
               Editar
               <Image
-                  className=" w-[20px] h-[20px] cursor-pointer"
-                  src={IconLogoEditar}
-                  width={20}
-                  height={20}
-                  alt="Eliminar"
-                 />
+                className="w-[20px] h-[20px] cursor-pointer"
+                src={IconLogoEditar}
+                width={20}
+                height={20}
+                alt="Editar"
+              />
             </button>
             <button
               onClick={handleDelete}
               disabled={isDeleting}
-              className="w-full max-w-[180px] m-auto cursor-pointer p-2   text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-10"
+              className={`w-full max-w-[180px] m-auto cursor-pointer p-2 text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-10 items-center ${
+                isDeleting ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              {isDeleting ? 'Eliminando...' : 'Eliminar Test'}
+              {isDeleting ? 'Eliminando...' : 'Eliminar'}
               <Image
-                  className=" w-[20px] h-[20px] cursor-pointer"
-                  src={IconLogoCerrar}
-                  width={20}
-                  height={20}
-                  alt="Eliminar"
-                 />
+                className="w-[20px] h-[20px] cursor-pointer"
+                src={IconLogoCerrar}
+                width={20}
+                height={20}
+                alt="Eliminar"
+              />
             </button>
           </div>
         </div>

@@ -163,6 +163,7 @@ export default function UserTests() {
       <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-medium mb-4">Tests</h1>
+          <hr className="mb-4" />
         </div>
         <hr className="mb-4" />
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
@@ -182,7 +183,10 @@ export default function UserTests() {
   return (
     <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-medium">Tests</h1>
+        <div>
+          <h1 className="text-xl font-medium mb-4">Tests</h1>
+          <hr className="mb-4" />
+        </div>
         <div className="text-sm text-gray-600">
           Mostrando {(pagination.page - 1) * pagination.pageSize + 1}-
           {Math.min(pagination.page * pagination.pageSize, pagination.total)} de {pagination.total}
@@ -193,12 +197,6 @@ export default function UserTests() {
       {tests.length === 0 ? (
         <div className="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-lg text-center">
           <p>No tienes tests asignados</p>
-          <Link
-            href="/tests/nuevo"
-            className="inline-block mt-2 px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-sm"
-          >
-            Crear nuevo test
-          </Link>
         </div>
       ) : (
         <>

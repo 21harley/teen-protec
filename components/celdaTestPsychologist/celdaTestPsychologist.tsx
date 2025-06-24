@@ -3,6 +3,10 @@ import { TestStatus, PreguntaData, PreguntaResponse, TestResponse } from "@/app/
 import { UsuarioResponse } from "../../app/types/test";
 import ModalRegistraTest from "./../modalRegistrarTest/modalRegistraTest";
 import { ModalVerPreguntas } from "./../modalVerPreguntas/ModalVerPreguntas";
+import IconEditar from "./../../app/public/logos/icon_editar.svg";
+import IconLupa from "./../../app/public/logos/lupa.svg";
+import IconCardPacientes from "./../../app/public/logos/logo_card_pacientes.svg";
+import Image from "next/image";
 
 interface Psicologo {
   id: number;
@@ -34,7 +38,6 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
 }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleEditTest = async (testData: { name: string; questions: PreguntaData[] }) => {
@@ -84,11 +87,8 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
   };
 
   const handleDeleteTest = async () => {
-    if (!confirm('¿Estás seguro de eliminar este test?')) return;
-    
     try {
       setIsLoading(true);
-      setIsDeleting(true);
       const response = await fetch(`/api/test?id=${test.id}`, {
         method: 'DELETE'
       });
@@ -101,7 +101,6 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
       alert(error instanceof Error ? error.message : "Error al eliminar el test");
     } finally {
       setIsLoading(false);
-      setIsDeleting(false);
     }
   };
 
@@ -136,13 +135,22 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
     <>
       {/* Overlay y Loader */}
       {isLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black opacity-55 h-full w-full">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
         </div>
       )}
 
-      <div className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
-        <div className="flex justify-between items-start gap-4">
+      <div className=" rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
+        <div className="relative">
+          <Image
+            className="absolute w-[200px] h-[200px] right-0 button-[5px] top-[-30px]"
+            src={IconCardPacientes}
+            width={180}
+            height={90}
+            alt="Logo"
+          />
+        </div>
+        <div className="flex justify-between flex-col items-start gap-4">
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-lg truncate">{test.nombre}</h3>
             
@@ -165,37 +173,23 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
             </div>
           </div>
           
-          <div className="flex gap-2 flex-shrink-0">
-            {isPsychologist && (
-              <button 
-                onClick={() => setIsEditModalOpen(true)}
-                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm transition-colors"
-                aria-label="Editar test"
-                disabled={isLoading}
-              >
-                Editar
-              </button>
-            )}
+          <div className="flex justify-around w-full flex-shrink-0 flex-col  sm:flex-row   ">
+            <button 
+              onClick={() => setIsEditModalOpen(true)}
+              className="w-full max-w-[180px] m-auto cursor-pointer p-2 px-10   text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-1"
+              aria-label="Editar test"
+              disabled={isLoading}
+            >
+              Editar <Image src={IconEditar} alt="Icono de crear alerta" width={20} height={20} />
+            </button>
             <button 
               onClick={() => setIsViewModalOpen(true)}
-              className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm transition-colors"
+              className="w-full max-w-[180px] m-auto cursor-pointer p-2 px-10   text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-1"
               aria-label="Ver detalles del test"
               disabled={isLoading}
             >
-              Ver
+              Ver mas  <Image src={IconLupa} alt="Icono de crear alerta" width={20} height={20} />
             </button>
-            {isPsychologist && (
-              <button 
-                onClick={handleDeleteTest}
-                disabled={isDeleting || isLoading}
-                className={`px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm transition-colors ${
-                  isDeleting || isLoading ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-                aria-label="Eliminar test"
-              >
-                {isDeleting ? 'Eliminando...' : 'Eliminar'}
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -205,6 +199,7 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           onSubmit={handleEditTest}
+          onDelete={handleDeleteTest}
           testToEdit={{
             id: test.id,
             name: test.nombre ?? "",

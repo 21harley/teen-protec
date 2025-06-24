@@ -2,36 +2,15 @@
 import React, { useState, useEffect } from "react";
 import { StorageManager } from "@/app/lib/storageManager";
 import { LoginResponse } from "./../../app/types/user/index";
-import { TestResponse, PreguntaData, PreguntaResponse, UsuarioResponse } from "@/app/types/test";
+import { TestStatus, TestPlantilla, PreguntaPlantillaBase, Psicologo, Usuario, TestPlantillaInput } from "@/app/types/plantilla";
 import useUserStore from "@/app/store/store";
-import ModalRegistraTest from "./../modalRegistrarTest/modalRegistraTest";
-import CeldaTestPsychologistTest from "./../celdaTestPsychologist/celdaTestPsychologist";
+import ModalRegistraTestPlantilla from "./../modalRegistrarTestPlantilla/modalRegistrarTestPlantilla";
+import CeldaTestPlantillaPsgychologist from "./../celdaTestPlantillaPsgychologist/celdaTestPlantillaPsgychologist"; // Asegúrate de que la ruta sea correcta
 import IconMas from "./../../app/public/logos/icon_mas.svg";
 import Image from "next/image";
 
-export enum TestStatus {
-  no_iniciado = "no_iniciado",
-  en_progreso = "en_progreso",
-  completado = "completado"
-}
-
-interface Psicologo {
-  id: number;
-  id_usuario: number;
-  especialidad?: string;
-  usuario: UsuarioResponse;
-  redes_sociales?: any[];
-}
-
-interface TestResponseCompleto extends TestResponse {
-  usuario: UsuarioResponse | null;
-  psicologo: Psicologo | null;
-  preguntas: PreguntaResponse[];
-  respuestas: any[];
-}
-
-export default function TestsPage() {
-  const [tests, setTests] = useState<TestResponseCompleto[]>([]);
+export default function TestsPlantillaPage() {
+  const [plantillas, setPlantillas] = useState<TestPlantilla[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -53,78 +32,65 @@ export default function TestsPage() {
       }
     }
 
-    const fetchTests = async () => {
+    const fetchPlantillas = async () => {
       try {
         setLoading(true);
         const url = isPsychologist 
-          ? `/api/test?es_psicologa=true&id_usuario=${userId}`
-          : `/api/test?id_usuario=${userId}`;
+          ? `/api/plantilla?psicologoId=${userId}`
+          : `/api/plantilla`;
         
         const response = await fetch(url);
         
         if (!response.ok) {
-          throw new Error('Error al obtener los tests');
+          throw new Error('Error al obtener las plantillas');
         }
 
         const data = await response.json();
-        setTests(data.data);
+        setPlantillas(data.data);
       } catch (err) {
-        console.error("Error fetching tests:", err);
-        setError(err instanceof Error ? err.message : "Error al cargar los tests");
+        console.error("Error fetching plantillas:", err);
+        setError(err instanceof Error ? err.message : "Error al cargar las plantillas");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTests();
+    fetchPlantillas();
   }, [userId, isPsychologist]);
 
-  const handleCreateTest = async (testData: { name: string; questions: PreguntaData[] }) => {
-    console.log({
-          id_usuario: isPsychologist ? null : userId,
-          id_psicologo: isPsychologist ? userId : null,
-          preguntas: testData.questions,
-          estado: TestStatus.no_iniciado,
-          progreso: 0
-        })
-        console.log(testData)
-    
+  const handleCreatePlantilla = async (plantillaData: TestPlantillaInput) => {
     try {
-      const response = await fetch('/api/test', {
+      const response = await fetch('/api/plantilla', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          nombre: testData.name,
-          id_usuario: isPsychologist ? null : userId,
+          ...plantillaData,
           id_psicologo: isPsychologist ? userId : null,
-          preguntas: testData.questions,
-          estado: TestStatus.no_iniciado,
-          progreso: 0
+          estado: TestStatus.NoIniciado
         })
       });
 
       if (!response.ok) {
-        throw new Error('Error al crear el test');
+        throw new Error('Error al crear la plantilla');
       }
 
-      const newTest = await response.json();
-      setTests([...tests, newTest]);
+      const newPlantilla = await response.json();
+      setPlantillas([...plantillas, newPlantilla]);
       setIsCreateModalOpen(false);
     } catch (err) {
-      console.error("Error creating test:", err);
-      setError(err instanceof Error ? err.message : "Error al crear el test");
+      console.error("Error creating plantilla:", err);
+      setError(err instanceof Error ? err.message : "Error al crear la plantilla");
     }
-      
   };
 
-  const handleTestUpdated = (updatedTest: TestResponseCompleto) => {
-    setTests(tests.map(t => t.id === updatedTest.id ? updatedTest : t));
+  const handlePlantillaUpdated = (updatedPlantilla: TestPlantilla) => {
+    setPlantillas(plantillas.map(p => p.id === updatedPlantilla.id ? updatedPlantilla : p));
   };
 
-  const handleTestDeleted = (testId: number) => {
-    setTests(tests.filter(t => t.id !== testId));
+  const handlePlantillaDeleted = (plantillaId: number) => {
+    setPlantillas(plantillas.filter(p => p.id !== plantillaId));
   };
 
   if (loading) {
@@ -152,7 +118,7 @@ export default function TestsPage() {
   return (
     <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start p-4">
       <div className="flex justify-between flex-col  mb-4">
-        <h1 className="text-xl font-medium mb-4">Tests</h1>
+        <h1 className="text-xl font-medium mb-4">Test</h1>
         <hr className="w-full max-h-[600px] h-[1px] bg-black" />
       </div>
       <div className="flex items-end flex-col mb-4">
@@ -160,42 +126,41 @@ export default function TestsPage() {
             className="w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center cursor-pointer"
             onClick={() => setIsCreateModalOpen(true)}
           >
-            Crear Nuevo Test <Image src={IconMas} alt="Icono de crear alerta" width={20} height={20} />
+            Crear Nueva test <Image src={IconMas} alt="Icono de crear alerta" width={20} height={20} />
           </button>
       </div>
       
-      {tests.length === 0 ? (
+      {plantillas.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64">
           <p className="text-gray-500 text-lg mb-4">
-            {isPsychologist ? 'No tienes tests asignados' : 'No tienes tests creados'}
+            {isPsychologist ? 'No tienes test creados' : 'No tienes test disponibles'}
           </p>
           {isPsychologist && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center cursor-pointer"
             >
-              Crear tu primer test <Image src={IconMas} alt="Icono de crear alerta" width={20} height={20} />
+              Crear tu primera test <Image src={IconMas} alt="Icono de crear alerta" width={20} height={20} />
             </button> 
           )}
         </div>
       ) : (
         <div className="space-y-4">
-          {tests.map((test) => (
-            <CeldaTestPsychologistTest
-              key={test.id} 
-              test={test}
-              onTestUpdated={handleTestUpdated}
-              onTestDeleted={handleTestDeleted}
-              isPsychologist={isPsychologist}
+          {plantillas.map((plantilla) => (
+            <CeldaTestPlantillaPsgychologist
+              key={plantilla.id} 
+              plantilla={plantilla}
+              onPlantillaUpdated={handlePlantillaUpdated}
+              onPlantillaDeleted={handlePlantillaDeleted}
             />
           ))}
         </div>
       )}
 
-      <ModalRegistraTest
+      <ModalRegistraTestPlantilla
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateTest}
+        onSubmit={handleCreatePlantilla}
       />
     </div>
   );
