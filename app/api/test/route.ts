@@ -217,146 +217,6 @@ function determinarEstado(progreso: number, todasRespondidas: boolean): TestStat
   return TestStatus.EnProgreso;
 }
 
-// Función auxiliar para calcular progreso con respuestas proporcionadas
-async function calcularProgresoConRespuestas(testId: number, usuarioId: number, respuestas: any[]): Promise<number> {
-  try {
-    // Obtener todas las preguntas con sus tipos
-    const preguntas = await prisma.pregunta.findMany({
-      where: { id_test: testId },
-      include: { tipo: true }
-    });
-    
-    if (preguntas.length === 0) {
-      console.log('[calcularProgresoConRespuestas] No hay preguntas para este test');
-      return 0;
-    }
-    
-    console.log(`[calcularProgresoConRespuestas] Preguntas: ${preguntas.length}, Respuestas proporcionadas: ${respuestas.length}`);
-    
-    // Agrupar respuestas por pregunta
-    const respuestasPorPregunta: Record<number, any[]> = {};
-    respuestas.forEach(r => {
-      if (!respuestasPorPregunta[r.id_pregunta]) {
-        respuestasPorPregunta[r.id_pregunta] = [];
-      }
-      respuestasPorPregunta[r.id_pregunta].push(r);
-    });
-
-    console.log(`[calcularProgresoConRespuestas] Preguntas con respuestas: ${Object.keys(respuestasPorPregunta).length}`);
-    
-    // Contar preguntas válidamente respondidas
-    let respondidas = 0;
-    
-    for (const pregunta of preguntas) {
-      const respuestasPreg = respuestasPorPregunta[pregunta.id] || [];
-      
-      console.log(`[calcularProgresoConRespuestas] Procesando pregunta ${pregunta.id} (${pregunta.tipo.nombre}), respuestas: ${respuestasPreg.length}, obligatoria: ${pregunta.obligatoria}`);
-      
-      // Verificar si está respondida adecuadamente según el tipo
-      let estaRespondida = false;
-      
-      switch (pregunta.tipo.nombre) {
-        case 'radio':
-        case 'select':
-          estaRespondida = respuestasPreg.some(r => r.id_opcion !== null);
-          break;
-        
-        case 'checkbox':
-          estaRespondida = respuestasPreg.length > 0;
-          break;
-        
-        case 'text':
-          estaRespondida = respuestasPreg.some(r => 
-            r.texto_respuesta && r.texto_respuesta.trim() !== ''
-          );
-          break;
-        
-        case 'range':
-          estaRespondida = respuestasPreg.some(r => r.valor_rango !== null);
-          break;
-        
-        default:
-          estaRespondida = true;
-      }
-      
-      console.log(`[calcularProgresoConRespuestas] Pregunta ${pregunta.id} respondida: ${estaRespondida}`);
-      
-      // Si es obligatoria y no está respondida, no cuenta
-      if (pregunta.obligatoria && !estaRespondida) {
-        console.log(`[calcularProgresoConRespuestas] Pregunta obligatoria ${pregunta.id} no respondida - no cuenta`);
-        continue;
-      }
-      
-      if (estaRespondida) {
-        respondidas++;
-        console.log(`[calcularProgresoConRespuestas] Pregunta ${pregunta.id} cuenta como respondida`);
-      }
-    }
-    
-    const progreso = Math.round((respondidas / preguntas.length) * 100);
-    console.log(`[calcularProgresoConRespuestas] Progreso calculado: ${respondidas}/${preguntas.length} = ${progreso}%`);
-    return progreso;
-  } catch (error) {
-    console.error('[calcularProgresoConRespuestas] Error al calcular progreso:', error);
-    return 0;
-  }
-}
-
-// Función auxiliar para verificar preguntas obligatorias con respuestas proporcionadas
-async function todasPreguntasRespondidasConRespuestas(testId: number, usuarioId: number, respuestas: any[]): Promise<boolean> {
-  try {
-    // Obtener todas las preguntas obligatorias
-    const preguntasObligatorias = await prisma.pregunta.findMany({
-      where: { 
-        id_test: testId,
-        obligatoria: true 
-      }
-    });
-
-    if (preguntasObligatorias.length === 0) {
-      console.log('[todasPreguntasRespondidasConRespuestas] No hay preguntas obligatorias - considerando como completado');
-      return true;
-    }
-
-    // Filtrar respuestas válidas para este usuario
-    const respuestasValidas = respuestas.filter(r => 
-      r.id_usuario === usuarioId && 
-      (r.texto_respuesta !== null || r.valor_rango !== null || r.id_opcion !== null)
-    );
-
-    // Agrupar por pregunta
-    const respuestasPorPregunta: Record<number, any[]> = {};
-    respuestasValidas.forEach(r => {
-      if (!respuestasPorPregunta[r.id_pregunta]) {
-        respuestasPorPregunta[r.id_pregunta] = [];
-      }
-      respuestasPorPregunta[r.id_pregunta].push(r);
-    });
-
-    console.log('[todasPreguntasRespondidasConRespuestas] Preguntas obligatorias:', preguntasObligatorias.map(p => p.id));
-    console.log('[todasPreguntasRespondidasConRespuestas] Preguntas respondidas:', Object.keys(respuestasPorPregunta));
-
-    // Verificar que todas las preguntas obligatorias estén respondidas
-    const todasObligatoriasRespondidas = preguntasObligatorias.every(pregunta => {
-      const respuestasPreg = respuestasPorPregunta[pregunta.id] || [];
-      const tieneRespuesta = respuestasPreg.length > 0;
-      
-      if (!tieneRespuesta) {
-        console.log(`[todasPreguntasRespondidasConRespuestas] Pregunta obligatoria ${pregunta.id} no tiene respuesta`);
-      }
-      
-      return tieneRespuesta;
-    });
-
-    console.log(`[todasPreguntasRespondidasConRespuestas] Todas obligatorias respondidas: ${todasObligatoriasRespondidas}`);
-    return todasObligatoriasRespondidas;
-  } catch (error) {
-    console.error('[todasPreguntasRespondidasConRespuestas] Error:', error);
-    return false;
-  }
-}
-
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -912,6 +772,9 @@ export async function POST(request: Request) {
   }
 }
 
+function delay(ms:number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 export async function PUT(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -1096,7 +959,9 @@ export async function PUT(request: Request) {
             }
           });
         }
-
+        
+        console.log(`[calcularProgreso] Consulta`);
+        delay(1000)
         // Calcular progreso y estado
         const nuevoProgreso = await calcularProgreso(testId, id_usuario);
         const completado = await todasPreguntasRespondidas(testId, id_usuario);

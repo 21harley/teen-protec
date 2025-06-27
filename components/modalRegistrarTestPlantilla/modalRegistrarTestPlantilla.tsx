@@ -134,10 +134,10 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
-        <div className={`bg-white rounded-lg p-6 w-full max-w-[800px] max-h-[600px] flex flex-col`}>
+      <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
+        <div className={`bg-white rounded-lg p-6 w-full max-w-[650px] h-auto flex flex-col`}>
           <div className="w-full flex justify-end">
-            <button onClick={onClose} className="text-black hover:text-gray-700">
+            <button onClick={onClose} className="text-black hover:text-gray-700 cursor-pointer">
               ✕
             </button>
           </div>
@@ -236,7 +236,7 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
           </div>
         )}
       </div>
-      <div className='w-full flex flex-col items-end p-2 border-t'>
+      <div className='w-full flex flex-col items-end p-1 border-t'>
         <button
           onClick={handleAddQuestion}
           className="px-3 py-1 bg-[#E0F8F0] rounded text-sm cursor-pointer"
@@ -249,7 +249,7 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
 </div>
             </div>
             
-            <div className="flex flex-col h-[150px] sm:h-auto sm:flex-row sm:gap-4 justify-end space-x-3 pt-4">
+            <div className="flex flex-col h-[100px] sm:h-auto sm:flex-row sm:gap-2 justify-end space-x-3 pt-4">
               {isEditingPlantilla && onDelete && (
                 <button
                   onClick={() => {
@@ -279,7 +279,7 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
               <button
                 onClick={handleSubmit}
                 disabled={preguntas.length === 0 || !nombrePlantilla.trim()}
-                className={`w-full max-w-[180px] m-auto cursor-pointer p-2 px-10 text-white text-sm rounded-md transition flex justify-between gap-1 ${
+                className={`w-full max-w-[180px] m-auto cursor-pointer p-2 px-10 text-white text-sm rounded-md transition flex justify-center  ${
                   preguntas.length === 0 || !nombrePlantilla.trim() 
                     ? 'bg-gray-400 cursor-not-allowed' 
                     : 'bg-[#6DC7E4] hover:bg-blue-600' 

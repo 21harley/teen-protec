@@ -4,7 +4,7 @@ import CeldaTest from "./../celdaTestUser/celdaTestUser"
 import useUserStore from "@/app/store/store"
 import { TestResponse, PaginatedResponse, TestStatus } from "./../../app/types/test"
 import Link from "next/link"
-import { LoginResponse } from "./../../app/types/user/index"
+import { UsuarioInfo } from "./../../app/types/user"
 import { StorageManager } from "@/app/lib/storageManager"
 
 export default function UserTests() {
@@ -23,9 +23,9 @@ export default function UserTests() {
   const fetchTests = async () => {
     if (!userId) {
       const storageManager = new StorageManager('local')
-      const data = storageManager.load<LoginResponse>('userData')
+      const data = storageManager.load<UsuarioInfo>('userData')
       if (data) {
-        userId = data.user.id
+        userId = data.id
       } else {
         setError("No se pudo obtener el ID del usuario")
         setLoading(false)
@@ -145,7 +145,7 @@ export default function UserTests() {
     return (
       <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-medium mb-4">Tests</h1>
+          <h1 className="text-xl font-medium ">Tests</h1>
           <div className="animate-pulse bg-gray-200 h-6 w-24 rounded"></div>
         </div>
         <hr className="mb-4" />
@@ -182,10 +182,9 @@ export default function UserTests() {
 
   return (
     <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-medium mb-4">Tests</h1>
-          <hr className="mb-4" />
+          <h1 className="text-xl font-medium">Tests</h1>
         </div>
         <div className="text-sm text-gray-600">
           Mostrando {(pagination.page - 1) * pagination.pageSize + 1}-

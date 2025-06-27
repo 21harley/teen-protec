@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from "react"
 import { StorageManager } from "@/app/lib/storageManager"
-import { LoginResponse  } from "./../../app/types/user/index"
+import { UsuarioInfo } from "./../../app/types/user"
 import CeldaAlert from "../celdaAlerta/celdaAlerta"
 import { AlarmaData } from "@/app/types/alarma"
 import useUserStore from "@/app/store/store"
@@ -19,9 +19,9 @@ export default function UserAlert() {
   useEffect(() => {
     if (!userId) {
       const storageManager = new StorageManager('local')
-      const data = storageManager.load<LoginResponse>('userData');
+      const data = storageManager.load<UsuarioInfo>('userData');
       if(data){
-        userId = data.user.id;
+        userId = data.id;
       }else{
        setError("No se pudo obtener el ID del usuario");
        setLoading(false);

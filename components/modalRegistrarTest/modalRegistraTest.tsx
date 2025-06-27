@@ -107,7 +107,7 @@ const handleSubmit = () => {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
+      <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
         <div className={`bg-white rounded-lg p-6 w-full max-w-[800px] max-h-[90vh] flex flex-col`}>
           <div className="w-full flex justify-end ">
             <button onClick={onClose} className="text-black hover:text-gray-700 cursor-pointer">

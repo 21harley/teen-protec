@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { StorageManager } from "@/app/lib/storageManager";
-import { LoginResponse } from "./../../app/types/user/index";
+import { UsuarioInfo } from "./../../app/types/user";
 import { TestResponse, PreguntaData, PreguntaResponse, UsuarioResponse } from "@/app/types/test";
 import useUserStore from "@/app/store/store";
 import ModalRegistraTest from "./../modalRegistrarTest/modalRegistraTest";
@@ -43,9 +43,9 @@ export default function TestsPage() {
   useEffect(() => {
     if (!userId) {
       const storageManager = new StorageManager('local');
-      const data = storageManager.load<LoginResponse>('userData');
+      const data = storageManager.load<UsuarioInfo>('userData');
       if(data){
-        userId = data.user.id;
+        userId = data.id;
       } else {
         setError("No se pudo obtener el ID del usuario");
         setLoading(false);

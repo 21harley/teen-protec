@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { StorageManager } from "@/app/lib/storageManager"
-import { AuthResponse } from "./../app/types/user"
+import { UsuarioInfo} from "./types/user"
 
 export default function Home() {
     const [isClient, setIsClient] = useState(false)
@@ -26,7 +26,7 @@ export default function Home() {
     }
   
     const storageManager = new StorageManager('local')
-    const data = storageManager.load<AuthResponse>('userData')
+    const data = storageManager.load<UsuarioInfo>('userData')
     let initUser = false
     if(data)  initUser = true
     

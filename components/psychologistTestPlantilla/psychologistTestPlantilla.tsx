@@ -1,8 +1,8 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { StorageManager } from "@/app/lib/storageManager";
-import { LoginResponse } from "./../../app/types/user/index";
-import { TestStatus, TestPlantilla, PreguntaPlantillaBase, Psicologo, Usuario, TestPlantillaInput } from "@/app/types/plantilla";
+import { UsuarioInfo} from "./../../app/types/user";
+import { TestStatus, TestPlantilla, TestPlantillaInput } from "@/app/types/plantilla";
 import useUserStore from "@/app/store/store";
 import ModalRegistraTestPlantilla from "./../modalRegistrarTestPlantilla/modalRegistrarTestPlantilla";
 import CeldaTestPlantillaPsgychologist from "./../celdaTestPlantillaPsgychologist/celdaTestPlantillaPsgychologist"; // Asegúrate de que la ruta sea correcta
@@ -22,9 +22,9 @@ export default function TestsPlantillaPage() {
   useEffect(() => {
     if (!userId) {
       const storageManager = new StorageManager('local');
-      const data = storageManager.load<LoginResponse>('userData');
+      const data = storageManager.load<UsuarioInfo>('userData');
       if(data){
-        userId = data.user.id;
+        userId = data.id;
       } else {
         setError("No se pudo obtener el ID del usuario");
         setLoading(false);

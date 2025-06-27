@@ -138,7 +138,7 @@ const dataUsuarios = [
       }
     }
   },
-  // Adolescente 1
+  // Adolescente 1 (Paciente del Psicólogo 1)
   {
     email: "adolescente1@example.com",
     password: contraseñaEncriptada.contenido,
@@ -147,6 +147,7 @@ const dataUsuarios = [
     cedula: "444444444",
     fecha_nacimiento: new Date("2008-07-22"),
     id_tipo_usuario: 3,
+    id_psicologo: 2, // Asignado al Psicólogo 1 (Dra. María González)
     authTokenExpiry: null,
     adolecente: {
       create: {
@@ -162,7 +163,7 @@ const dataUsuarios = [
       }
     }
   },
-  // Adolescente 2
+  // Adolescente 2 (Paciente del Psicólogo 2)
   {
     email: "adolescente2@example.com",
     password: contraseñaEncriptada.contenido,
@@ -171,6 +172,7 @@ const dataUsuarios = [
     cedula: "666666666",
     fecha_nacimiento: new Date("2007-11-05"),
     id_tipo_usuario: 3,
+    id_psicologo: 3, // Asignado al Psicólogo 2 (Dr. Carlos Méndez)
     authTokenExpiry: null,
     adolecente: {
       create: {
@@ -186,7 +188,7 @@ const dataUsuarios = [
       }
     }
   },
-  // Adolescente 3
+  // Adolescente 3 (Paciente del Psicólogo 1)
   {
     email: "adolescente3@example.com",
     password: contraseñaEncriptada.contenido,
@@ -195,6 +197,7 @@ const dataUsuarios = [
     cedula: "999999999",
     fecha_nacimiento: new Date("2009-02-15"),
     id_tipo_usuario: 3,
+    id_psicologo: 2, // Asignado al Psicólogo 1 (Dra. María González)
     authTokenExpiry: null,
     adolecente: {
       create: {
@@ -210,7 +213,7 @@ const dataUsuarios = [
       }
     }
   },
-  // Usuario básico
+  // Usuario básico (Paciente del Psicólogo 2)
   {
     email: "usuario@example.com",
     password: contraseñaEncriptada.contenido,
@@ -219,6 +222,7 @@ const dataUsuarios = [
     cedula: "777777777",
     fecha_nacimiento: new Date("1995-04-30"),
     id_tipo_usuario: 4,
+    id_psicologo: 3, // Asignado al Psicólogo 2 (Dr. Carlos Méndez)
     authTokenExpiry: null
   }
 ];
@@ -381,99 +385,141 @@ async function main() {
   ];
 
   // Función para crear tests con preguntas y opciones
-  async function crearTestCompleto(idPsicologo: number, idUsuario: number, estado: 'no_iniciado' | 'en_progreso' | 'completado', progreso: number) {
+async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, estado: 'no_iniciado' | 'en_progreso' | 'completado', progreso: number) {
     const codigoSesion = `TEST-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     
+    // Calcular el estado real basado en las respuestas
+    let estadoReal = estado;
+    let progresoReal = progreso;
+    
     const test = await prisma.test.create({
-      data: {
-        id_psicologo: idPsicologo,
-        id_usuario: idUsuario,
-        nombre: codigoSesion,
-        estado: estado,
-        progreso: progreso,
-        fecha_creacion: new Date(),
-        fecha_ultima_respuesta: estado !== 'no_iniciado' ? new Date() : null,
-        preguntas: {
-          create: preguntasTest.map(pregunta => ({
-            texto_pregunta: pregunta.texto_pregunta,
-            id_tipo: pregunta.id_tipo,
-            orden: pregunta.orden,
-            obligatoria: pregunta.obligatoria,
-            placeholder: pregunta.placeholder,
-            min: pregunta.min,
-            max: pregunta.max,
-            paso: pregunta.paso,
-            opciones: pregunta.opciones ? {
-              create: pregunta.opciones.map(opcion => ({
-                texto: opcion.texto,
-                valor: opcion.valor,
-                orden: opcion.orden,
-                es_otro: false
-              }))
-            } : undefined
-          }))
+        data: {
+            id_psicologo: idPsicologo,
+            id_usuario: idUsuario,
+            nombre: codigoSesion,
+            estado: estadoReal,
+            progreso: progresoReal,
+            fecha_creacion: new Date(),
+            fecha_ultima_respuesta: estado !== 'no_iniciado' ? new Date() : null,
+            preguntas: {
+                create: preguntasTest.map(pregunta => ({
+                    texto_pregunta: pregunta.texto_pregunta,
+                    id_tipo: pregunta.id_tipo,
+                    orden: pregunta.orden,
+                    obligatoria: pregunta.obligatoria,
+                    placeholder: pregunta.placeholder,
+                    min: pregunta.min,
+                    max: pregunta.max,
+                    paso: pregunta.paso,
+                    opciones: pregunta.opciones ? {
+                        create: pregunta.opciones.map(opcion => ({
+                            texto: opcion.texto,
+                            valor: opcion.valor,
+                            orden: opcion.orden,
+                            es_otro: false
+                        }))
+                    } : undefined
+                }))
+            }
+        },
+        include: {
+            preguntas: {
+                include: {
+                    opciones: true
+                }
+            }
         }
-      },
-      include: {
-        preguntas: {
-          include: {
-            opciones: true
-          }
-        }
-      }
     });
 
     // Si el test está completado o en progreso, añadir respuestas
     if (estado !== 'no_iniciado') {
-      for (const pregunta of test.preguntas) {
-        if (pregunta.opciones.length > 0) {
-          // Para preguntas con opciones, seleccionar una al azar
-          const opcionSeleccionada = pregunta.opciones[Math.floor(Math.random() * pregunta.opciones.length)];
-          
-          await prisma.respuesta.create({
-            data: {
-              id_test: test.id,
-              id_pregunta: pregunta.id,
-              id_usuario: idUsuario,
-              id_opcion: opcionSeleccionada.id,
-              texto_respuesta: pregunta.id_tipo === 2 ? "Otra información" : null, // Para checkbox
-              valor_rango: pregunta.id_tipo === 5 ? Math.floor(Math.random() * 10) + 1 : null // Para range
+        let preguntasRespondidas = 0;
+        let todasObligatoriasRespondidas = true;
+        
+        for (const pregunta of test.preguntas) {
+            let respondida = false;
+            
+            if (pregunta.opciones.length > 0) {
+                // Para preguntas con opciones, seleccionar una al azar
+                const opcionSeleccionada = pregunta.opciones[Math.floor(Math.random() * pregunta.opciones.length)];
+                
+                await prisma.respuesta.create({
+                    data: {
+                        id_test: test.id,
+                        id_pregunta: pregunta.id,
+                        id_usuario: idUsuario,
+                        id_opcion: opcionSeleccionada.id,
+                        texto_respuesta: pregunta.id_tipo === 2 ? "Otra información" : null, // Para checkbox
+                        valor_rango: pregunta.id_tipo === 5 ? Math.floor(Math.random() * 10) + 1 : null // Para range
+                    }
+                });
+                respondida = true;
+            } else if (pregunta.id_tipo === 3) {
+                // Para preguntas de texto
+                await prisma.respuesta.create({
+                    data: {
+                        id_test: test.id,
+                        id_pregunta: pregunta.id,
+                        id_usuario: idUsuario,
+                        texto_respuesta: "Esta es una respuesta de ejemplo para la pregunta de texto."
+                    }
+                });
+                respondida = true;
             }
-          });
-        } else if (pregunta.id_tipo === 3) {
-          // Para preguntas de texto
-          await prisma.respuesta.create({
-            data: {
-              id_test: test.id,
-              id_pregunta: pregunta.id,
-              id_usuario: idUsuario,
-              texto_respuesta: "Esta es una respuesta de ejemplo para la pregunta de texto."
+            
+            if (respondida) {
+                preguntasRespondidas++;
+            } else if (pregunta.obligatoria) {
+                todasObligatoriasRespondidas = false;
             }
-          });
         }
-      }
+        
+        // Calcular progreso real
+        progresoReal = Math.round((preguntasRespondidas / test.preguntas.length) * 100);
+        
+        // Determinar estado real
+        if (estado === 'completado' && !todasObligatoriasRespondidas) {
+            estadoReal = 'en_progreso';
+            // Ajustar progreso si no está completo
+            if (progresoReal === 100) {
+                progresoReal = 99;
+            }
+        } else if (todasObligatoriasRespondidas && preguntasRespondidas === test.preguntas.length) {
+            estadoReal = 'completado';
+            progresoReal = 100;
+        } else {
+            estadoReal = 'en_progreso';
+        }
+        
+        // Actualizar test con valores reales
+        await prisma.test.update({
+            where: { id: test.id },
+            data: {
+                estado: estadoReal,
+                progreso: progresoReal
+            }
+        });
     }
 
     return test;
-  }
-
+}
   // Crear tests para diferentes usuarios
   console.log("Creando tests de ejemplo...");
   
-  // Test completado para adolescente 1
+  // Test completado para adolescente 1 (paciente del Psicólogo 1)
   await crearTestCompleto(2, 4, 'completado', 100);
   
-  // Test en progreso para adolescente 2
+  // Test en progreso para adolescente 2 (paciente del Psicólogo 2)
   await crearTestCompleto(3, 5, 'en_progreso', 50);
   
-  // Test no iniciado para adolescente 3
+  // Test no iniciado para adolescente 3 (paciente del Psicólogo 1)
   await crearTestCompleto(2, 6, 'no_iniciado', 0);
   
-  // Test completado para usuario adulto
+  // Test completado para usuario adulto (paciente del Psicólogo 2)
   await crearTestCompleto(3, 7, 'completado', 100);
   
-  // Test en progreso para admin
-  await crearTestCompleto(2, 1, 'en_progreso', 75);
+  // Test en progreso para admin (sin psicólogo asignado)
+  await crearTestCompleto(null, 1, 'en_progreso', 75);
 
   console.log("✅ Seed completado exitosamente!");
 }

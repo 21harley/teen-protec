@@ -1,70 +1,60 @@
+/*
 generator client {
   provider = "prisma-client-js"
   output   = "../app/generated/prisma"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgres"
   url      = env("DATABASE_URL")
 }
 
 model TipoUsuario {
   id       Int       @id @default(autoincrement())
-  nombre   String    @unique
-  menu     Json
+  nombre   String    @unique @db.VarChar(50)
+  menu     Json[]    @default([])
   usuarios Usuario[]
 }
 
 model TipoAlerta {
   id      Int     @id @default(autoincrement())
-  nombre  String  @unique
+  nombre  String  @unique @db.VarChar(50)
   alarmas Alarma[]
 }
 
 model Usuario {
   id                       Int             @id @default(autoincrement())
-  nombre                   String
-  email                    String          @unique
-  cedula                   String          @unique
-  password                 String
-  password_iv              String
-  fecha_nacimiento         DateTime
+  nombre                   String          @db.VarChar(255)
+  email                    String          @unique @db.VarChar(255)
+  cedula                   String          @unique @db.VarChar(20)
+  password                 String          @db.VarChar(255)
+  password_iv              String          @db.VarChar(255)
+  fecha_nacimiento         DateTime        @db.Date
   id_tipo_usuario          Int
-  id_psicologo             Int?            // Relación con psicólogo asignado
-  authToken                String?
+  authToken                String?         @db.VarChar(255)
   authTokenExpiry          DateTime?
-  resetPasswordToken       String?         @unique
+  resetPasswordToken       String?         @unique @db.VarChar(255)
   resetPasswordTokenExpiry DateTime?
-  
-  // Relaciones
   adolecente               Adolecente?
   alarmas                  Alarma[]
-  psicologo                Psicologo?      // Cuando el usuario ES psicólogo
+  psicologo                Psicologo?
   respuestas               Respuesta[]
   tests                    Test[]          @relation("TestUsuario")
   tipo_usuario             TipoUsuario     @relation(fields: [id_tipo_usuario], references: [id])
-  psicologoAsignado        Psicologo?      @relation("PacientesPsicologo", fields: [id_psicologo], references: [id_usuario])
-
-  // Índices
-  @@index([email])
-  @@index([cedula])
-  @@index([id_psicologo])
 }
 
 model Tutor {
   id                Int          @id @default(autoincrement())
-  cedula            String       @unique
-  nombre            String
-  profesion_tutor   String?
-  telefono_contacto String?
-  correo_contacto   String?
+  cedula            String       @unique @db.VarChar(20)
+  nombre            String       @db.VarChar(255)
+  profesion_tutor   String?      @db.VarChar(100)
+  telefono_contacto String?      @db.VarChar(20)
+  correo_contacto   String?      @db.VarChar(255)
   adolecentes       Adolecente[]
-
-  @@index([cedula])
 }
 
 model Adolecente {
-  id_usuario Int     @unique
+  id_usuario Int     @id
   id_tutor   Int?
   tutor      Tutor?  @relation(fields: [id_tutor], references: [id])
   usuario    Usuario @relation(fields: [id_usuario], references: [id])
@@ -75,37 +65,45 @@ model Alarma {
   id_usuario     Int?
   id_tipo_alerta Int?
   mensaje        String
-  fecha_creacion DateTime  @default(now())
-  fecha_vista    DateTime?
+  fecha_creacion DateTime  @default(now()) @db.Timestamp(0)
+  fecha_vista    DateTime? @db.Timestamp(0)
   vista          Boolean   @default(false)
-  url_destino    String?
-  
-  // Relaciones
+  url_destino    String?   @db.VarChar(255)
   usuario        Usuario?  @relation(fields: [id_usuario], references: [id])
   tipo_alerta    TipoAlerta? @relation(fields: [id_tipo_alerta], references: [id])
-
-  // Índices
-  @@index([id_usuario])
-  @@index([fecha_creacion])
-  @@index([vista])
 }
 
 model Psicologo {
-  id_usuario         Int                  @unique
-  numero_de_titulo   String?
-  nombre_universidad String?
+  id_usuario         Int                  @id
+  numero_de_titulo   String?              @db.VarChar(100)
+  nombre_universidad String?              @db.VarChar(255)
   monto_consulta     Float?
-  telefono_trabajo   String?
-  
-  // Relaciones
+  telefono_trabajo   String?              @db.VarChar(20)
   usuario            Usuario              @relation(fields: [id_usuario], references: [id])
   redes_sociales     RedSocialPsicologo[]
   tests              Test[]               @relation("TestPsicologo")
-  plantillas         TestPlantilla[]
-  pacientes          Usuario[]            @relation("PacientesPsicologo") // Relación inversa
+  plantillas         TestPlantilla[] 
+}
 
-  // Índices
-  @@index([numero_de_titulo])
+model Test {
+  id                  Int          @id @default(autoincrement())
+  id_psicologo        Int?
+  id_usuario          Int?
+  nombre             String?       @db.VarChar(50)
+  estado              TestStatus   @default(no_iniciado)
+  progreso            Int          @default(0) // 0-100%
+  fecha_creacion      DateTime     @default(now())
+  fecha_ultima_respuesta DateTime?
+  preguntas           Pregunta[]
+  respuestas          Respuesta[]
+  psicologo           Psicologo?   @relation("TestPsicologo", fields: [id_psicologo], references: [id_usuario])
+  usuario             Usuario?     @relation("TestUsuario", fields: [id_usuario], references: [id])
+
+  @@index([id_psicologo])
+  @@index([id_usuario])
+  @@index([nombre])
+  @@index([fecha_creacion])
+  @@index([estado])
 }
 
 enum TestStatus {
@@ -114,34 +112,10 @@ enum TestStatus {
   completado
 }
 
-model Test {
-  id                  Int          @id @default(autoincrement())
-  id_psicologo        Int?
-  id_usuario          Int?
-  nombre              String?
-  estado              TestStatus   @default(no_iniciado)
-  progreso            Int          @default(0)
-  fecha_creacion      DateTime     @default(now())
-  fecha_ultima_respuesta DateTime?
-  
-  // Relaciones
-  preguntas           Pregunta[]
-  respuestas          Respuesta[]
-  psicologo           Psicologo?   @relation("TestPsicologo", fields: [id_psicologo], references: [id_usuario])
-  usuario             Usuario?     @relation("TestUsuario", fields: [id_usuario], references: [id])
-
-  // Índices
-  @@index([id_psicologo])
-  @@index([id_usuario])
-  @@index([nombre])
-  @@index([fecha_creacion])
-  @@index([estado])
-}
-
 model TipoPregunta {
   id          Int        @id @default(autoincrement())
-  nombre      String     @unique
-  descripcion String
+  nombre      String     @unique @db.VarChar(50) // radio, checkbox, text, select, range
+  descripcion String     @db.VarChar(255)
   preguntas   Pregunta[]
   preguntasPlantilla PreguntaPlantilla[]
 }
@@ -153,36 +127,27 @@ model Pregunta {
   texto_pregunta String
   orden          Int
   obligatoria    Boolean      @default(false)
-  placeholder    String?
-  min            Int?
-  max            Int?
-  paso           Int?
+  placeholder    String?      @db.VarChar(255) // Para inputs de texto
+  min            Int?         // Para rangos
+  max            Int?         // Para rangos
+  paso           Int?         // Para rangos (ej. de 1 en 1, de 5 en 5)
   
-  // Relaciones
   test           Test         @relation(fields: [id_test], references: [id])
   tipo           TipoPregunta @relation(fields: [id_tipo], references: [id])
-  opciones       Opcion[]
+  opciones       Opcion[]     // Para radio/checkbox/select
   respuestas     Respuesta[]
-
-  // Índices
-  @@index([id_test])
-  @@index([id_tipo])
 }
 
 model Opcion {
   id           Int       @id @default(autoincrement())
   id_pregunta  Int
-  texto        String
-  valor        String
+  texto        String    @db.VarChar(255)
+  valor        String    @db.VarChar(100)
   orden        Int
-  es_otro      Boolean   @default(false)
+  es_otro      Boolean   @default(false) // Para opción "Otro" con input
 
-  // Relaciones
   pregunta     Pregunta  @relation(fields: [id_pregunta], references: [id])
-  respuestas   Respuesta[]
-
-  // Índices
-  @@index([id_pregunta])
+  respuestas   Respuesta[] // Opposite relation to Respuesta.opcion
 }
 
 model Respuesta {
@@ -190,48 +155,40 @@ model Respuesta {
   id_test         Int
   id_pregunta     Int
   id_usuario      Int
-  id_opcion       Int?
-  texto_respuesta String?
-  valor_rango     Int?
+  id_opcion       Int?      // Para radio/checkbox/select
+  texto_respuesta String?   // Para text o cuando es_otro=true
+  valor_rango     Int?      // Para preguntas de rango
   fecha           DateTime  @default(now())
   
-  // Relaciones
   test            Test      @relation(fields: [id_test], references: [id])
   pregunta        Pregunta  @relation(fields: [id_pregunta], references: [id])
   usuario         Usuario   @relation(fields: [id_usuario], references: [id])
   opcion          Opcion?   @relation(fields: [id_opcion], references: [id])
   
-  // Índices
   @@index([id_test, id_usuario])
   @@index([id_pregunta])
-  @@index([fecha])
 }
 
 model RedSocialPsicologo {
   id           Int        @id @default(autoincrement())
-  id_psicologo Int
-  nombre_red   String
-  url_perfil   String
-  
-  // Relaciones
-  psicologo    Psicologo  @relation(fields: [id_psicologo], references: [id_usuario])
+  id_psicologo Int?
+  nombre_red   String     @db.VarChar(50)
+  url_perfil   String     @db.VarChar(255)
+  psicologo    Psicologo? @relation(fields: [id_psicologo], references: [id_usuario])
 
-  // Restricciones
-  @@unique([id_psicologo, nombre_red])
+  @@unique([id_psicologo, nombre_red], name: "redsocial_unique")
 }
+
 
 model TestPlantilla {
   id                  Int          @id @default(autoincrement())
-  id_psicologo        Int
-  nombre              String
+  id_psicologo        Int?
+  nombre              String       @db.VarChar(50)
   estado              TestStatus   @default(no_iniciado)
   fecha_creacion      DateTime     @default(now())
-  
-  // Relaciones
-  psicologo           Psicologo    @relation(fields: [id_psicologo], references: [id_usuario])
+  psicologo           Psicologo?   @relation(fields: [id_psicologo], references: [id_usuario])
   preguntas           PreguntaPlantilla[]
   
-  // Índices
   @@index([id_psicologo])
   @@index([nombre])
 }
@@ -243,31 +200,24 @@ model PreguntaPlantilla {
   texto_pregunta String
   orden          Int
   obligatoria    Boolean      @default(false)
-  placeholder    String?
+  placeholder    String?      @db.VarChar(255)
   min            Int?
   max            Int?
   paso           Int?
   
-  // Relaciones
   test           TestPlantilla @relation(fields: [id_test], references: [id])
   tipo           TipoPregunta  @relation(fields: [id_tipo], references: [id])
   opciones       OpcionPlantilla[]
-
-  // Índices
-  @@index([id_test])
 }
 
 model OpcionPlantilla {
   id           Int       @id @default(autoincrement())
   id_pregunta  Int
-  texto        String    
-  valor        String    
+  texto        String    @db.VarChar(255)
+  valor        String    @db.VarChar(100)
   orden        Int
   es_otro      Boolean   @default(false)
 
-  // Relaciones
   pregunta     PreguntaPlantilla @relation(fields: [id_pregunta], references: [id])
-
-  // Índices
-  @@index([id_pregunta])
 }
+

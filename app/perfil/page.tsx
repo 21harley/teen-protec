@@ -1,6 +1,6 @@
 'use client'
 import { StorageManager } from "@/app/lib/storageManager"
-import { AuthResponse } from "./../types/user"
+import { UsuarioInfo } from "./../types/user"
 import LayoutPage from "@/components/layoutPage/layoutPage";
 import useUserStore from "../store/store";
 import FormUser from "@/components/formUser/formUser";
@@ -13,7 +13,7 @@ export default function Perfil() {
   const [loading, setLoading] = useState(true);
   const storeUser = useUserStore((state) => state.user);
   const updateUser = useUserStore((state) => state.updateUser);
-  const [user, setUser] = useState<UsuarioCompleto | null>(null);
+  const [user, setUser] = useState<UsuarioInfo | null>(null);
 
   useEffect(() => {
     const loadUserData = () => {
@@ -26,10 +26,10 @@ export default function Perfil() {
 
       // Si no hay en store, buscar en localStorage
       const storageManager = new StorageManager('local');
-      const data = storageManager.load<AuthResponse>('userData');
+      const data = storageManager.load<UsuarioInfo>('userData');
       
-      if (data?.user) {
-        setUser(data.user);
+      if (data) {
+        setUser(data);
         setLoading(false);
       } else {
         // Redirigir si no hay usuario autenticado
@@ -49,13 +49,13 @@ export default function Perfil() {
       
       // Actualizar en localStorage
       const storageManager = new StorageManager('local');
-      const currentData = storageManager.load<AuthResponse>('userData');
+      const currentData = storageManager.load<UsuarioInfo>('userData');
       
       if (currentData) {
         const updatedData = {
           ...currentData,
           user: {
-            ...currentData.user,
+            ...currentData,
             ...formData.usuarioData
           }
         };

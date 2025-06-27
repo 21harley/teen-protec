@@ -1,18 +1,14 @@
 import { create } from 'zustand';
 import { 
-  UsuarioCompleto, 
-  UsuarioSafe, 
-  AuthState, 
-  LoginResponse, 
+  UsuarioInfo, 
   RedSocial, 
-  Psicologo, 
-  Tutor,
-  TipoRegistro
-} from './../../app/types/user/index'; // Asegúrate de que la ruta de importación sea correcta
+  PsicologoInfo,
+  TutorInfo
+} from './../../app/types/user'; // Asegúrate de que la ruta de importación sea correcta
 
 interface UserState {
   // Estado de autenticación
-  user: UsuarioCompleto | null;
+  user: UsuarioInfo | null;
   token: string | null;
   tokenExpiry: Date | null;
   isAuthenticated: boolean;
@@ -20,15 +16,15 @@ interface UserState {
   error: string | null;
   
   // Acciones de autenticación
-  login: (response: LoginResponse) => void;
+  login: (user: UsuarioInfo, token: string, tokenExpiry: Date) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   
   // Acciones de actualización de perfil
-  updateUser: (updatedData: Partial<UsuarioSafe>) => void;
-  updateTutor: (updatedData: Partial<Tutor>) => void;
-  updatePsychologist: (updatedData: Partial<Psicologo>) => void;
+  updateUser: (updatedData: Partial<UsuarioInfo>) => void;
+  updateTutor: (updatedData: Partial<TutorInfo>) => void;
+  updatePsychologist: (updatedData: Partial<PsicologoInfo>) => void;
   
   // Acciones para redes sociales
   addSocialNetwork: (network: Omit<RedSocial, 'id'>) => void;
@@ -45,10 +41,10 @@ const useUserStore = create<UserState>((set) => ({
   error: null,
 
   // Iniciar sesión
-  login: (response) => set({ 
-    user: response.user,
-    token: response.token,
-    tokenExpiry: response.tokenExpiry,
+  login: (user, token, tokenExpiry) => set({ 
+     user:{...user},
+    token,
+    tokenExpiry,
     isAuthenticated: true,
     isLoading: false,
     error: null

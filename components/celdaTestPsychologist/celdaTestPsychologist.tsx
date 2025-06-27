@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { TestStatus, PreguntaData, PreguntaResponse, TestResponse } from "@/app/types/test";
 import { UsuarioResponse } from "../../app/types/test";
 import ModalRegistraTest from "./../modalRegistrarTest/modalRegistraTest";
-import { ModalVerPreguntas } from "./../modalVerPreguntas/ModalVerPreguntas";
+import { ModalVerPreguntas } from "./../modalVerPreguntas/modalVerPreguntas";
 import IconEditar from "./../../app/public/logos/icon_editar.svg";
 import IconLupa from "./../../app/public/logos/lupa.svg";
 import IconCardPacientes from "./../../app/public/logos/logo_card_pacientes.svg";

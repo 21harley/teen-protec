@@ -1,11 +1,13 @@
 // Tipos para los datos
 export interface UsuarioBase {
+  id?: number;
   email: string;
   password?: string;
   nombre: string;
   cedula: string;
-  fecha_nacimiento: string;
+  fecha_nacimiento: string | Date;
   id_tipo_usuario?: number;
+  id_psicologo?: number | null; // Nuevo campo para relación con psicólogo
 }
 
 export interface TutorData {
@@ -26,6 +28,16 @@ export interface PsicologoData {
 
 export type TipoRegistro = 'usuario' | 'adolescente' | 'psicologo';
 
+export interface PsicologoAsignado {
+  id: number;
+  nombre: string;
+  email: string;
+  psicologo?: {
+    numero_de_titulo?: string;
+    nombre_universidad?: string;
+  };
+}
+
 export interface LoginResponse {
   user: {
     id: number;
@@ -34,6 +46,7 @@ export interface LoginResponse {
     cedula: string;
     fecha_nacimiento: Date;
     id_tipo_usuario: number;
+    id_psicologo?: number | null;
     tipoUsuario: { 
       id: number; 
       nombre: string;
@@ -64,6 +77,15 @@ export interface LoginResponse {
         nombre_red: string;
         url_perfil: string;
       }>;
+    };
+    psicologoPaciente?: { // Nombre actualizado para coincidir con el modelo
+      id: number;
+      nombre: string;
+      email: string;
+      psicologo?: {
+        numero_de_titulo?: string;
+        nombre_universidad?: string;
+      };
     };
   };
 }

@@ -10,6 +10,7 @@ import { StorageManager } from "@/app/lib/storageManager"
 import useUserStore from "./../../../app/store/store"
 import { LoginRequest, LoginResponse } from "./../../types/user/index"
 import { useRouter } from "next/navigation"
+import {UsuarioInfo, LoginUser} from "./../../types/user"
 
 export default function Login() {
   const { login } = useUserStore();
@@ -83,7 +84,7 @@ export default function Login() {
     setApiError(null);
     
     try {
-      const response = await apiPost<LoginResponse>('/auth/login', loginData);
+      const response = await apiPost<LoginUser>('/auth/login', loginData);
  
       if (!response) {
         throw new Error('Invalid server response');
@@ -91,10 +92,18 @@ export default function Login() {
 
       // Guardar en localStorage
       const storage = new StorageManager('local');
-      storage.save<LoginResponse>("userData",response);
+      storage.save<UsuarioInfo>("userData", response?.user ?? {});
 
       // Actualizar el store de Zustand
-      login(response);
+      login(
+        response.user,
+        response.user.resetPasswordToken ?? '',
+        response.user.resetPasswordTokenExpiry
+          ? (typeof response.user.resetPasswordTokenExpiry === 'string'
+              ? new Date(response.user.resetPasswordTokenExpiry)
+              : response.user.resetPasswordTokenExpiry)
+          : new Date()
+      );
       // setIsAuthenticated(true); // Removed because setIsAuthenticated does not exist
 
       // Redireccionar

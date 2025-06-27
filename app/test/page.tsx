@@ -1,6 +1,6 @@
 'use client'
 import { StorageManager } from "@/app/lib/storageManager"
-import { AuthResponse } from "./../types/user"
+import { UsuarioInfo } from "./../types/user"
 import CrudTest from "@/components/crudTest/crudTest";
 //import PsychologistTest from "@/components/psychologistTest/psychologistTest";
 import PsychologistTestPlantilla from "@/components/psychologistTestPlantilla/psychologistTestPlantilla";
@@ -22,10 +22,11 @@ export default function Test(){
   }
 
   const storageManager = new StorageManager('local')
-  const data = storageManager.load<AuthResponse>('userData')
+  const data = storageManager.load<UsuarioInfo>('userData')
 
   if(data){
-    switch(data.user.tipoUsuario.nombre){
+    console.log(data);
+    switch(data.tipoUsuario.nombre){
       case "administrador":
         return (
           <LayoutPage>

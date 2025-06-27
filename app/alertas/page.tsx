@@ -3,49 +3,75 @@ import { StorageManager } from "@/app/lib/storageManager"
 import UserAlert from "@/components/alertUser/userAlert";
 import CrudAlert from "@/components/crudAlert/crudAlert";
 import LayoutPage from "@/components/layoutPage/layoutPage";
+import useUserStore from "../store/store";
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react";
-import { AuthResponse } from "./../types/user"
+import { UsuarioInfo } from "./../../app/types/user"
 
-export default function Alert(){
-     const [isClient, setIsClient] = useState(false)
-     const router = useRouter()
-   
-     useEffect(() => {
-       setIsClient(true)
-     }, [])
-   
-     if (!isClient) {
-       return null // o un loader mientras se carga
-     }
+export default function Alert() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const storeUser = useUserStore((state) => state.user);
+  const [user, setUser] = useState<UsuarioInfo | null>(null);
 
-    const storageManager = new StorageManager('local')
-    const data = storageManager.load<AuthResponse>('userData')
+  useEffect(() => {
+    const loadUserData = () => {
+      // First try with store
+      if (storeUser) {
+        setUser(storeUser);
+        setLoading(false);
+        return;
+      }
 
+      // If not in store, check localStorage
+      const storageManager = new StorageManager('local');
+      const data = storageManager.load<UsuarioInfo>('userData');
+      
+      if (data) {
+        setUser(data);
+        setLoading(false);
+      } else {
+        // Redirect if no authenticated user
+        router.push("/");
+      }
+    };
 
-  if(data){
-    switch(data.user.tipoUsuario.nombre){
-    case "administrador":
-        return(
-        <>
-        <LayoutPage>
-         <CrudAlert/>
-        </LayoutPage>
-        </>
-        )
-    case "usuario":case "adolecente":case "psicologo":
-       return(
-        <>
-         <LayoutPage>
-          <UserAlert/>
-         </LayoutPage>
-        </>
-       )
-    
-    }
-  }else{
-   router.push("/")
-   return null
+    loadUserData();
+  }, [storeUser, router]);
+
+  if (loading) {
+    return (
+      <LayoutPage>
+        <div className="flex justify-center items-center h-64">
+          <p>Cargando...</p>
+        </div>
+      </LayoutPage>
+    );
   }
 
+  if (!user) {
+    // The useEffect already handles redirection
+    return null;
+  }
+
+  // Determine which alert to show based on user type
+  switch(user.tipoUsuario?.nombre ?? "usuario") {
+    case "administrador":
+      return (
+        <LayoutPage>
+          <CrudAlert/>
+        </LayoutPage>
+      );
+    case "usuario":
+    case "adolecente":
+    case "psicologo":
+      return (
+        <LayoutPage>
+          <UserAlert/>
+        </LayoutPage>
+      );
+    default:
+      router.push("/");
+      return null;
+  }
 }

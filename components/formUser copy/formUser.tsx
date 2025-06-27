@@ -3,7 +3,7 @@ import Image from "next/image"
 import svg from "./../../app/public/logos/logo_texto.svg"
 import Link from "next/link"
 import React, { useState, useEffect } from "react"
-import {  TipoRegistro, UsuarioBase } from "./../../app/types/user/index"
+import { TipoRegistro, UsuarioBase, UsuarioCompleto, LoginResponse } from "./../../app/types/user/index"
 import { TutorData, PsicologoData } from "./../../app/types/user/dataDB"
 import useUserStore from "./../../app/store/store"
 import { StorageManager } from "@/app/lib/storageManager"
@@ -16,7 +16,7 @@ type Errors = {
 };
 
 type FormUserProps = {
-  user?: UsuarioInfo;
+  user?: UsuarioCompleto;
   isEdit?: boolean;
   onSubmit?: (data: any) => void;
   tipoRegistro?: TipoRegistro;
@@ -90,7 +90,7 @@ export default function FormUser({
         fecha_nacimiento: formatDateForInput(user.fecha_nacimiento)
       });
 
-      if ( user.tutorInfo) {
+      if (user.tutorInfo) {
         console.log("Tutor");
         setTutorData({
           cedula_tutor: user.tutorInfo.cedula,
@@ -103,7 +103,7 @@ export default function FormUser({
         setCurrentTipoRegistro('adolescente');
       }
 
-      if ( user.psicologoInfo) {
+      if (user.psicologoInfo) {
          console.log("Psicologo");
         setPsicologoData({
           numero_de_titulo: user.psicologoInfo.numero_de_titulo,
@@ -129,7 +129,7 @@ export default function FormUser({
     }));
 
     if (name === 'fecha_nacimiento') {
-       console.log(value,name);
+      console.log(value,name);
       validateAge(value);
     }
   };
@@ -166,10 +166,10 @@ export default function FormUser({
     }
     
     const minor = age < 18;
-    console.log(minor)
     setIsMinor(minor);
     
-    if (!isEdit) {
+    // Solo actualizamos el tipo de registro si no estamos en modo edición o es admin session
+    if ((!isEdit || isAdminSession) && !isAdminSession) {
       setCurrentTipoRegistro(minor ? 'adolescente' : 'usuario');
     }
   };
@@ -245,8 +245,7 @@ export default function FormUser({
         setSuccessMessage(isEdit ? 'Usuario actualizado correctamente!' : 'Usuario registrado correctamente!');
         
         if((isEdit || user_stora == null) && !isAdminSession){
-          console.log(data.user);
-          login( data.user,
+            login( data.user,
             data.user.resetPasswordToken ?? "",
             data.user.resetPasswordTokenExpiry
               ? (typeof data.resetPasswordTokenExpiry === "string"
@@ -284,6 +283,7 @@ export default function FormUser({
           
           setIsMinor(false);
           setConfirmPassword('');
+          setCurrentTipoRegistro('usuario');
   
           if(user_stora == null && !isAdminSession) router.push('/');
           
@@ -317,7 +317,6 @@ export default function FormUser({
         )
       }
 
-
       {successMessage && (
         <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
           {successMessage}
@@ -330,26 +329,33 @@ export default function FormUser({
         </div>
       )}
 
-
-
       <div className="flex flex-col justify-center md:flex-row md:justify-around p-5 gap-2 md:gap-2 w-full max-w-[400px] md:max-w-[800px]">
         <div className="grid place-items-center w-[240px] m-auto">
-                        {!isEdit && isAdminSession && (
-        <div className="w-full max-w-[190px]">
-          <label htmlFor="tipoRegistro" className="text-sm">Tipo de registro:</label>
-          <select
-            id="tipoRegistro"
-            name="tipoRegistro"
-            value={currentTipoRegistro}
-            onChange={(e) => setCurrentTipoRegistro(e.target.value as TipoRegistro)}
-            className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-          >
-            <option value="usuario">Usuario Adulto</option>
-            <option value="adolescente">Adolescente</option>
-            <option value="psicologo">Psicólogo</option>
-          </select>
-        </div>
-      )}
+          {!isEdit && isAdminSession && (
+            <div className="w-full max-w-[190px]">
+              <label htmlFor="tipoRegistro" className="text-sm">Tipo de registro:</label>
+              <select
+                id="tipoRegistro"
+                name="tipoRegistro"
+                value={currentTipoRegistro}
+                onChange={(e) => {
+                  setCurrentTipoRegistro(e.target.value as TipoRegistro);
+                  // Si seleccionan adolescente, forzar isMinor a true
+                  if (e.target.value === 'adolescente') {
+                    setIsMinor(true);
+                  } else if (e.target.value === 'usuario') {
+                    setIsMinor(false);
+                  }
+                }}
+                className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              >
+                <option value="usuario">Usuario Adulto</option>
+                <option value="adolescente">Adolescente</option>
+                <option value="psicologo">Psicólogo</option>
+              </select>
+            </div>
+          )}
+          
           <div className="w-full max-w-[190px]">
             <label htmlFor="email" className="text-sm">Correo electrónico:</label>
             <input 
@@ -465,146 +471,146 @@ export default function FormUser({
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
-            {isMinor  && !isAdminSession && (
+            {isMinor && currentTipoRegistro !== 'adolescente' && !isAdminSession && (
               <p className="text-yellow-600 text-xs mt-1">Se registrará como adolescente (requiere datos de tutor)</p>
             )}
           </div>
         </div>
         
         {/* Formulario del tutor - Mostrar si es adolescente o si estamos editando un adolescente */}
-        {(currentTipoRegistro == 'adolescente' || user_stora?.tutorInfo || isMinor) && isEdit && (
+        {( (isMinor || isEdit || currentTipoRegistro === 'adolescente')) && (
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
-            <h2 className="text-sm">Datos de tutor:</h2>
-            <hr className="my-1" />
+              <h2 className="text-sm">Datos de tutor:</h2>
+              <hr className="my-1" />
             </div>
-          <div className="w-[240px] border border-[#8f8f8f] rounded-[0.4rem] p-4 pt-1 m-auto">
-            <div className="w-full h-[90%] grid place-items-center"> 
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="cedula_tutor" className="text-sm">Cédula del tutor:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="cedula_tutor" 
-                  id="cedula_tutor" 
-                  value={tutorData.cedula_tutor}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="nombre_tutor" className="text-sm">Nombre completo del tutor:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="nombre_tutor" 
-                  id="nombre_tutor" 
-                  value={tutorData.nombre_tutor}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="profesion_tutor" className="text-sm">Profesión del tutor:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="profesion_tutor" 
-                  id="profesion_tutor" 
-                  value={tutorData.profesion_tutor}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="telefono_contacto" className="text-sm">Teléfono contacto:</label>
-                <input 
-                  required
-                  type="tel" 
-                  name="telefono_contacto" 
-                  id="telefono_contacto" 
-                  value={tutorData.telefono_contacto}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="correo_contacto" className="text-sm">Correo contacto:</label>
-                <input 
-                  required
-                  type="email" 
-                  name="correo_contacto" 
-                  id="correo_contacto" 
-                  value={tutorData.correo_contacto}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
+            <div className="w-[240px] border border-[#8f8f8f] rounded-[0.4rem] p-4 pt-1 m-auto">
+              <div className="w-full h-[90%] grid place-items-center"> 
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="cedula_tutor" className="text-sm">Cédula del tutor:</label>
+                  <input 
+                    required
+                    type="text" 
+                    name="cedula_tutor" 
+                    id="cedula_tutor" 
+                    value={tutorData.cedula_tutor}
+                    onChange={handleTutorChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="nombre_tutor" className="text-sm">Nombre completo del tutor:</label>
+                  <input 
+                    required
+                    type="text" 
+                    name="nombre_tutor" 
+                    id="nombre_tutor" 
+                    value={tutorData.nombre_tutor}
+                    onChange={handleTutorChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="profesion_tutor" className="text-sm">Profesión del tutor:</label>
+                  <input 
+                    required
+                    type="text" 
+                    name="profesion_tutor" 
+                    id="profesion_tutor" 
+                    value={tutorData.profesion_tutor}
+                    onChange={handleTutorChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="telefono_contacto" className="text-sm">Teléfono contacto:</label>
+                  <input 
+                    required
+                    type="tel" 
+                    name="telefono_contacto" 
+                    id="telefono_contacto" 
+                    value={tutorData.telefono_contacto}
+                    onChange={handleTutorChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="correo_contacto" className="text-sm">Correo contacto:</label>
+                  <input 
+                    required
+                    type="email" 
+                    name="correo_contacto" 
+                    id="correo_contacto" 
+                    value={tutorData.correo_contacto}
+                    onChange={handleTutorChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
               </div>
             </div>
-          </div>
           </div>
         )}
 
         {/* Formulario del psicólogo - Mostrar si es psicólogo y es admin session o si estamos editando un psicólogo */}
-        {(currentTipoRegistro == 'psicologo' && isEdit )  && (
+        {(currentTipoRegistro === 'psicologo' && (isAdminSession || isEdit)) && (
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
-            <h2 className="text-sm">Datos de psicólogo:</h2>
-            <hr className="my-1" />
+              <h2 className="text-sm">Datos de psicólogo:</h2>
+              <hr className="my-1" />
             </div>
-            <div className="w-full h-[90%] border border-[#8f8f8f] rounded-[0.4rem]  p-4 pt-0.5">
-            <div className="w-full h-full grid place-items-center"> 
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="numero_de_titulo" className="text-sm">Número de título:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="numero_de_titulo" 
-                  id="numero_de_titulo" 
-                  value={psicologoData.numero_de_titulo}
-                  onChange={handlePsicologoChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="nombre_universidad" className="text-sm">Universidad:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="nombre_universidad" 
-                  id="nombre_universidad" 
-                  value={psicologoData.nombre_universidad}
-                  onChange={handlePsicologoChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="monto_consulta" className="text-sm">Monto de consulta ($):</label>
-                <input 
-                  required
-                  type="number" 
-                  name="monto_consulta" 
-                  id="monto_consulta" 
-                  value={psicologoData.monto_consulta}
-                  onChange={handlePsicologoChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="telefono_trabajo" className="text-sm">Teléfono de trabajo:</label>
-                <input 
-                  required
-                  type="tel" 
-                  name="telefono_trabajo" 
-                  id="telefono_trabajo" 
-                  value={psicologoData.telefono_trabajo}
-                  onChange={handlePsicologoChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
+            <div className="w-full h-[90%] border border-[#8f8f8f] rounded-[0.4rem] p-4 pt-0.5">
+              <div className="w-full h-full grid place-items-center"> 
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="numero_de_titulo" className="text-sm">Número de título:</label>
+                  <input 
+                    required
+                    type="text" 
+                    name="numero_de_titulo" 
+                    id="numero_de_titulo" 
+                    value={psicologoData.numero_de_titulo}
+                    onChange={handlePsicologoChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="nombre_universidad" className="text-sm">Universidad:</label>
+                  <input 
+                    required
+                    type="text" 
+                    name="nombre_universidad" 
+                    id="nombre_universidad" 
+                    value={psicologoData.nombre_universidad}
+                    onChange={handlePsicologoChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="monto_consulta" className="text-sm">Monto de consulta ($):</label>
+                  <input 
+                    required
+                    type="number" 
+                    name="monto_consulta" 
+                    id="monto_consulta" 
+                    value={psicologoData.monto_consulta}
+                    onChange={handlePsicologoChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="telefono_trabajo" className="text-sm">Teléfono de trabajo:</label>
+                  <input 
+                    required
+                    type="tel" 
+                    name="telefono_trabajo" 
+                    id="telefono_trabajo" 
+                    value={psicologoData.telefono_trabajo}
+                    onChange={handlePsicologoChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
               </div>
             </div>
-          </div>
           </div>
         )}
       </div>

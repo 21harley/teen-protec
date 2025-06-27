@@ -8,9 +8,8 @@ import close_menu from "./../../app/public/logos/close_menu.svg"
 import { LogoutButton } from "../logoutButton/logoutButton"
 import IconAlerta from "./../../app/public/logos/icono_alerta.svg"
 import useUserStore from "@/app/store/store"
-import { UsuarioCompleto, LoginResponse } from "./../../app/types/user/index"
+import { UsuarioInfo } from "./../../app/types/user"
 import { StorageManager } from "@/app/lib/storageManager"
-import {adaptLoginResponseToUsuarioCompleto} from "./../../app/lib/utils"
 import { usePathname } from 'next/navigation'
 
 export default function Header() {
@@ -26,16 +25,20 @@ export default function Header() {
   useEffect(() => {
     const loadUserData = () => {
       try {
-        const storedData = storageManager.load<LoginResponse>("userData");
+        const storedData = storageManager.load<UsuarioInfo>("userData");
         if (storedData) {
-          //console.log(storedData.user.tipoUsuario.id);
-          login({
-            user: adaptLoginResponseToUsuarioCompleto(storedData),
-            token: '',
-            tokenExpiry: undefined
-          })
-            
-          //console.log(user);
+          console.log(storedData,user);
+          
+          login(
+            storedData,
+            storedData.resetPasswordToken ?? "",
+            storedData.resetPasswordTokenExpiry
+              ? (typeof storedData.resetPasswordTokenExpiry === "string"
+                  ? new Date(storedData.resetPasswordTokenExpiry)
+                  : storedData.resetPasswordTokenExpiry)
+              : new Date()
+          )
+           
         }
         
       } catch (error) {
@@ -68,10 +71,22 @@ export default function Header() {
     if (user?.id) {
       fetchAlertCount(user.id)
     }
+    console.log(user,"user consulta alerta")
   }, [user])
 
   const toggleModal = () => setIsModalOpen(!isModalOpen)
   const closeModal = () => setIsModalOpen(false)
+  const ajustarNombre = (user:UsuarioInfo) => {
+    //console.log(user);
+    if(user?.nombre){
+    if(user.nombre.length>3){
+      return user.nombre.split(' ')[0]
+    }
+    return "usuario";
+    }else{
+      return "user"
+    } 
+  }
 
   const generateLinks = () => {
     if (!user) {
@@ -150,7 +165,7 @@ export default function Header() {
         <div className="flex items-center gap-4">
           {user && (
             <span className="text-sm hidden sm:block">
-              Hola, {user.nombre.split(' ')[0]}
+              Hola, { ajustarNombre(user)}
             </span>
           )}
           
@@ -175,7 +190,7 @@ export default function Header() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto" onClick={closeModal}>
-          <div className="fixed inset-0 bg-black opacity-35 transition-opacity" />
+          <div className="fixed inset-0 bg-[#ADD8E6] opacity-45 transition-opacity" />
           <div className="flex items-center justify-center min-h-screen p-4">
             <div className="relative rounded-lg max-w-md w-full p-6 " onClick={(e) => e.stopPropagation()}>   
               <nav>
