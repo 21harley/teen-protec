@@ -5,105 +5,19 @@ import IconEditar from "./../../app/public/logos/icon_editar.svg";
 import IconEliminar from "./../../app/public/logos/icon_eliminar.svg";
 import IconMas from "./../../app/public/logos/icon_mas.svg";
 import Image from "next/image";
-
-interface Test {
-  id: number;
-  nombre: string;
-  estado: 'no_iniciado' | 'en_progreso' | 'completado';
-  progreso: number;
-  fecha_creacion: string;
-  fecha_ultima_respuesta?: string;
-  id_psicologo?: number;
-  id_usuario?: number;
-  psicologo?: {
-    usuario: {
-      nombre: string;
-    };
-  };
-  usuario?: {
-    nombre: string;
-  };
-  preguntas?: Pregunta[];
-  respuestas?: Respuesta[];
-}
-
-interface Plantilla {
-  id: number;
-  nombre: string;
-  estado: 'no_iniciado' | 'en_progreso' | 'completado';
-  fecha_creacion: string;
-  id_psicologo: number;
-  psicologo?: {
-    usuario: {
-      nombre: string;
-    };
-  };
-  preguntas?: PreguntaPlantilla[];
-}
-
-interface Pregunta {
-  id: number;
-  texto_pregunta: string;
-  id_tipo: number;
-  orden: number;
-  obligatoria: boolean;
-  tipo: {
-    nombre: string;
-  };
-  opciones?: Opcion[];
-}
-
-interface PreguntaPlantilla {
-  id: number;
-  texto_pregunta: string;
-  id_tipo: number;
-  orden: number;
-  obligatoria: boolean;
-  tipo: {
-    nombre: string;
-  };
-  opciones?: OpcionPlantilla[];
-}
-
-interface Opcion {
-  id: number;
-  texto: string;
-  valor: string;
-  orden: number;
-  es_otro: boolean;
-}
-
-interface OpcionPlantilla {
-  id: number;
-  texto: string;
-  valor: string;
-  orden: number;
-  es_otro: boolean;
-}
-
-interface Respuesta {
-  id: number;
-  id_pregunta: number;
-  id_opcion?: number;
-  texto_respuesta?: string;
-  valor_rango?: number;
-  fecha: string;
-}
-
-interface PaginatedResponse {
-  data: any[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
+import ModalRegistraTestPlantilla from "./../modalRegistrarTestPlantilla/modalRegistrarTestPlantilla";
+import ModalRegistraTest from "./../modalRegistrarTest/modalRegistraTest";
+import { TestPlantillaInput,Plantilla,TestPlantilla } from './../../app/types/plantilla/index';
+import { Test } from './../../app/types/test/index';
 
 type CrudMode = 'tests' | 'plantillas';
 
 export default function CrudTestsPlantillas() {
   const router = useRouter();
   const [mode, setMode] = useState<CrudMode>('tests');
-  const [data, setData] = useState<(Test | Plantilla)[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
+  const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
+  const [currentData, setCurrentData] = useState<(Test | Plantilla)[]>([]);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -123,7 +37,8 @@ export default function CrudTestsPlantillas() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
-  const [itemToEdit, setItemToEdit] = useState<Test | Plantilla | null>(null);
+  const [testToEdit, setTestToEdit] = useState<Test | null>(null);
+  const [plantillaToEdit, setPlantillaToEdit] = useState<TestPlantilla | null>(null);
   const [filtros, setFiltros] = useState({
     id: "",
     nombre: "",
@@ -147,7 +62,7 @@ export default function CrudTestsPlantillas() {
 
   const containerWidth = windowWidth > 0 ? `${Math.min(windowWidth - 80, 900)}px` : '700px';
 
-  const fetchData = async () => {
+  const fetchTests = async () => {
     setLoading(prev => ({ ...prev, table: true }));
     setError(null);
     
@@ -157,38 +72,85 @@ export default function CrudTestsPlantillas() {
       if (filtros.nombre) params.append('nombre', filtros.nombre);
       if (filtros.estado) params.append('estado', filtros.estado);
       if (filtros.id_psicologo) params.append('id_psicologo', filtros.id_psicologo);
-      if (mode === 'tests' && filtros.id_usuario) params.append('id_usuario', filtros.id_usuario);
+      if (filtros.id_usuario) params.append('id_usuario', filtros.id_usuario);
       
       params.append('paginated', 'true');
       params.append('page', pagination.page.toString());
       params.append('pageSize', pagination.pageSize.toString());
 
-      const endpoint = mode === 'tests' ? '/api/test' : '/api/plantilla';
-      const response = await fetch(`${endpoint}?${params.toString()}`);
+      const response = await fetch(`/api/test?${params.toString()}`);
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al obtener datos');
+        throw new Error(errorData.message || 'Error al obtener tests');
       }
       
-      const result: PaginatedResponse = await response.json();
+      const responseData = await response.json();
+      const normalizedData = responseData.data || [responseData];
       
-      setData(Array.isArray(result.data) ? result.data : []);
-      setPagination({
-        total: result.total || 0,
-        page: result.page || 1,
-        pageSize: result.pageSize || 10,
-        totalPages: result.totalPages || 1
-      });
+      setTests(normalizedData);
+      setCurrentData(normalizedData);
+      
+      if (responseData.data) {
+        setPagination({
+          total: responseData.total,
+          page: responseData.page,
+          pageSize: responseData.pageSize,
+          totalPages: responseData.totalPages
+        });
+      }
       
     } catch (err) {
-      setData([]);
-      setPagination(prev => ({ 
-        ...prev, 
-        total: 0,
-        totalPages: 1,
-        page: 1
-      }));
+      setTests([]);
+      setCurrentData([]);
+      setPagination(prev => ({ ...prev, total: 0, totalPages: 1, page: 1 }));
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setLoading(prev => ({ ...prev, table: false, initial: false }));
+    }
+  };
+
+  const fetchPlantillas = async () => {
+    setLoading(prev => ({ ...prev, table: true }));
+    setError(null);
+    
+    try {
+      const params = new URLSearchParams();
+      if (filtros.id) params.append('id', filtros.id);
+      if (filtros.nombre) params.append('nombre', filtros.nombre);
+      if (filtros.estado) params.append('estado', filtros.estado);
+      if (filtros.id_psicologo) params.append('id_psicologo', filtros.id_psicologo);
+      
+      params.append('paginated', 'true');
+      params.append('page', pagination.page.toString());
+      params.append('pageSize', pagination.pageSize.toString());
+
+      const response = await fetch(`/api/plantilla?${params.toString()}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al obtener plantillas');
+      }
+      
+      const responseData = await response.json();
+      const normalizedData = responseData.data || [responseData];
+      
+      setPlantillas(normalizedData);
+      setCurrentData(normalizedData);
+      
+      if (responseData.data) {
+        setPagination({
+          total: responseData.total,
+          page: responseData.page,
+          pageSize: responseData.pageSize,
+          totalPages: responseData.totalPages
+        });
+      }
+      
+    } catch (err) {
+      setPlantillas([]);
+      setCurrentData([]);
+      setPagination(prev => ({ ...prev, total: 0, totalPages: 1, page: 1 }));
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(prev => ({ ...prev, table: false, initial: false }));
@@ -196,19 +158,31 @@ export default function CrudTestsPlantillas() {
   };
   
   useEffect(() => {
-    fetchData();
+    if (mode === 'tests') {
+      fetchTests();
+    } else {
+      fetchPlantillas();
+    }
   }, [mode]);
 
   useEffect(() => {
     if (!loading.initial) {
-      fetchData();
+      if (mode === 'tests') {
+        fetchTests();
+      } else {
+        fetchPlantillas();
+      }
     }
   }, [pagination.page, pagination.pageSize]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
       if (!loading.initial) {
-        fetchData();
+        if (mode === 'tests') {
+          fetchTests();
+        } else {
+          fetchPlantillas();
+        }
       }
     }, 500);
 
@@ -236,10 +210,128 @@ export default function CrudTestsPlantillas() {
     }));
   };
 
-  const handleFormSuccess = () => {
-    setShowCreateModal(false);
-    setItemToEdit(null);
-    fetchData();
+  const handleSubmitPlantilla = async (plantillaData: TestPlantillaInput) => {
+    try {
+      setLoading(prev => ({ ...prev, table: true }));
+      
+      const endpoint = '/api/plantilla';
+      let response: Response;
+      
+      if (plantillaToEdit) {
+        response = await fetch(`${endpoint}?id=${plantillaToEdit.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(plantillaData)
+        });
+      } else {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(plantillaData)
+        });
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al guardar la plantilla');
+      }
+      
+      await fetchPlantillas();
+      setShowCreateModal(false);
+      setPlantillaToEdit(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido al guardar la plantilla');
+    } finally {
+      setLoading(prev => ({ ...prev, table: false }));
+    }
+  };
+
+  const handleDeletePlantilla = async () => {
+    if (!plantillaToEdit) return;
+    
+    try {
+      setLoading(prev => ({ ...prev, modalDelete: true }));
+      
+      const response = await fetch(`/api/plantilla?id=${plantillaToEdit.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) throw new Error('Error al eliminar la plantilla');
+      
+      await fetchPlantillas();
+      setShowCreateModal(false);
+      setPlantillaToEdit(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido al eliminar la plantilla');
+    } finally {
+      setLoading(prev => ({ ...prev, modalDelete: false }));
+    }
+  };
+
+  const handleSubmitTest = async (testData: Test) => {
+    try {
+      setLoading(prev => ({ ...prev, table: true }));
+      
+      const endpoint = '/api/test';
+      let response: Response;
+      
+      if (testToEdit) {
+        response = await fetch(`${endpoint}?id=${testToEdit.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(testData)
+        });
+      } else {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(testData)
+        });
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al guardar el test');
+      }
+      
+      await fetchTests();
+      setShowCreateModal(false);
+      setTestToEdit(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido al guardar el test');
+    } finally {
+      setLoading(prev => ({ ...prev, table: false }));
+    }
+  };
+
+  const handleDeleteTest = async () => {
+    if (!testToEdit) return;
+    
+    try {
+      setLoading(prev => ({ ...prev, modalDelete: true }));
+      
+      const response = await fetch(`/api/test?id=${testToEdit.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) throw new Error('Error al eliminar el test');
+      
+      await fetchTests();
+      setShowCreateModal(false);
+      setTestToEdit(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido al eliminar el test');
+    } finally {
+      setLoading(prev => ({ ...prev, modalDelete: false }));
+    }
   };
 
   const confirmDelete = (id: number) => {
@@ -261,7 +353,12 @@ export default function CrudTestsPlantillas() {
       
       if (!response.ok) throw new Error('Error al eliminar');
       
-      await fetchData();
+      if (mode === 'tests') {
+        await fetchTests();
+      } else {
+        await fetchPlantillas();
+      }
+      
       setShowDeleteModal(false);
       setItemToDelete(null);
     } catch (err) {
@@ -272,21 +369,31 @@ export default function CrudTestsPlantillas() {
     }
   };
 
-  const handleEditItem = (item: Test | Plantilla) => {
-    setItemToEdit(item);
+  const handleEditItem = (item: Test | TestPlantilla) => {
+    if (mode === 'tests') {
+      setTestToEdit(item as Test);
+    } else {
+      setPlantillaToEdit(item as TestPlantilla);
+    }
     setShowCreateModal(true);
   };
 
   const openCreateModal = () => {
-    setItemToEdit(null);
+    setTestToEdit(null);
+    setPlantillaToEdit(null);
     setShowCreateModal(true);
   };
 
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
+const formatDate = (dateInput: string | Date | null | undefined) => {
+  if (!dateInput) return 'N/A';
+  
+  try {
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
     return isNaN(date.getTime()) ? 'Fecha inválida' : date.toLocaleDateString();
-  };
+  } catch {
+    return 'Fecha inválida';
+  }
+};
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
@@ -309,7 +416,7 @@ export default function CrudTestsPlantillas() {
       <button 
         onClick={() => {
           setError(null);
-          fetchData();
+          mode === 'tests' ? fetchTests() : fetchPlantillas();
         }}
         className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
       >
@@ -322,25 +429,33 @@ export default function CrudTestsPlantillas() {
     <div className="p-4 max-w-6xl mx-auto">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-medium">
-          {mode === 'tests' ? 'Tests' : 'Plantillas de Tests'}
+          {mode === 'tests' ? 'Test Asignados' : 'Plantillas de Tests'}
         </h1>
         <div className="flex gap-2">
           <button
-            className={`px-4 py-2 rounded ${mode === 'tests' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            className={`cursor-pointer px-4 py-2 rounded ${mode === 'tests' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
             onClick={() => setMode('tests')}
           >
-            Tests
+            Test Asignados
           </button>
           <button
-            className={`px-4 py-2 rounded ${mode === 'plantillas' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            className={`cursor-pointer px-4 py-2 rounded ${mode === 'plantillas' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
             onClick={() => setMode('plantillas')}
           >
-            Plantillas
+            Plantillas de Tests
           </button>
         </div>
       </div>
-      <hr className="w-full max-h-[600px] h-[1px] bg-black mb-6" />
-      
+      <hr className="w-full max-h-[600px] h-[0.5px] bg-black mb-6" />
+      <div className="flex flex-col md:flex-row gap-4 justify-end items-center mb-6">
+        <button
+          className="cursor-pointer w-full md:w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center"
+          onClick={openCreateModal}
+        >
+          Crear {mode === 'tests' ? ' Test' : ' Plantilla'} 
+          <span className="font-bold text-2xl">+</span>
+        </button>
+      </div>
       <div 
         className="mb-6 p-4 bg-gray-50 rounded-lg"
         style={{ width: containerWidth }}
@@ -406,16 +521,6 @@ export default function CrudTestsPlantillas() {
             </div>
           )}
         </div>
-        
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-          <button
-            className="w-full md:w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center"
-            onClick={openCreateModal}
-          >
-            Crear {mode === 'tests' ? 'Test' : 'Plantilla'} 
-            <Image src={IconMas} alt="Icono de crear" width={20} height={20} />
-          </button>
-        </div>
       </div>
       
       <div 
@@ -450,7 +555,7 @@ export default function CrudTestsPlantillas() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.length === 0 && !loading.table ? (
+                  {currentData.length === 0 && !loading.table ? (
                     <tr>
                       <td colSpan={mode === 'tests' ? 8 : 6} className="p-4 text-center text-gray-500">
                         {filtros.id || filtros.nombre || filtros.estado || filtros.id_psicologo || filtros.id_usuario
@@ -459,7 +564,7 @@ export default function CrudTestsPlantillas() {
                       </td>
                     </tr>
                   ) : (
-                    data.map((item) => (
+                    currentData.map((item) => (
                       <tr 
                         key={item.id} 
                         className="border-b bg-white hover:bg-gray-50"
@@ -485,12 +590,14 @@ export default function CrudTestsPlantillas() {
                         )}
                         
                         <td className="p-3 whitespace-nowrap">
-                          {item.psicologo?.usuario.nombre || 'N/A'}
+                          {mode === 'tests' 
+                            ? (item as Test).psicologo?.usuario.nombre || 'N/A'
+                            : (item as Plantilla).psicologo?.usuario.nombre || 'N/A'}
                         </td>
                         
                         <td className="p-3 whitespace-nowrap">
                           <span className={`px-2 py-1 rounded-full text-xs ${getEstadoColor(item.estado)}`}>
-                            {item.estado.replace('_', ' ')}
+                            {item.estado?.replace('_', ' ')}
                           </span>
                         </td>
                         
@@ -498,7 +605,7 @@ export default function CrudTestsPlantillas() {
                         
                         {mode === 'tests' && (
                           <td className="p-3 whitespace-nowrap">
-                            {formatDate((item as Test).fecha_ultima_respuesta)}
+                            {formatDate(item.fecha_creacion)}
                           </td>
                         )}
                         
@@ -506,14 +613,18 @@ export default function CrudTestsPlantillas() {
                           <div className="flex space-x-2">
                             <button
                               className="p-1 bg-blue-100 rounded hover:bg-blue-200 transition-colors"
-                              onClick={() => handleEditItem(item)}
+                              onClick={() =>
+                                mode === 'tests'
+                                  ? handleEditItem(item as Test)
+                                  : handleEditItem(item as TestPlantilla)
+                              }
                               title="Editar"
                             >
                               <Image src={IconEditar} alt="editar" width={20} height={20} />
                             </button>
                             <button
                               className="p-1 bg-red-100 rounded hover:bg-red-200 transition-colors"
-                              onClick={() => confirmDelete(item.id)}
+                              onClick={() => typeof item.id === 'number' && confirmDelete(item.id)}
                               title="Eliminar"
                             >
                               <Image src={IconEliminar} alt="eliminar" width={20} height={20} />
@@ -610,59 +721,25 @@ export default function CrudTestsPlantillas() {
       )}
       
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-[800px] max-h-[90vh] overflow-y-auto relative">
-            <button
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-              onClick={() => setShowCreateModal(false)}
-              aria-label="Cerrar modal"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <h2 className="text-xl font-bold mb-4">
-              {itemToEdit ? 'Editar' : 'Crear'} {mode === 'tests' ? 'Test' : 'Plantilla'}
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre:</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={itemToEdit?.nombre || ''}
-                  onChange={(e) => itemToEdit && setItemToEdit({...itemToEdit, nombre: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estado:</label>
-                <select
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={itemToEdit?.estado || 'no_iniciado'}
-                  onChange={(e) => itemToEdit && setItemToEdit({...itemToEdit, estado: e.target.value as any})}
-                >
-                  <option value="no_iniciado">No iniciado</option>
-                  <option value="en_progreso">En progreso</option>
-                  <option value="completado">Completado</option>
-                </select>
-              </div>
-              <div className="flex justify-end space-x-2 pt-4">
-                <button
-                  className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                  onClick={handleFormSuccess}
-                >
-                  {itemToEdit ? 'Actualizar' : 'Crear'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        mode === 'plantillas' ? (
+          <ModalRegistraTestPlantilla
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onSubmit={handleSubmitPlantilla}
+            onDelete={plantillaToEdit ? handleDeletePlantilla : undefined}
+            isAdmin={true}
+            plantillaToEdit={plantillaToEdit}
+          />
+        ) : (
+          <ModalRegistraTest
+            isAdmin={true}
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onSubmit={handleSubmitTest}
+            onDelete={testToEdit ? handleDeleteTest : undefined}
+            testToEdit={testToEdit}
+          />
+        )
       )}
       
       {showDeleteModal && (

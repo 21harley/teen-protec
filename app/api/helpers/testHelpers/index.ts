@@ -68,7 +68,7 @@ export async function calcularProgreso(testId: number, usuarioId?: number): Prom
     });
     
     if (preguntas.length === 0) {
-      console.log('[calcularProgreso] No hay preguntas para este test');
+      //console.log('[calcularProgreso] No hay preguntas para este test');
       return 0;
     }
     
@@ -81,7 +81,7 @@ export async function calcularProgreso(testId: number, usuarioId?: number): Prom
       where: whereClause
     });
 
-    console.log(`[calcularProgreso] Preguntas: ${preguntas.length}, Respuestas encontradas: ${respuestas.length}`);
+    ///console.log(`[calcularProgreso] Preguntas: ${preguntas.length}, Respuestas encontradas: ${respuestas.length}`);
     
     // Agrupar respuestas por pregunta
     const respuestasPorPregunta: Record<number, any[]> = {};
@@ -92,7 +92,7 @@ export async function calcularProgreso(testId: number, usuarioId?: number): Prom
       respuestasPorPregunta[r.id_pregunta].push(r);
     });
 
-    console.log(`[calcularProgreso] Preguntas con respuestas: ${Object.keys(respuestasPorPregunta).length}`);
+    //console.log(`[calcularProgreso] Preguntas con respuestas: ${Object.keys(respuestasPorPregunta).length}`);
     
     // Contar preguntas válidamente respondidas
     let respondidas = 0;
@@ -100,7 +100,7 @@ export async function calcularProgreso(testId: number, usuarioId?: number): Prom
     for (const pregunta of preguntas) {
       const respuestasPreg = respuestasPorPregunta[pregunta.id] || [];
       
-      console.log(`[calcularProgreso] Procesando pregunta ${pregunta.id} (${pregunta.tipo.nombre}), respuestas: ${respuestasPreg.length}, obligatoria: ${pregunta.obligatoria}`);
+      //console.log(`[calcularProgreso] Procesando pregunta ${pregunta.id} (${pregunta.tipo.nombre}), respuestas: ${respuestasPreg.length}, obligatoria: ${pregunta.obligatoria}`);
       
       // Verificar si está respondida adecuadamente según el tipo
       let estaRespondida = false;
@@ -130,25 +130,25 @@ export async function calcularProgreso(testId: number, usuarioId?: number): Prom
           estaRespondida = true;
       }
       
-      console.log(`[calcularProgreso] Pregunta ${pregunta.id} respondida: ${estaRespondida}`);
+      //console.log(`[calcularProgreso] Pregunta ${pregunta.id} respondida: ${estaRespondida}`);
       
       // Si es obligatoria y no está respondida, no cuenta
       if (pregunta.obligatoria && !estaRespondida) {
-        console.log(`[calcularProgreso] Pregunta obligatoria ${pregunta.id} no respondida - no cuenta`);
+        //console.log(`[calcularProgreso] Pregunta obligatoria ${pregunta.id} no respondida - no cuenta`);
         continue;
       }
       
       if (estaRespondida) {
         respondidas++;
-        console.log(`[calcularProgreso] Pregunta ${pregunta.id} cuenta como respondida`);
+        //console.log(`[calcularProgreso] Pregunta ${pregunta.id} cuenta como respondida`);
       }
     }
     
     const progreso = Math.round((respondidas / preguntas.length) * 100);
-    console.log(`[calcularProgreso] Progreso calculado: ${respondidas}/${preguntas.length} = ${progreso}%`);
+    //console.log(`[calcularProgreso] Progreso calculado: ${respondidas}/${preguntas.length} = ${progreso}%`);
     return progreso;
   } catch (error) {
-    console.error('[calcularProgreso] Error al calcular progreso:', error);
+    //console.error('[calcularProgreso] Error al calcular progreso:', error);
     return 0; // En caso de error, retornar 0 para no afectar el estado actual
   }
 }

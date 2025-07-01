@@ -24,7 +24,6 @@ interface Alarma {
   fecha_creacion: string;
   vista: boolean;
   url_destino?: string | null;
-  para_mi: boolean;
 }
 
 interface Usuario {
@@ -90,7 +89,6 @@ export default function CrudAlert() {
     id_tipo_alerta: "",
     mensaje: "",
     url_destino: "",
-    para_mi: false,
     vista: false
   });
   
@@ -179,7 +177,14 @@ export default function CrudAlert() {
         totalPages: data.totalPages
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      //setError(err instanceof Error ? err.message : 'Error desconocido');
+      setPagination({
+        total: 0,
+        page: 0,
+        pageSize: 0,
+        totalPages:0
+      });
+      //setAlarmas([]);
     } finally {
       setLoading(prev => ({ ...prev, table: false }));
     }
@@ -251,7 +256,6 @@ export default function CrudAlert() {
           id_tipo_alerta: parseInt(alertaForm.id_tipo_alerta),
           mensaje: alertaForm.mensaje,
           url_destino: alertaForm.url_destino || null,
-          para_mi: alertaForm.para_mi,
           vista: alertaForm.vista
         })
       });
@@ -266,7 +270,6 @@ export default function CrudAlert() {
         id_tipo_alerta: "",
         mensaje: "",
         url_destino: "",
-        para_mi: false,
         vista: false
       });
       setFormErrors({});
@@ -317,7 +320,6 @@ export default function CrudAlert() {
       id_tipo_alerta: alarma.id_tipo_alerta?.toString() || "",
       mensaje: alarma.mensaje,
       url_destino: alarma.url_destino || "",
-      para_mi: alarma.para_mi || false,
       vista: alarma.vista || false
     });
     setShowCreateModal(true);
@@ -332,7 +334,6 @@ export default function CrudAlert() {
       id_tipo_alerta: "",
       mensaje: "",
       url_destino: "",
-      para_mi: false,
       vista: false
     });
     setShowCreateModal(true);
@@ -370,7 +371,7 @@ export default function CrudAlert() {
     <div className="p-4 max-w-6xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-medium">Alertas</h1>
-        <hr className="w-full max-h-[600px] h-[1px] bg-black" />
+        <hr className="w-full max-h-[600px] h-[0.5px] bg-black" />
       </div>
       
       {/* Filters - Con ancho dinámico */}
@@ -393,8 +394,7 @@ export default function CrudAlert() {
             className="w-full md:w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center"
             onClick={openCreateModal}
           >
-            Crear Alerta 
-            <Image src={IconMas} alt="Icono de crear alerta" width={20} height={20} />
+            Crear Alerta <span className="font-bold text-2xl">+</span>
           </button>
         </div>
         
@@ -593,7 +593,7 @@ export default function CrudAlert() {
       
       {/* Create/Edit Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">
               {alertaForm.id ? 'Editar Alerta' : 'Crear Nueva Alerta'}
@@ -697,7 +697,7 @@ export default function CrudAlert() {
       
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Confirmar Eliminación</h2>
             <p>¿Estás seguro de que deseas eliminar esta alerta?</p>

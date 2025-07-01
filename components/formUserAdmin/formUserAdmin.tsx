@@ -3,12 +3,12 @@ import Image from "next/image"
 import svg from "./../../app/public/logos/logo_texto.svg"
 import Link from "next/link"
 import React, { useState, useEffect } from "react"
-import { TipoRegistro, UsuarioBase, UsuarioCompleto, LoginResponse } from "./../../app/types/user/index"
-import { TutorData, PsicologoData } from "./../../app/types/user/dataDB"
-import useUserStore from "./../../app/store/store"
+import { TipoRegistro, UsuarioBase, UsuarioCompleto, LoginResponse } from "../../app/types/user/index"
+import { TutorData, PsicologoData } from "../../app/types/user/dataDB"
+import useUserStore from "../../app/store/store"
 import { StorageManager } from "@/app/lib/storageManager"
 import { useRouter } from "next/navigation"
-import {UsuarioInfo} from "./../../app/types/user"
+import {UsuarioInfo} from "../../app/types/user"
 
 type Errors = {
   confirmPassword?: string;
@@ -20,7 +20,6 @@ type FormUserProps = {
   isEdit?: boolean;
   onSubmit?: (data: any) => void;
   tipoRegistro?: TipoRegistro;
-  isAdminSession?: boolean;
   endEditandCreate?: boolean;
   onToggleEditAndCreate?: (newValue: boolean) => void; 
 };
@@ -36,11 +35,10 @@ function formatDateForInput(date: string | Date | undefined): string {
   return dateObj.toISOString().split('T')[0];
 }
 
-export default function FormUser({ 
+export default function FormUserAdmin({ 
   user, 
   isEdit = false, 
   tipoRegistro = 'usuario',
-  isAdminSession = false,
   onToggleEditAndCreate
 }: FormUserProps) {
   const { login } = useUserStore()
@@ -169,7 +167,7 @@ export default function FormUser({
     setIsMinor(minor);
     
     // Solo actualizamos el tipo de registro si no estamos en modo edición o es admin session
-    if ((!isEdit || isAdminSession) && !isAdminSession) {
+    if ((!isEdit)) {
       setCurrentTipoRegistro(minor ? 'adolescente' : 'usuario');
     }
   };
@@ -244,18 +242,6 @@ export default function FormUser({
 
         setSuccessMessage(isEdit ? 'Usuario actualizado correctamente!' : 'Usuario registrado correctamente!');
         
-        if((isEdit || user_stora == null) && !isAdminSession){
-            login( data.user,
-            data.user.resetPasswordToken ?? "",
-            data.user.resetPasswordTokenExpiry
-              ? (typeof data.resetPasswordTokenExpiry === "string"
-                  ? new Date(data.resetPasswordTokenExpiry)
-                  : data.resetPasswordTokenExpiry)
-              : new Date()
-              )
-          storageManager.save<UsuarioInfo>("userData", data.user);
-        }
-        
         if (!isEdit) {
           setUserData({
             email: '',
@@ -284,10 +270,8 @@ export default function FormUser({
           setIsMinor(false);
           setConfirmPassword('');
           setCurrentTipoRegistro('usuario');
-  
-          if(user_stora == null && !isAdminSession) router.push('/');
           
-          if(isAdminSession && typeof onToggleEditAndCreate === 'function'){
+          if( typeof onToggleEditAndCreate === 'function'){
             onToggleEditAndCreate(true)
           }
         }
@@ -304,18 +288,6 @@ export default function FormUser({
       onSubmit={handleSubmit}
       className="md:p-8 max-w-[400px] md:max-w-[600px] w-full flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
     >
-      {
-        (isAdminSession)?(<></>):(
-      <div>
-        <Image
-          src={svg}
-          width={180}
-          height={90}
-          alt="Logo"
-        />
-      </div>
-        )
-      }
 
       {successMessage && (
         <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
@@ -331,7 +303,7 @@ export default function FormUser({
 
       <div className="flex flex-col justify-center md:flex-row md:justify-around p-5 gap-2 md:gap-2 w-full max-w-[400px] md:max-w-[800px]">
         <div className="grid place-items-center w-[240px] m-auto">
-          {!isEdit && isAdminSession && (
+          {!isEdit && (
             <div className="w-full max-w-[190px]">
               <label htmlFor="tipoRegistro" className="text-sm">Tipo de registro:</label>
               <select
@@ -456,7 +428,6 @@ export default function FormUser({
               value={userData.cedula}
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-              readOnly={isEdit}
             />
           </div>
           
@@ -471,14 +442,11 @@ export default function FormUser({
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
-            {isMinor && currentTipoRegistro !== 'adolescente' && !isAdminSession && (
-              <p className="text-yellow-600 text-xs mt-1">Se registrará como adolescente (requiere datos de tutor)</p>
-            )}
           </div>
         </div>
         
         {/* Formulario del tutor - Mostrar si es adolescente o si estamos editando un adolescente */}
-        {( (isMinor || isEdit || currentTipoRegistro === 'adolescente')) && (
+        {( (isMinor || isEdit || currentTipoRegistro === 'adolescente'))&&(currentTipoRegistro!="usuario" && currentTipoRegistro!="psicologo" )&& (
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
               <h2 className="text-sm">Datos de tutor:</h2>
@@ -553,7 +521,7 @@ export default function FormUser({
         )}
 
         {/* Formulario del psicólogo - Mostrar si es psicólogo y es admin session o si estamos editando un psicólogo */}
-        {(currentTipoRegistro === 'psicologo' && (isAdminSession || isEdit)) && (
+        {(currentTipoRegistro === 'psicologo' ||  isEdit) && currentTipoRegistro!="usuario" && (
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
               <h2 className="text-sm">Datos de psicólogo:</h2>
@@ -627,25 +595,6 @@ export default function FormUser({
         </button>
       </div>
       
-      {!isEdit && !isAdminSession && (
-        <div>
-          <label htmlFor="" className="text-[10px]">
-            ¿Ya tiene una cuenta?  
-            <Link
-              href="/auth/login"
-              className={`_text_color_eight hover:underline`}
-            > Iniciar sesión</Link>
-          </label>
-          <br/>
-          <label htmlFor="" className="text-[10px]">
-            ¿Olvidaste tu contraseña? 
-            <Link
-              href="/auth/recovery"
-              className={`_text_color_eight hover:underline`}
-            > Recuperala</Link>
-          </label>
-        </div>
-      )}
     </form>
   );
 }

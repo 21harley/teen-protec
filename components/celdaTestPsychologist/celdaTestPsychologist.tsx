@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { TestStatus, PreguntaData, PreguntaResponse, TestResponse } from "@/app/types/test";
-import { UsuarioResponse } from "../../app/types/test";
+import { TestStatus, PreguntaData, TipoPreguntaNombre, Test, PsicologoData, UsuarioData } from "@/app/types/test";
 import ModalRegistraTest from "./../modalRegistrarTest/modalRegistraTest";
 import { ModalVerPreguntas } from "./../modalVerPreguntas/modalVerPreguntas";
 import IconEditar from "./../../app/public/logos/icon_editar.svg";
@@ -8,24 +7,9 @@ import IconLupa from "./../../app/public/logos/lupa.svg";
 import IconCardPacientes from "./../../app/public/logos/logo_card_pacientes.svg";
 import Image from "next/image";
 
-interface Psicologo {
-  id: number;
-  id_usuario: number;
-  especialidad?: string;
-  usuario: UsuarioResponse;
-  redes_sociales?: any[];
-}
-
-interface TestResponseCompleto extends TestResponse {
-  usuario: UsuarioResponse | null;
-  psicologo: Psicologo | null;
-  preguntas: PreguntaResponse[];
-  respuestas: any[];
-}
-
 interface CeldaTestPsychologistTestProps {
-  test: TestResponseCompleto;
-  onTestUpdated: (updatedTest: TestResponseCompleto) => void;
+  test: Test;
+  onTestUpdated: (updatedTest: Test) => void;
   onTestDeleted: (testId: number) => void;
   isPsychologist?: boolean;
 }
@@ -40,7 +24,7 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleEditTest = async (testData: { name: string; questions: PreguntaData[] }) => {
+  const handleEditTest = async (testData: Test) => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/test?id=${test.id}`, {
@@ -49,9 +33,11 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id_psicologo: test.psicologo?.id_usuario,
-          nombre: testData.name,
-          preguntas: testData.questions.map(q => ({
+          id_psicologo: test.id_psicologo,
+          id_usuario: test.id_usuario,
+          nombre: testData.nombre,
+          estado: test.estado,
+          preguntas: (testData.preguntas ?? []).map(q => ({
             texto_pregunta: q.texto_pregunta,
             id_tipo: q.id_tipo,
             orden: q.orden,
@@ -95,7 +81,7 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
 
       if (!response.ok) throw new Error('Error al eliminar el test');
       
-      onTestDeleted(test.id);
+      onTestDeleted(test.id!); // Usamos ! porque sabemos que test.id existe si estamos editando
     } catch (error) {
       console.error("Error deleting test:", error);
       alert(error instanceof Error ? error.message : "Error al eliminar el test");
@@ -106,12 +92,12 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
 
   const getStatusBadge = () => {
     const statusMap = {
-      [TestStatus.no_iniciado]: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'no iniciado' },
-      [TestStatus.en_progreso]: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'en progreso' },
-      [TestStatus.completado]: { bg: 'bg-green-100', text: 'text-green-800', label: 'completado' }
+      [TestStatus.NoIniciado]: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'no iniciado' },
+      [TestStatus.EnProgreso]: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'en progreso' },
+      [TestStatus.Completado]: { bg: 'bg-green-100', text: 'text-green-800', label: 'completado' }
     };
 
-    const estadoKey = (test.estado !== undefined ? test.estado : TestStatus.no_iniciado) as TestStatus;
+    const estadoKey = test.estado || TestStatus.NoIniciado;
     const currentStatus = statusMap[estadoKey];
     
     return (
@@ -140,7 +126,7 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
         </div>
       )}
 
-      <div className=" rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
+      <div className="rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
         <div className="relative">
           <Image
             className="absolute w-[200px] h-[200px] right-0 button-[5px] top-[-30px]"
@@ -173,10 +159,10 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
             </div>
           </div>
           
-          <div className="flex justify-around w-full flex-shrink-0 flex-col  sm:flex-row   ">
+          <div className="flex justify-around w-full flex-shrink-0 flex-col sm:flex-row">
             <button 
               onClick={() => setIsEditModalOpen(true)}
-              className="w-full max-w-[180px] m-auto cursor-pointer p-2 px-10   text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-1"
+              className="w-full max-w-[180px] m-auto cursor-pointer p-2 px-10 text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-1"
               aria-label="Editar test"
               disabled={isLoading}
             >
@@ -184,11 +170,11 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
             </button>
             <button 
               onClick={() => setIsViewModalOpen(true)}
-              className="w-full max-w-[180px] m-auto cursor-pointer p-2 px-10   text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-1"
+              className="w-full max-w-[180px] m-auto cursor-pointer p-2 px-10 text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-1"
               aria-label="Ver detalles del test"
               disabled={isLoading}
             >
-              Ver mas  <Image src={IconLupa} alt="Icono de crear alerta" width={20} height={20} />
+              Ver mas <Image src={IconLupa} alt="Icono de crear alerta" width={20} height={20} />
             </button>
           </div>
         </div>
@@ -196,30 +182,45 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
 
       {isEditModalOpen && (
         <ModalRegistraTest
+        isAdmin={false}
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           onSubmit={handleEditTest}
           onDelete={handleDeleteTest}
           testToEdit={{
-            id: test.id,
-            name: test.nombre ?? "",
-            questions: test.preguntas.map(p => ({
-              ...p,
-              placeholder: p.placeholder ?? undefined,
-              min: p.min ?? undefined,
-              max: p.max ?? undefined,
-              paso: p.paso ?? undefined
-            })),
-            status: test.estado === TestStatus.no_iniciado ? 'draft' : 
-                   test.estado === TestStatus.en_progreso ? 'published' : 'archived'
+            id: test.id!,
+            nombre: test.nombre || "",
+            preguntas: test.preguntas?.map(p => ({
+              id: p.id,
+              texto_pregunta: p.texto_pregunta,
+              id_tipo: p.id_tipo,
+              orden: p.orden,
+              obligatoria: p.obligatoria || false,
+              placeholder: p.placeholder || undefined,
+              min: p.min || undefined,
+              max: p.max || undefined,
+              paso: p.paso || undefined,
+              tipo: p.tipo,
+              opciones: p.opciones?.map(o => ({
+                id: o.id,
+                texto: o.texto,
+                valor: o.valor,
+                orden: o.orden,
+                es_otro: o.es_otro || false
+              })) || []
+            })) || [],
+            estado: test.estado,
+            progreso: test.progreso,
+            fecha_creacion: test.fecha_creacion,
+            fecha_ultima_respuesta: test.fecha_ultima_respuesta,
           }}
         />
       )}
 
       {isViewModalOpen && (
         <ModalVerPreguntas
-          preguntas={test.preguntas}
-          testId={test.id}
+          preguntas={test.preguntas || []}
+          testId={test.id!}
           onClose={() => setIsViewModalOpen(false)}
           onEdit={() => {
             setIsViewModalOpen(false);

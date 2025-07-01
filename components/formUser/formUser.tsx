@@ -20,7 +20,6 @@ type FormUserProps = {
   isEdit?: boolean;
   onSubmit?: (data: any) => void;
   tipoRegistro?: TipoRegistro;
-  isAdminSession?: boolean;
   endEditandCreate?: boolean;
   onToggleEditAndCreate?: (newValue: boolean) => void; 
 };
@@ -40,7 +39,6 @@ export default function FormUser({
   user, 
   isEdit = false, 
   tipoRegistro = 'usuario',
-  isAdminSession = false,
   onToggleEditAndCreate
 }: FormUserProps) {
   const { login } = useUserStore()
@@ -93,8 +91,8 @@ export default function FormUser({
       if ( user.tutorInfo) {
         console.log("Tutor");
         setTutorData({
-          cedula_tutor: user.tutorInfo.cedula,
-          nombre_tutor: user.tutorInfo.nombre,
+          cedula_tutor: user.tutorInfo.cedula_tutor,
+          nombre_tutor: user.tutorInfo.nombre_tutor,
           profesion_tutor: user.tutorInfo.profesion_tutor || '',
           telefono_contacto: user.tutorInfo.telefono_contacto || '',
           correo_contacto: user.tutorInfo.correo_contacto || ''
@@ -244,7 +242,7 @@ export default function FormUser({
 
         setSuccessMessage(isEdit ? 'Usuario actualizado correctamente!' : 'Usuario registrado correctamente!');
         
-        if((isEdit || user_stora == null) && !isAdminSession){
+        if((isEdit || user_stora == null)){
           console.log(data.user);
           login( data.user,
             data.user.resetPasswordToken ?? "",
@@ -285,9 +283,9 @@ export default function FormUser({
           setIsMinor(false);
           setConfirmPassword('');
   
-          if(user_stora == null && !isAdminSession) router.push('/');
+          if(user_stora == null ) router.push('/');
           
-          if(isAdminSession && typeof onToggleEditAndCreate === 'function'){
+          if( typeof onToggleEditAndCreate === 'function'){
             onToggleEditAndCreate(true)
           }
         }
@@ -304,8 +302,6 @@ export default function FormUser({
       onSubmit={handleSubmit}
       className="md:p-8 max-w-[400px] md:max-w-[600px] w-full flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
     >
-      {
-        (isAdminSession)?(<></>):(
       <div>
         <Image
           src={svg}
@@ -314,10 +310,7 @@ export default function FormUser({
           alt="Logo"
         />
       </div>
-        )
-      }
-
-
+      
       {successMessage && (
         <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
           {successMessage}
@@ -334,7 +327,7 @@ export default function FormUser({
 
       <div className="flex flex-col justify-center md:flex-row md:justify-around p-5 gap-2 md:gap-2 w-full max-w-[400px] md:max-w-[800px]">
         <div className="grid place-items-center w-[240px] m-auto">
-                        {!isEdit && isAdminSession && (
+                        {!isEdit && (
         <div className="w-full max-w-[190px]">
           <label htmlFor="tipoRegistro" className="text-sm">Tipo de registro:</label>
           <select
@@ -465,7 +458,7 @@ export default function FormUser({
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
-            {isMinor  && !isAdminSession && (
+            {isMinor  && !isEdit && (
               <p className="text-yellow-600 text-xs mt-1">Se registrará como adolescente (requiere datos de tutor)</p>
             )}
           </div>
@@ -621,7 +614,7 @@ export default function FormUser({
         </button>
       </div>
       
-      {!isEdit && !isAdminSession && (
+      {!isEdit && (
         <div>
           <label htmlFor="" className="text-[10px]">
             ¿Ya tiene una cuenta?  

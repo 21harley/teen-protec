@@ -110,8 +110,8 @@ export async function POST(request: Request) {
       if (tipoRegistro === 'adolescente' && tutorData) {
         const tutor = await prisma.tutor.create({
           data: {
-            cedula: tutorData.cedula_tutor || '',
-            nombre: tutorData.nombre_tutor || '',
+            cedula_tutor: tutorData.cedula_tutor || '',
+            nombre_tutor: tutorData.nombre_tutor || '',
             profesion_tutor: tutorData.profesion_tutor || '',
             telefono_contacto: tutorData.telefono_contacto || '',
             correo_contacto: tutorData.correo_contacto || ''
@@ -230,8 +230,8 @@ export async function POST(request: Request) {
         const tutor = usuarioCompleto.adolecente.tutor;
         responseData.user.tutorInfo = {
           id: tutor.id,
-          cedula: tutor.cedula,
-          nombre: tutor.nombre,
+          cedula_tutor: tutor.cedula_tutor,
+          nombre_tutor: tutor.nombre_tutor,
           profesion_tutor: tutor.profesion_tutor ?? undefined,
           telefono_contacto: tutor.telefono_contacto ?? undefined,
           correo_contacto: tutor.correo_contacto ?? undefined,

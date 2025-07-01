@@ -14,8 +14,8 @@ export type TipoUsuario = {
 // Tipos para relaciones
 export type Tutor = {
   id: number;
-  cedula: string;
-  nombre: string;
+  cedula_tutor: string;
+  nombre_tutor: string;
   profesion_tutor?: string;
   telefono_contacto?: string;
   correo_contacto?: string;

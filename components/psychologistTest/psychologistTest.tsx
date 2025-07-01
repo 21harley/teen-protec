@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { StorageManager } from "@/app/lib/storageManager";
 import { UsuarioInfo } from "./../../app/types/user";
-import { TestResponse, PreguntaData, PreguntaResponse, UsuarioResponse } from "@/app/types/test";
+import {Test, PreguntaData, RespuestaData, TipoPreguntaNombre, OpcionData } from "@/app/types/test"
 import useUserStore from "@/app/store/store";
 import ModalRegistraTest from "./../modalRegistrarTest/modalRegistraTest";
 import CeldaTestPsychologistTest from "./../celdaTestPsychologist/celdaTestPsychologist";
@@ -19,19 +19,12 @@ interface Psicologo {
   id: number;
   id_usuario: number;
   especialidad?: string;
-  usuario: UsuarioResponse;
+  usuario: UsuarioInfo;
   redes_sociales?: any[];
 }
 
-interface TestResponseCompleto extends TestResponse {
-  usuario: UsuarioResponse | null;
-  psicologo: Psicologo | null;
-  preguntas: PreguntaResponse[];
-  respuestas: any[];
-}
-
 export default function TestsPage() {
-  const [tests, setTests] = useState<TestResponseCompleto[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -79,11 +72,11 @@ export default function TestsPage() {
     fetchTests();
   }, [userId, isPsychologist]);
 
-  const handleCreateTest = async (testData: { name: string; questions: PreguntaData[] }) => {
+  const handleCreateTest = async (testData:Test) => {
     console.log({
           id_usuario: isPsychologist ? null : userId,
           id_psicologo: isPsychologist ? userId : null,
-          preguntas: testData.questions,
+          preguntas: testData.preguntas,
           estado: TestStatus.no_iniciado,
           progreso: 0
         })
@@ -96,10 +89,10 @@ export default function TestsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          nombre: testData.name,
+          nombre: testData.nombre,
           id_usuario: isPsychologist ? null : userId,
           id_psicologo: isPsychologist ? userId : null,
-          preguntas: testData.questions,
+          preguntas: testData.preguntas,
           estado: TestStatus.no_iniciado,
           progreso: 0
         })
@@ -119,7 +112,7 @@ export default function TestsPage() {
       
   };
 
-  const handleTestUpdated = (updatedTest: TestResponseCompleto) => {
+  const handleTestUpdated = (updatedTest: Test) => {
     setTests(tests.map(t => t.id === updatedTest.id ? updatedTest : t));
   };
 
@@ -153,7 +146,7 @@ export default function TestsPage() {
     <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start p-4">
       <div className="flex justify-between flex-col  mb-4">
         <h1 className="text-xl font-medium mb-4">Tests</h1>
-        <hr className="w-full max-h-[600px] h-[1px] bg-black" />
+        <hr className="w-full max-h-[600px] h-[0.5px] bg-black" />
       </div>
       <div className="flex items-end flex-col mb-4">
           <button 
@@ -193,6 +186,7 @@ export default function TestsPage() {
       )}
 
       <ModalRegistraTest
+        isAdmin={false}
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateTest}

@@ -153,8 +153,8 @@ const dataUsuarios = [
       create: {
         tutor: {
           create: {
-            cedula: "555555555",
-            nombre: "Juan López",
+            cedula_tutor: "555555555",
+            nombre_tutor: "Juan López",
             profesion_tutor: "Ingeniero",
             telefono_contacto: "+111222333",
             correo_contacto: "juan.lopez@example.com"
@@ -178,8 +178,8 @@ const dataUsuarios = [
       create: {
         tutor: {
           create: {
-            cedula: "888888888",
-            nombre: "Marta Ramírez",
+            cedula_tutor: "888888888",
+            nombre_tutor: "Marta Ramírez",
             profesion_tutor: "Médico",
             telefono_contacto: "+444555666",
             correo_contacto: "marta.ramirez@example.com"
@@ -203,8 +203,8 @@ const dataUsuarios = [
       create: {
         tutor: {
           create: {
-            cedula: "101010101",
-            nombre: "Luisa Sánchez",
+            cedula_tutor: "101010101",
+            nombre_tutor: "Luisa Sánchez",
             profesion_tutor: "Abogado",
             telefono_contacto: "+777888999",
             correo_contacto: "luisa.sanchez@example.com"

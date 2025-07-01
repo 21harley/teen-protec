@@ -2,13 +2,12 @@
 import React, { useState, useEffect } from "react"
 import CeldaTest from "./../celdaTestUser/celdaTestUser"
 import useUserStore from "@/app/store/store"
-import { TestResponse, PaginatedResponse, TestStatus } from "./../../app/types/test"
-import Link from "next/link"
+import { TestStatus, TipoPreguntaNombre, FullTestData, PaginatedResponse } from "./../../app/types/test"
 import { UsuarioInfo } from "./../../app/types/user"
 import { StorageManager } from "@/app/lib/storageManager"
 
 export default function UserTests() {
-  const [tests, setTests] = useState<TestResponse[]>([])
+  const [tests, setTests] = useState<FullTestData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pagination, setPagination] = useState({
@@ -20,7 +19,7 @@ export default function UserTests() {
   const user = useUserStore((state) => state.user)
   let userId = user?.id
 
-  const fetchTests = async () => {
+  const fetchTests = async (): Promise<void> => {
     if (!userId) {
       const storageManager = new StorageManager('local')
       const data = storageManager.load<UsuarioInfo>('userData')
@@ -43,68 +42,59 @@ export default function UserTests() {
         throw new Error('Error al obtener los tests')
       }
 
-      const data: PaginatedResponse<TestResponse> = await response.json()
+      const data: PaginatedResponse<FullTestData> = await response.json()
       
-      const processedTests = data.data.map((test) => {
-        // Mapeamos las preguntas con sus respuestas correspondientes
-        const preguntasConRespuestas = test.preguntas.map(pregunta => {
-          const respuestas = test.respuestas.filter(r => r.id_pregunta === pregunta.id)
+      const processedTests = data.data.map((test): FullTestData => {
+        const preguntasConRespuestas = test.preguntas?.map((pregunta) => {
+          const respuestas = test.respuestas?.filter((r) => r.id_pregunta === pregunta.id) || []
           return { pregunta, respuestas }
-        })
+        }) || []
 
-        // Calculamos preguntas respondidas válidamente
         const preguntasRespondidas = preguntasConRespuestas.filter(({ pregunta, respuestas }) => {
-          // Preguntas obligatorias deben estar respondidas
-          if (pregunta.obligatoria && respuestas.length === 0) {
-            return false
-          }
+          if (pregunta.obligatoria && respuestas.length === 0) return false
 
-          // Validación por tipo de pregunta
           switch (pregunta.tipo.nombre) {
-            case 'radio':
-            case 'select':
-              // Debe tener al menos una respuesta con id_opcion no nulo
-              return respuestas.some(r => r.id_opcion !== null)
-            
-            case 'checkbox':
-              // Debe tener al menos una opción seleccionada
-              return respuestas.some(r => r.id_opcion !== null)
-            
-            case 'text':
-              // Debe tener texto_respuesta no vacío
-              return respuestas.some(r => r.texto_respuesta && r.texto_respuesta.trim() !== '')
-            
-            case 'range':
-              // Debe tener valor_rango no nulo
-              return respuestas.some(r => r.valor_rango !== null)
-            
+            case TipoPreguntaNombre.OPCION_MULTIPLE:
+            case TipoPreguntaNombre.VERDADERO_FALSO:
+            case TipoPreguntaNombre.SELECT:
+              return respuestas.some(r => r.id_opcion != null)
+            case TipoPreguntaNombre.RESPUESTA_CORTA:
+              return respuestas.some(r => r.texto_respuesta?.trim() !== '')
+            case TipoPreguntaNombre.RANGO:
+              return respuestas.some(r => r.valor_rango != null)
             default:
               return respuestas.length > 0
           }
         }).length
         
-        const totalPreguntas = test.preguntas.length
+        const totalPreguntas = test.preguntas?.length || 0
         const progreso = totalPreguntas > 0
           ? Math.round((preguntasRespondidas / totalPreguntas) * 100)
           : 0
 
-        let estado: TestStatus = test.estado || ('no_iniciado' as TestStatus);
+        let estado: TestStatus = test.estado || TestStatus.NoIniciado;
         if (test.estado === undefined) {
-          estado = progreso >= 100 ? 'completado' as TestStatus :
-                   progreso > 0 ? 'en_progreso' as TestStatus :
-                   'no_iniciado' as TestStatus
+          estado = progreso >= 100 ? TestStatus.Completado :
+                   progreso > 0 ? TestStatus.EnProgreso :
+                   TestStatus.NoIniciado
         }
 
-        // Encontrar la fecha más reciente de respuesta
-        const fechaUltimaRespuesta = test.respuestas.length > 0
-          ? new Date(Math.max(...test.respuestas.map(r => new Date(r.fecha).getTime())))
+        const fechaUltimaRespuesta = test.respuestas?.length
+          ? new Date(Math.max(...test.respuestas.map(r => new Date(r.fecha || '').getTime())))
           : null
 
         return {
           ...test,
+          id: test.id || 0,
+          nombre: test.nombre || 'Test sin nombre',
           estado,
           progreso,
-          fecha_ultima_respuesta: fechaUltimaRespuesta?.toISOString() || null
+          fecha_creacion: test.fecha_creacion || new Date().toISOString(),
+          fecha_ultima_respuesta: fechaUltimaRespuesta?.toISOString() || null,
+          preguntas: test.preguntas || [],
+          respuestas: test.respuestas || [],
+          psicologo: test.psicologo,
+          usuario: test.usuario
         }
       })
 
@@ -125,27 +115,24 @@ export default function UserTests() {
     fetchTests()
   }, [userId, pagination.page, pagination.pageSize])
 
-  const handlePageChange = (newPage: number) => {
+  const handlePageChange = (newPage: number): void => {
     setPagination(prev => ({ ...prev, page: newPage }))
   }
 
-  const handleTestUpdated = async (testId: number, nuevoEstado?: TestStatus) => {
-    // Actualización optimista del estado local
+  const handleTestUpdated = async (testId: number, nuevoEstado?: TestStatus): Promise<void> => {
     if (nuevoEstado) {
       setTests(prevTests => prevTests.map(test => 
         test.id === testId ? { ...test, estado: nuevoEstado } : test
-      ));
+      ))
     }
-    
-    // Luego hacer el fetch para sincronizar con el servidor
-    await fetchTests();
+    await fetchTests()
   }
 
   if (loading) {
     return (
       <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-medium ">Tests</h1>
+          <h1 className="text-xl font-medium">Tests</h1>
           <div className="animate-pulse bg-gray-200 h-6 w-24 rounded"></div>
         </div>
         <hr className="mb-4" />
@@ -162,8 +149,7 @@ export default function UserTests() {
     return (
       <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-medium mb-4">Tests</h1>
-          <hr className="mb-4" />
+          <h1 className="text-xl font-medium">Tests</h1>
         </div>
         <hr className="mb-4" />
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
@@ -201,11 +187,24 @@ export default function UserTests() {
         <>
           <div className="space-y-3 mb-4">
             {tests.map((test) => (
-              <CeldaTest
-                key={test.id}
-                {...test}
-                onTestUpdated={(nuevoEstado) => handleTestUpdated(test.id, nuevoEstado)}
-              />
+<CeldaTest
+  key={test.id}
+  id={test.id}
+  nombre={test.nombre}
+  estado={test.estado}
+  progreso={test.progreso}
+  fecha_creacion={test.fecha_creacion}
+  fecha_ultima_respuesta={test.fecha_ultima_respuesta}
+  preguntas={test.preguntas}
+  respuestas={test.respuestas}
+  psicologo={test.psicologo}
+  usuario={test.usuario}
+  onTestUpdated={async (nuevoEstado) => {
+    if (test.id) {
+      await handleTestUpdated(test.id, nuevoEstado);
+    }
+  }}
+/>
             ))}
           </div>
 

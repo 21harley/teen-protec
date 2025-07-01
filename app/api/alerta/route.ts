@@ -19,35 +19,30 @@ export async function GET(request: Request) {
     const tipoAlertaId = searchParams.get('tipoAlertaId');
     const noVistas = searchParams.get('noVistas') === 'true';
     const search = searchParams.get('search');
-    
-    // Pagination parameters
+
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const skip = (page - 1) * pageSize;
-    
-    let whereClause: any = {};
-    
-    // Get single alert by ID
+
+    // Obtener una alarma específica
     if (id) {
       const alarma = await prisma.alarma.findUnique({
         where: { id: parseInt(id) },
         include: {
           usuario: {
-            include: {
-              tipo_usuario: true
-            }
+            include: { tipo_usuario: true }
           },
           tipo_alerta: true
         }
       });
-      
+
       if (!alarma) {
         return NextResponse.json(
           { error: 'Alarma no encontrada' },
           { status: 404 }
         );
       }
-      
+
       return NextResponse.json({
         data: [alarma],
         total: 1,
@@ -56,25 +51,56 @@ export async function GET(request: Request) {
         totalPages: 1
       });
     }
-    
-    // Apply filters
+
+    // Construcción del filtro
+    let whereClause: any = {};
+
     if (usuarioId) whereClause.id_usuario = parseInt(usuarioId);
     if (tipoAlertaId) whereClause.id_tipo_alerta = parseInt(tipoAlertaId);
     if (noVistas) whereClause.vista = false;
-    
-if (search) {
-  whereClause.OR = [
-    { mensaje: { contains: search, mode: 'insensitive' } },
-    { usuario: { nombre: { contains: search, mode: 'insensitive' } } },
-    { tipo_alerta: { nombre: { contains: search, mode: 'insensitive' } } }
-  ];
-}
-    
-    // Get total count for pagination
+
+    // Filtro por búsqueda
+    if (search) {
+      const [usuariosConNombre, tiposConNombre] = await Promise.all([
+        prisma.usuario.findMany({
+          where: { nombre: { contains: search } }, // sin mode
+          select: { id: true }
+        }),
+        prisma.tipoAlerta.findMany({
+          where: { nombre: { contains: search } }, // sin mode
+          select: { id: true }
+        })
+      ]);
+
+      const orConditions: any[] = [];
+
+      // Buscar por mensaje
+      orConditions.push({ mensaje: { contains: search } });
+
+      // Buscar por usuario relacionado
+      if (usuariosConNombre.length > 0) {
+        orConditions.push({ id_usuario: { in: usuariosConNombre.map(u => u.id) } });
+      }
+
+      // Buscar por tipo de alerta relacionado
+      if (tiposConNombre.length > 0) {
+        orConditions.push({ id_tipo_alerta: { in: tiposConNombre.map(t => t.id) } });
+      }
+
+      // Validar si hay algo válido en el OR
+      if (orConditions.length > 0) {
+        whereClause.OR = orConditions;
+      } else {
+        // Fuerza resultado vacío sin error
+        whereClause.OR = [{ id: -1 }];
+      }
+    }
+
+    // Contar resultados
     const total = await prisma.alarma.count({ where: whereClause });
     const totalPages = Math.ceil(total / pageSize);
-    
-    // Get paginated results
+
+    // Obtener resultados paginados
     const alarmas = await prisma.alarma.findMany({
       where: whereClause,
       include: {
@@ -91,7 +117,7 @@ if (search) {
       skip,
       take: pageSize
     });
-    
+
     return NextResponse.json({
       data: alarmas,
       total,
@@ -99,11 +125,11 @@ if (search) {
       pageSize,
       totalPages
     });
-    
+
   } catch (error: any) {
     console.error('Error fetching alarmas:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error al obtener las alarmas',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       },
@@ -199,60 +225,41 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { id, ...alarmaData }: { id: number } & Partial<AlarmaData> = await request.json();
+    const { id, id_usuario, id_tipo_alerta, ...restoDatos }: { id: number } & Partial<AlarmaData> = await request.json();
 
-    // Validate ID
     if (!id) {
-      return NextResponse.json(
-        { error: 'ID de alarma es requerido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'ID de alarma es requerido' }, { status: 400 });
     }
 
-    // Check if alert exists
-    const alarmaExistente = await prisma.alarma.findUnique({
-      where: { id }
-    });
+    const alarmaExistente = await prisma.alarma.findUnique({ where: { id } });
 
     if (!alarmaExistente) {
-      return NextResponse.json(
-        { error: 'Alarma no encontrada' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Alarma no encontrada' }, { status: 404 });
     }
 
-    // Validate user exists if provided
-    if (alarmaData.id_usuario) {
-      const usuarioExistente = await prisma.usuario.findUnique({
-        where: { id: alarmaData.id_usuario }
-      });
+    const data: any = { ...restoDatos };
 
+    // Si se provee un usuario, valida y conecta
+    if (id_usuario) {
+      const usuarioExistente = await prisma.usuario.findUnique({ where: { id: id_usuario } });
       if (!usuarioExistente) {
-        return NextResponse.json(
-          { error: 'Usuario no encontrado' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
       }
+      data.usuario = { connect: { id: id_usuario } };
     }
 
-    // Validate alert type exists if provided
-    if (alarmaData.id_tipo_alerta) {
-      const tipoAlertaExistente = await prisma.tipoAlerta.findUnique({
-        where: { id: alarmaData.id_tipo_alerta }
-      });
-
+    // Si se provee un tipo de alerta, valida y conecta
+    if (id_tipo_alerta) {
+      const tipoAlertaExistente = await prisma.tipoAlerta.findUnique({ where: { id: id_tipo_alerta } });
       if (!tipoAlertaExistente) {
-        return NextResponse.json(
-          { error: 'Tipo de alerta no encontrado' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Tipo de alerta no encontrado' }, { status: 404 });
       }
+      data.tipo_alerta = { connect: { id: id_tipo_alerta } };
     }
 
-    // Update alert
     const alarmaActualizada = await prisma.alarma.update({
       where: { id },
-      data: alarmaData,
+      data,
       include: {
         usuario: {
           include: {
@@ -267,21 +274,15 @@ export async function PATCH(request: Request) {
 
   } catch (error: any) {
     console.error('Error updating alarma:', error);
-    
+
     if (error.code === 'P2002') {
-      return NextResponse.json(
-        { error: 'Error de validación en los datos' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Error de validación en los datos' }, { status: 400 });
     }
-    
-    return NextResponse.json(
-      { 
-        error: 'Error al actualizar la alarma',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
-      { status: 500 }
-    );
+
+    return NextResponse.json({
+      error: 'Error al actualizar la alarma',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from "../../generated/prisma";
+import { PrismaClient, Prisma } from "../../generated/prisma";
 
 // Configuración de Prisma
 const prisma = new PrismaClient()
@@ -163,7 +163,7 @@ export async function PUT(request: Request) {
       where: { id },
       data: {
         nombre,
-        menu: menu || tipoExistente.menu
+        menu: menu !== undefined ? (menu === null ? Prisma.JsonNull : menu) : (tipoExistente.menu === null ? Prisma.JsonNull : tipoExistente.menu)
       },
       include: {
         usuarios: true

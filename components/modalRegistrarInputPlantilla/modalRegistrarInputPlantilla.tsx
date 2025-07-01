@@ -260,7 +260,7 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
             {options.length > 0 && (
               <div className="border rounded p-2">
                 <h4 className="text-sm font-medium mb-2">Opciones agregadas:</h4>
-                <ul className="space-y-2">
+                <ul className="space-y-2 overflow-scroll h-full max-h-[150px]">
                   {options.map((option, index) => (
                     <li key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                       <span>{option.texto}</span>

@@ -13,6 +13,7 @@ type FormPacientesProps = {
   onSubmit: (data: any) => void;
   psicologoId:number;
   isAdminSession?: boolean;
+  isEdit?: boolean;
   onToggleEdit?: (newValue: boolean) => void; 
 };
 
@@ -44,8 +45,8 @@ export default function FormPacientes({
   });
 
   const [tutorData, setTutorData] = useState<TutorInfo>({
-    cedula: user.adolecente?.tutor?.cedula || '',
-    nombre: user.adolecente?.tutor?.nombre || '',
+    cedula_tutor: user.adolecente?.tutor?.cedula_tutor || '',
+    nombre_tutor: user.adolecente?.tutor?.nombre_tutor || '',
     profesion_tutor: user.adolecente?.tutor?.profesion_tutor || '',
     telefono_contacto: user.adolecente?.tutor?.telefono_contacto || '',
     correo_contacto: user.adolecente?.tutor?.correo_contacto || ''
@@ -112,7 +113,7 @@ export default function FormPacientes({
     }
     
     if (user.esAdolescente) {
-      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula', 'nombre'];
+      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula_tutor', 'nombre_tutor'];
       const missingFields = requiredTutorFields.filter(field => !tutorData[field as keyof typeof tutorData]);
       if (missingFields.length > 0) {
         setErrors({ submit: 'Por favor complete todos los datos del tutor' });
@@ -143,8 +144,11 @@ export default function FormPacientes({
     };
 
     try {
+      console.log(requestData);
       const response = await onSubmit(requestData);
       
+      
+       
       setSuccessMessage('Usuario actualizado correctamente!');
       
       if (typeof onToggleEdit === 'function') {
@@ -268,25 +272,25 @@ export default function FormPacientes({
             <div className="w-[240px] border border-[#8f8f8f] rounded-[0.4rem] p-4 pt-1 m-auto">
               <div className="w-full h-[90%] grid place-items-center"> 
                 <div className="w-full max-w-[190px]">
-                  <label htmlFor="cedula" className="text-sm">Cédula del tutor:</label>
+                  <label htmlFor="cedula_tutor" className="text-sm">Cédula del tutor:</label>
                   <input 
                     required
                     type="text" 
-                    name="cedula" 
+                    name="cedula_tutor" 
                     id="cedula_tutor" 
-                    value={tutorData.cedula}
+                    value={tutorData.cedula_tutor}
                     onChange={handleTutorChange}
                     className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
                   />
                 </div>
                 <div className="w-full max-w-[190px]">
-                  <label htmlFor="nombre" className="text-sm">Nombre completo del tutor:</label>
+                  <label htmlFor="nombre_tutor" className="text-sm">Nombre completo del tutor:</label>
                   <input 
                     required
                     type="text" 
-                    name="nombre" 
+                    name="nombre_tutor" 
                     id="nombre_tutor" 
-                    value={tutorData.nombre}
+                    value={tutorData.nombre_tutor}
                     onChange={handleTutorChange}
                     className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
                   />

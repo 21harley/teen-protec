@@ -126,7 +126,7 @@ const handleEditPlantilla = async (plantillaData: any) => {
         </div>
       )}
 
-      <div className="rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
+      <div className="rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow bg-white">
         <div className="relative">
           <Image
             className="absolute w-[200px] h-[150px] right-0 button-[5px] top-[-20px]"
@@ -159,10 +159,10 @@ const handleEditPlantilla = async (plantillaData: any) => {
             </div>
           </div>
           
-          <div className="flex justify-around w-full flex-shrink-0 flex-col sm:flex-row">
+          <div className="flex m-auto justify-around gap-2 flex-shrink-0 flex-col sm:flex-row sm:justify-between sm:w-full sm:gap-0">
             <button 
               onClick={() => setIsEditModalOpen(true)}
-              className="w-full max-w-[180px] m-auto cursor-pointer p-2 px-10 text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-1"
+              className="w-full max-w-[180px] cursor-pointer p-2 px-10 text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-1"
               aria-label="Editar test"
               disabled={isLoading}
             >
@@ -170,7 +170,7 @@ const handleEditPlantilla = async (plantillaData: any) => {
             </button>
             <button 
               onClick={() => setIsViewModalOpen(true)}
-              className="w-full max-w-[180px] m-auto cursor-pointer p-2 px-10 text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-1"
+              className="w-full max-w-[180px]  cursor-pointer p-2 px-10 text-black-700 border border-black text-sm rounded-md transition flex justify-between gap-1"
               aria-label="Ver detalles del test"
               disabled={isLoading}
             >
@@ -182,6 +182,7 @@ const handleEditPlantilla = async (plantillaData: any) => {
 
       {isEditModalOpen && (
         <ModalRegistraTestPlantilla
+          isAdmin={false}
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           onSubmit={handleEditPlantilla}

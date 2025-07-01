@@ -53,14 +53,14 @@ model Usuario {
 
 model Tutor {
   id                Int          @id @default(autoincrement())
-  cedula            String       @unique
-  nombre            String
+  cedula_tutor      String       @unique
+  nombre_tutor      String
   profesion_tutor   String?
   telefono_contacto String?
   correo_contacto   String?
   adolecentes       Adolecente[]
 
-  @@index([cedula])
+  @@index([cedula_tutor])
 }
 
 model Adolecente {

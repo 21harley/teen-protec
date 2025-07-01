@@ -160,18 +160,22 @@ const ModalAgregarPaciente = ({
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center border-b p-4">
-          <h2 className="text-xl font-bold">
+    <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex justify-center items-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col p-4">
+        <div className="flex justify-between items-center ">
+            <h2 className="text-xl font-medium">
             {mostrarSinAsignar ? 'Asignar Pacientes Existentes' : 'Agregar Nuevos Pacientes'}
           </h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
-            <Image src={IconClose} alt="Cerrar" width={24} height={24} />
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded cursor-pointer">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
           </button>
         </div>
-
-        <div className="p-4 border-b">
+<hr className="w-full max-h-[600px] h-[0.1px] bg-black mb-4"  />
+       {
+        filteredPacientes.length > 0 ? (
+        <div className="p-4">
           <input
             type="text"
             placeholder="Buscar por nombre o cédula..."
@@ -180,8 +184,12 @@ const ModalAgregarPaciente = ({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        ) : 
+        (<></>)
+       }
 
-        <div className="flex-1 overflow-y-auto p-4">
+
+        <div className="flex-1 overflow-y-auto p-4 border border-black rounded-2xl">
           {loading ? (
             <div className="text-center py-8">Cargando pacientes...</div>
           ) : filteredPacientes.length === 0 ? (
@@ -223,21 +231,21 @@ const ModalAgregarPaciente = ({
           )}
         </div>
 
-        <div className="flex justify-between items-center p-4 border-t">
+        <div className="flex justify-between items-center p-4 ">
           <div className="text-sm text-gray-600">
             {selectedPacientes.length} {selectedPacientes.length === 1 ? 'paciente seleccionado' : 'pacientes seleccionados'}
           </div>
           <div className="flex gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 border rounded hover:bg-gray-100 transition-colors"
+              className="px-4 py-2 border rounded hover:bg-gray-100 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               onClick={handleAsignarPacientes}
               disabled={asignando || selectedPacientes.length === 0}
-              className={`px-4 py-2 rounded text-white transition-colors ${
+              className={`px-4 py-2 rounded text-white transition-colors cursor-pointer ${
                 selectedPacientes.length === 0 
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'bg-blue-600 hover:bg-blue-700'

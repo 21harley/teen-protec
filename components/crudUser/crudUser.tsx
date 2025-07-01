@@ -5,7 +5,7 @@ import IconEditar from "./../../app/public/logos/icon_editar.svg";
 import IconEliminar from "./../../app/public/logos/icon_eliminar.svg";
 import IconMas from "./../../app/public/logos/icon_mas.svg";
 import Image from "next/image";
-import FormUser from "../formUser/formUser";
+import FormUserAdmin from "./../formUserAdmin/formUserAdmin";
 import { UsuarioCompleto } from "@/app/types/user/user";
 import { adaptLoginResponseDBToUsuarioCompleto } from "@/app/lib/utils";
 
@@ -103,9 +103,18 @@ export default function CrudUsuarios() {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
-
+  
   const containerWidth = windowWidth > 0 ? `${Math.min(windowWidth - 80, 900)}px` : '700px';
 
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!showCreateModal || !showDeleteModal) {
+        await fetchUsuarios();
+      }
+    };
+    fetchData();
+  }, [showCreateModal, showDeleteModal]);
+  
   const fetchInitialData = async () => {
     try {
       setLoading(prev => ({ ...prev, tiposUsuario: true }));
@@ -122,50 +131,66 @@ export default function CrudUsuarios() {
     }
   };
 
-  const fetchUsuarios = async () => {
-    setLoading(prev => ({ ...prev, table: true }));
-    try {
-      const params = new URLSearchParams();
-      if (filtros.id) params.append('id', filtros.id);
-      if (filtros.nombre) params.append('nombre', filtros.nombre);
-      if (filtros.tipoUsuarioId) params.append('tipo', filtros.tipoUsuarioId);
-      
-      params.append('paginated', 'true');
-      params.append('page', pagination.page.toString());
-      params.append('pageSize', pagination.pageSize.toString());
+const fetchUsuarios = async () => {
+  setLoading(prev => ({ ...prev, table: true }));
+  try {
+    const params = new URLSearchParams();
+    if (filtros.id) params.append('id', filtros.id);
+    if (filtros.nombre) params.append('nombre', filtros.nombre);
+    if (filtros.tipoUsuarioId) params.append('tipo', filtros.tipoUsuarioId);
+    
+    params.append('paginated', 'true');
+    params.append('page', pagination.page.toString());
+    params.append('pageSize', pagination.pageSize.toString());
 
-      const response = await fetch(`/api/usuario?${params.toString()}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al obtener usuarios');
-      }
-      
-      const data: PaginatedResponse = await response.json();
-      
-      // Normalizar los datos para asegurar que siempre sea un array
-      const normalizedData = Array.isArray(data.data) ? data.data : [data.data].filter(Boolean);
-      
-      setUsuarios(normalizedData);
+    const response = await fetch(`/api/usuario?${params.toString()}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al obtener usuarios');
+    }
+
+    const data: PaginatedResponse | Usuario = await response.json();
+    console.log(data, "data");
+
+    let normalizedData: Usuario[] = [];
+
+    // Verifica si la respuesta es paginada
+    if ('data' in data) {
+      normalizedData = Array.isArray(data.data) ? data.data : [data.data].filter(Boolean);
       setPagination({
         total: data.total || 0,
         page: data.page || 1,
         pageSize: data.pageSize || 10,
         totalPages: data.totalPages || 1
       });
-      
-    } catch (err) {
-      setUsuarios([]); // Asegurar que la tabla esté vacía
-      setPagination(prev => ({ 
-        ...prev, 
-        total: 0,
-        totalPages: 1,
-        page: 1
-      }));
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-    } finally {
-      setLoading(prev => ({ ...prev, table: false }));
+    } else {
+      // Es un único usuario sin paginación
+      normalizedData = [data as Usuario];
+      setPagination({
+        total: 1,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1
+      });
     }
-  };
+
+    console.log(normalizedData, "normalizedData");
+    setUsuarios(normalizedData);
+    
+  } catch (err) {
+    setUsuarios([]);
+    setPagination(prev => ({ 
+      ...prev, 
+      total: 0,
+      totalPages: 1,
+      page: 1
+    }));
+    // setError(err instanceof Error ? err.message : 'Error desconocido');
+  } finally {
+    setLoading(prev => ({ ...prev, table: false }));
+  }
+};
+
   
   useEffect(() => {
     fetchInitialData();
@@ -272,7 +297,7 @@ export default function CrudUsuarios() {
     <div className="p-4 max-w-6xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-medium">Usuarios</h1>
-        <hr className="w-full max-h-[600px] h-[1px] bg-black" />
+        <hr className="w-full max-h-[600px] h-[0.5px] bg-black" />
       </div>
       
       {/* Filters */}
@@ -309,8 +334,7 @@ export default function CrudUsuarios() {
             className="w-full md:w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center"
             onClick={openCreateModal}
           >
-            Crear Usuario 
-            <Image src={IconMas} alt="Icono de crear usuario" width={20} height={20} />
+            Crear Usuario <span className="font-bold text-2xl">+</span>
           </button>
         </div>
       </div>
@@ -482,7 +506,7 @@ export default function CrudUsuarios() {
       
       {/* Create/Edit Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-[800px] max-h-[90vh] overflow-y-auto relative">
             <button
               className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
@@ -494,12 +518,16 @@ export default function CrudUsuarios() {
               </svg>
             </button>
             
-            <FormUser 
-              isAdminSession={true}
+            <FormUserAdmin 
               user={usuarioToEdit ?? undefined}
               isEdit={!!usuarioToEdit}
-              onSubmit={handleFormSuccess}
-              onToggleEditAndCreate={() => setShowCreateModal(false)}
+              onSubmit={()=>{
+                handleFormSuccess()
+              }}
+              onToggleEditAndCreate={() =>{ 
+                setShowCreateModal(false)
+                handleFormSuccess()
+              }}
             />
           </div>
         </div>
@@ -507,7 +535,7 @@ export default function CrudUsuarios() {
       
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md relative">
             <button
               className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"

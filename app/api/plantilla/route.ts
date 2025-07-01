@@ -57,175 +57,116 @@ export async function GET(request: Request) {
     const search = searchParams.get('search');
     const fecha_inicio = searchParams.get('fecha_inicio');
     const fecha_fin = searchParams.get('fecha_fin');
-    
-    // Parámetros de paginación
+
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const skip = (page - 1) * pageSize;
-    
-    // Si hay un ID específico, devolver esa plantilla sin paginación
+
+    // Buscar por ID específico
     if (id) {
       const plantilla = await prisma.testPlantilla.findUnique({
         where: { id: parseInt(id) },
         include: {
-          psicologo: {
-            include: {
-              usuario: true
-            }
-          },
+          psicologo: { include: { usuario: true } },
           preguntas: {
             include: {
               tipo: true,
-              opciones: {
-                orderBy: {
-                  orden: 'asc'
-                }
-              }
+              opciones: { orderBy: { orden: 'asc' } }
             },
-            orderBy: {
-              orden: 'asc'
-            }
+            orderBy: { orden: 'asc' }
           }
         }
       });
 
       if (!plantilla) {
-        return NextResponse.json(
-          { error: 'Plantilla no encontrada' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Plantilla no encontrada' }, { status: 404 });
       }
 
       return NextResponse.json(plantilla);
     }
-    
-    // Si hay un nombre específico, devolver esa plantilla sin paginación
-    if (nombre) {
-      const plantilla = await prisma.testPlantilla.findFirst({
-        where: { nombre },
-        include: {
-          psicologo: {
-            include: {
-              usuario: true
-            }
-          },
-          preguntas: {
-            include: {
-              tipo: true,
-              opciones: {
-                orderBy: {
-                  orden: 'asc'
-                }
-              }
-            },
-            orderBy: {
-              orden: 'asc'
-            }
-          }
-        }
-      });
 
-      if (!plantilla) {
-        return NextResponse.json(
-          { error: 'Plantilla no encontrada' },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(plantilla);
-    }
-    
-    // Construir cláusula WHERE para los filtros
+    // Construcción de filtros
     let whereClause: any = {};
-    
-    // Filtros básicos
+
     if (id_psicologo) whereClause.id_psicologo = parseInt(id_psicologo);
     if (estado) whereClause.estado = estado;
-    
-    // Filtro por rango de fechas
+
     if (fecha_inicio || fecha_fin) {
       whereClause.fecha_creacion = {};
       if (fecha_inicio) whereClause.fecha_creacion.gte = new Date(fecha_inicio);
       if (fecha_fin) whereClause.fecha_creacion.lte = new Date(fecha_fin);
     }
-    
-    // Búsqueda textual
-    if (search) {
-      whereClause.OR = [
-        { nombre: { contains: search, mode: 'insensitive' } },
-        {
-          psicologo: {
-            usuario: {
-              OR: [
-                { nombre: { contains: search, mode: 'insensitive' } },
-                { email: { contains: search, mode: 'insensitive' } }
-              ]
-            }
-          }
-        },
-        {
-          preguntas: {
-            some: {
-              texto_pregunta: { contains: search, mode: 'insensitive' }
-            }
-          }
-        }
-      ];
-    }
 
-    // Obtener el total de plantillas que coinciden con los filtros
-    const total = await prisma.testPlantilla.count({
-      where: whereClause
-    });
+    // Búsqueda textual y por nombre (ignorando mayúsculas, usando contains sin mode)
+    if (search || nombre) {
+      const loweredSearch = search?.toLowerCase();
+      const loweredNombre = nombre?.toLowerCase();
 
-    // Calcular el total de páginas
-    const totalPages = Math.ceil(total / pageSize);
+      const orConditions = [];
 
-    // Obtener las plantillas paginadas
-    const plantillas = await prisma.testPlantilla.findMany({
-      where: whereClause,
-      include: {
-        psicologo: {
-          include: {
-            usuario: true
-          }
-        },
-        preguntas: {
-          include: {
-            tipo: true,
-            opciones: {
-              orderBy: {
-                orden: 'asc'
+      if (loweredSearch) {
+        orConditions.push(
+          { nombre: { contains: loweredSearch } },
+          {
+            psicologo: {
+              usuario: {
+                OR: [
+                  { nombre: { contains: loweredSearch } },
+                  { email: { contains: loweredSearch } }
+                ]
               }
             }
           },
-          orderBy: {
-            orden: 'asc'
+          {
+            preguntas: {
+              some: {
+                texto_pregunta: { contains: loweredSearch }
+              }
+            }
           }
+        );
+      }
+
+      if (loweredNombre) {
+        orConditions.push({ nombre: { contains: loweredNombre } });
+      }
+
+      whereClause.OR = orConditions;
+    }
+
+    const total = await prisma.testPlantilla.count({ where: whereClause });
+    const totalPages = Math.ceil(total / pageSize);
+
+    const plantillas = await prisma.testPlantilla.findMany({
+      where: whereClause,
+      include: {
+        psicologo: { include: { usuario: true } },
+        preguntas: {
+          include: {
+            tipo: true,
+            opciones: { orderBy: { orden: 'asc' } }
+          },
+          orderBy: { orden: 'asc' }
         }
       },
-      orderBy: {
-        fecha_creacion: 'desc'
-      },
+      orderBy: { fecha_creacion: 'desc' },
       skip,
       take: pageSize
     });
 
-    // Construir respuesta paginada
-    const paginatedResponse: PaginatedResponse = {
+    return NextResponse.json({
       data: plantillas,
       total,
       page,
       pageSize,
       totalPages
-    };
+    });
 
-    return NextResponse.json(paginatedResponse);
   } catch (error: any) {
     console.error('Error obteniendo plantillas:', error);
     return NextResponse.json(
-      { 
-        error: 'Error interno del servidor', 
+      {
+        error: 'Error interno del servidor',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       },
       { status: 500 }
@@ -234,6 +175,8 @@ export async function GET(request: Request) {
     await prisma.$disconnect();
   }
 }
+
+
 
 export async function POST(request: Request) {
   try {

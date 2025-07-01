@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { TipoPreguntaNombre, PreguntaData, OpcionData } from './../../app/types/test/index';
+import { 
+  PreguntaData, 
+  OpcionData, 
+  TipoPregunta,
+  TipoPreguntaNombre
+} from './../../app/types/test/index';
 import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
 import Image from "next/image";
 
@@ -11,6 +16,22 @@ interface ModalRegistrarInputProps {
   isEditing?: boolean;
 }
 
+const tipoPreguntaMap: Record<TipoPreguntaNombre, number> = {
+  [TipoPreguntaNombre.OPCION_MULTIPLE]: 1,
+  [TipoPreguntaNombre.VERDADERO_FALSO]: 2,
+  [TipoPreguntaNombre.RESPUESTA_CORTA]: 3,
+  [TipoPreguntaNombre.SELECT]: 4,
+  [TipoPreguntaNombre.RANGO]: 5
+};
+
+const reverseTipoPreguntaMap: Record<number, TipoPreguntaNombre> = {
+  1: TipoPreguntaNombre.OPCION_MULTIPLE,
+  2: TipoPreguntaNombre.VERDADERO_FALSO,
+  3: TipoPreguntaNombre.RESPUESTA_CORTA,
+  4: TipoPreguntaNombre.SELECT,
+  5: TipoPreguntaNombre.RANGO
+};
+
 const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({ 
   isOpen, 
   onClose, 
@@ -19,63 +40,65 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
   isEditing = false 
 }) => {
   // Estados para los datos de la pregunta
-  const [questionType, setQuestionType] = useState<TipoPreguntaNombre>(TipoPreguntaNombre.text);
+  const [questionType, setQuestionType] = useState<TipoPreguntaNombre>(TipoPreguntaNombre.RESPUESTA_CORTA);
   const [questionText, setQuestionText] = useState('');
   const [isRequired, setIsRequired] = useState(false);
-  const [placeholder, setPlaceholder] = useState('');
+  const [placeholder, setPlaceholder] = useState<string | null>(null);
   const [options, setOptions] = useState<OpcionData[]>([]);
   const [newOptionText, setNewOptionText] = useState('');
-  const [minValue, setMinValue] = useState<number | undefined>();
-  const [maxValue, setMaxValue] = useState<number | undefined>();
-  const [stepValue, setStepValue] = useState<number | undefined>();
+  const [minValue, setMinValue] = useState<number | null>(null);
+  const [maxValue, setMaxValue] = useState<number | null>(null);
+  const [stepValue, setStepValue] = useState<number | null>(null);
   const [order, setOrder] = useState(1);
-
-  const tipoPreguntaMap = {
-    "radio": 1,
-    "checkbox": 2,
-    "text": 3,
-    "select": 4,
-    "range": 5
-  };
+  const [tipoPregunta, setTipoPregunta] = useState<TipoPregunta>({
+    id: 3, // Default to RESPUESTA_CORTA
+    nombre: TipoPreguntaNombre.RESPUESTA_CORTA,
+    descripcion: null
+  });
 
   // Efecto para inicializar con datos existentes si se proporcionan
   useEffect(() => {
     if (initialData) {
-      const tipoNombre = Object.keys(tipoPreguntaMap).find(
-        key => tipoPreguntaMap[key as keyof typeof tipoPreguntaMap] === initialData.id_tipo
-      ) as TipoPreguntaNombre;
+      const tipoNombre = reverseTipoPreguntaMap[initialData.id_tipo] || TipoPreguntaNombre.RESPUESTA_CORTA;
       
       setQuestionType(tipoNombre);
       setQuestionText(initialData.texto_pregunta);
       setIsRequired(initialData.obligatoria || false);
-      setPlaceholder(initialData.placeholder || '');
+      setPlaceholder(initialData.placeholder || null);
       setOptions(initialData.opciones || []);
-      setMinValue(initialData.min);
-      setMaxValue(initialData.max);
-      setStepValue(initialData.paso);
+      setMinValue(initialData.min || null);
+      setMaxValue(initialData.max || null);
+      setStepValue(initialData.paso || null);
       setOrder(initialData.orden);
+      setTipoPregunta(initialData.tipo);
     } else {
       resetForm();
     }
   }, [initialData, isOpen]);
 
   const resetForm = () => {
-    setQuestionType(TipoPreguntaNombre.text);
+    setQuestionType(TipoPreguntaNombre.RESPUESTA_CORTA);
     setQuestionText('');
     setIsRequired(false);
-    setPlaceholder('');
+    setPlaceholder(null);
     setOptions([]);
     setNewOptionText('');
-    setMinValue(undefined);
-    setMaxValue(undefined);
-    setStepValue(undefined);
+    setMinValue(null);
+    setMaxValue(null);
+    setStepValue(null);
     setOrder(1);
+    setTipoPregunta({
+      id: 3,
+      nombre: TipoPreguntaNombre.RESPUESTA_CORTA,
+      descripcion: null
+    });
   };
 
   const handleAddOption = () => {
     if (newOptionText.trim() === '') return;
     
     const newOption: OpcionData = {
+      id: options.length + 1, // Temporal ID until saved
       texto: newOptionText,
       valor: newOptionText.toLowerCase().replace(/\s+/g, '_'),
       orden: options.length + 1,
@@ -103,16 +126,16 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
       return;
     }
 
-    if ((questionType === TipoPreguntaNombre.radio || 
-         questionType === TipoPreguntaNombre.checkbox || 
-         questionType === TipoPreguntaNombre.select) && 
+    if ((questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
+         questionType === TipoPreguntaNombre.VERDADERO_FALSO || 
+         questionType === TipoPreguntaNombre.SELECT) && 
         options.length === 0) {
       alert('Por favor agregue al menos una opción para este tipo de pregunta');
       return;
     }
 
-    if (questionType === TipoPreguntaNombre.range) {
-      if (minValue === undefined || maxValue === undefined) {
+    if (questionType === TipoPreguntaNombre.RANGO) {
+      if (minValue === null || maxValue === null) {
         alert('Por favor especifique los valores mínimo y máximo para el rango');
         return;
       }
@@ -123,18 +146,24 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
     }
 
     const questionData: PreguntaData = {
-      ...(initialData || {}), // Mantener propiedades existentes si estamos editando
+      ...(initialData || {}),
+      id: initialData?.id || 0, // Temporal ID if new
       texto_pregunta: questionText,
       id_tipo: tipoPreguntaMap[questionType],
       orden: order,
       obligatoria: isRequired,
-      placeholder: placeholder || undefined,
+      placeholder: placeholder,
       min: minValue,
       max: maxValue,
       paso: stepValue,
-      opciones: (questionType === TipoPreguntaNombre.radio || 
-                questionType === TipoPreguntaNombre.checkbox || 
-                questionType === TipoPreguntaNombre.select) ? options : undefined
+      opciones: (questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
+                questionType === TipoPreguntaNombre.VERDADERO_FALSO || 
+                questionType === TipoPreguntaNombre.SELECT) ? options : undefined,
+      tipo: {
+        id: tipoPreguntaMap[questionType],
+        nombre: questionType,
+        descripcion: null
+      }
     };
 
     onSave(questionData);
@@ -149,9 +178,9 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
       <div className={`bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto`}>
         <h2 className="text-xl font-medium mb-4">
           {isEditing ? (
-            <span > Editar Pregunta</span>
+            <span>Editar Pregunta</span>
           ) : (
-            <span > Agregar Pregunta</span>
+            <span>Agregar Pregunta</span>
           )}
         </h2>
         
@@ -165,11 +194,11 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
             onChange={(e) => setQuestionType(e.target.value as TipoPreguntaNombre)}
             className="w-full p-2 border border-gray-300 rounded"
           >
-            <option value={TipoPreguntaNombre.text}>Texto</option>
-            <option value={TipoPreguntaNombre.radio}>Opción única (radio)</option>
-            <option value={TipoPreguntaNombre.checkbox}>Opción múltiple (checkbox)</option>
-            <option value={TipoPreguntaNombre.select}>Selección (dropdown)</option>
-            <option value={TipoPreguntaNombre.range}>Rango</option>
+            <option value={TipoPreguntaNombre.RESPUESTA_CORTA}>Texto</option>
+            <option value={TipoPreguntaNombre.OPCION_MULTIPLE}>Opción única (radio)</option>
+            <option value={TipoPreguntaNombre.VERDADERO_FALSO}>Opción múltiple (checkbox)</option>
+            <option value={TipoPreguntaNombre.SELECT}>Selección (dropdown)</option>
+            <option value={TipoPreguntaNombre.RANGO}>Rango</option>
           </select>
         </div>
         
@@ -217,15 +246,15 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
         </div>
         
         {/* Placeholder (solo para texto) */}
-        {questionType === TipoPreguntaNombre.text && (
+        {questionType === TipoPreguntaNombre.RESPUESTA_CORTA && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Placeholder (texto de ejemplo)
             </label>
             <input
               type="text"
-              value={placeholder}
-              onChange={(e) => setPlaceholder(e.target.value)}
+              value={placeholder || ''}
+              onChange={(e) => setPlaceholder(e.target.value || null)}
               className="w-full p-2 border border-gray-300 rounded"
               placeholder="Ej: Ingrese su respuesta aquí"
             />
@@ -233,9 +262,9 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
         )}
         
         {/* Opciones para radio, checkbox y select */}
-        {(questionType === TipoPreguntaNombre.radio || 
-          questionType === TipoPreguntaNombre.checkbox || 
-          questionType === TipoPreguntaNombre.select) && (
+        {(questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
+          questionType === TipoPreguntaNombre.VERDADERO_FALSO || 
+          questionType === TipoPreguntaNombre.SELECT) && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Opciones de respuesta *
@@ -261,9 +290,9 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
             {options.length > 0 && (
               <div className="border rounded p-2">
                 <h4 className="text-sm font-medium mb-2">Opciones agregadas:</h4>
-                <ul className="space-y-2">
+                <ul className="space-y-2 overflow-scroll h-full max-h-[150px]">
                   {options.map((option, index) => (
-                    <li key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <li key={index} className="flex items-center justify-between p-2 bg-gray-50 border border-black rounded-[5px]">
                       <span>{option.texto}</span>
                       <button
                         onClick={() => handleRemoveOption(index)}
@@ -286,7 +315,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
         )}
         
         {/* Configuración de rango */}
-        {questionType === TipoPreguntaNombre.range && (
+        {questionType === TipoPreguntaNombre.RANGO && (
           <div className="mb-4 space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -295,7 +324,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
               <input
                 type="number"
                 value={minValue || ''}
-                onChange={(e) => setMinValue(parseFloat(e.target.value))}
+                onChange={(e) => setMinValue(parseFloat(e.target.value) || null)}
                 className="w-full p-2 border border-gray-300 rounded"
                 placeholder="0"
               />
@@ -308,7 +337,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
               <input
                 type="number"
                 value={maxValue || ''}
-                onChange={(e) => setMaxValue(parseFloat(e.target.value))}
+                onChange={(e) => setMaxValue(parseFloat(e.target.value) || null)}
                 className="w-full p-2 border border-gray-300 rounded"
                 placeholder="100"
               />
@@ -321,7 +350,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
               <input
                 type="number"
                 value={stepValue || ''}
-                onChange={(e) => setStepValue(parseFloat(e.target.value))}
+                onChange={(e) => setStepValue(parseFloat(e.target.value) || null)}
                 className="w-full p-2 border border-gray-300 rounded"
                 placeholder="1"
                 min="0.1"

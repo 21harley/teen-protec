@@ -26,8 +26,8 @@ export default function Header() {
     const loadUserData = () => {
       try {
         const storedData = storageManager.load<UsuarioInfo>("userData");
-        if (storedData) {
-          console.log(storedData,user);
+        if (storedData && !user) {
+          console.log(storedData,user,"Error usesr");
           
           login(
             storedData,
@@ -71,7 +71,7 @@ export default function Header() {
     if (user?.id) {
       fetchAlertCount(user.id)
     }
-    console.log(user,"user consulta alerta")
+    //console.log(user,"user consulta alerta")
   }, [user])
 
   const toggleModal = () => setIsModalOpen(!isModalOpen)
@@ -110,10 +110,12 @@ export default function Header() {
         </>
       )
     }
-
+    if(!user.tipoUsuario?.menu){
+      console.log(user,user.tipoUsuario,"error menu");
+    }
     return (
       <>
-        {user.tipoUsuario.menu.map((item, index) => (
+        {user && user.tipoUsuario?.menu.map((item, index) => (
           <li key={index}>
               <Link 
                 href={item.path}

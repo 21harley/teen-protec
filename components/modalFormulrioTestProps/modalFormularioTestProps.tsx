@@ -1,11 +1,11 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { PreguntaResponse, RespuestaData, TipoPreguntaNombre } from "@/app/types/test"
+import { PreguntaData, RespuestaData, TipoPreguntaNombre, OpcionData, TipoPregunta } from "@/app/types/test"
 import svg from "./../../app/public/logos/logo_texto.svg"
 import Image from 'next/image'
 
 interface ModalFormularioTestProps {
-  preguntas: PreguntaResponse[]
+  preguntas: PreguntaData[]
   onSave: (respuestas: RespuestaData[]) => Promise<void>
   onClose: () => void
   initialRespuestas?: RespuestaData[]
@@ -41,49 +41,48 @@ export function ModalFormularioTest({
     setEstaCompletado(nuevoProgreso === 100)
   }, [respuestas])
 
-const calcularProgresoActual = () => {
-  const preguntasRespondidas = new Set<number>();
-  
-  Object.entries(respuestas).forEach(([idPregunta, respuestasPreg]) => {
-    const preguntaId = Number(idPregunta)
-    const pregunta = preguntas.find(p => p.id === preguntaId)
+  const calcularProgresoActual = () => {
+    const preguntasRespondidas = new Set<number>()
     
-    if (!pregunta) return
-    
-    // Verificar si la pregunta está respondida adecuadamente
-    const estaRespondida = respuestasPreg.some(r => {
-      // Validación por tipo de pregunta
-      switch (pregunta.tipo.nombre) {
-        case 'radio':
-        case 'select':
-          return r.id_opcion !== null
-        
-        case 'checkbox':
-          return r.id_opcion !== null
-        
-        case 'text':
-          return r.texto_respuesta && r.texto_respuesta.trim() !== ''
-        
-        case 'range':
-          return r.valor_rango !== null
-        
-        default:
-          return true
+    Object.entries(respuestas).forEach(([idPregunta, respuestasPreg]) => {
+      const preguntaId = Number(idPregunta)
+      const pregunta = preguntas.find(p => p.id === preguntaId)
+      
+      if (!pregunta) return
+      
+      // Verificar si la pregunta está respondida adecuadamente según su tipo
+      const estaRespondida = respuestasPreg.some(r => {
+        switch (pregunta.tipo.nombre) {
+          case TipoPreguntaNombre.OPCION_MULTIPLE:
+          case TipoPreguntaNombre.SELECT:
+            return r.id_opcion !== null
+          
+          case TipoPreguntaNombre.VERDADERO_FALSO:
+            return respuestasPreg.length > 0
+          
+          case TipoPreguntaNombre.RESPUESTA_CORTA:
+            return r.texto_respuesta && r.texto_respuesta.trim() !== ''
+          
+          case TipoPreguntaNombre.RANGO:
+            return r.valor_rango !== null
+          
+          default:
+            return true
+        }
+      })
+      
+      // Si es obligatoria, debe estar respondida
+      if (pregunta.obligatoria && !estaRespondida) {
+        return
+      }
+      
+      if (estaRespondida) {
+        preguntasRespondidas.add(preguntaId)
       }
     })
-    
-    // Si es obligatoria, debe estar respondida
-    if (pregunta.obligatoria && !estaRespondida) {
-      return
-    }
-    
-    if (estaRespondida) {
-      preguntasRespondidas.add(preguntaId)
-    }
-  })
 
-  return Math.round((preguntasRespondidas.size / preguntas.length) * 100)
-}
+    return Math.round((preguntasRespondidas.size / preguntas.length) * 100)
+  }
 
   const handleChange = (idPregunta: number, value: any, idOpcion?: number, isCheckbox = false) => {
     if (isCheckbox) {
@@ -107,8 +106,9 @@ const calcularProgresoActual = () => {
                 id_pregunta: idPregunta,
                 id_opcion: idOpcion || null,
                 texto_respuesta: typeof value === 'string' ? value : null,
-                valor_rango: typeof value === 'number' ? value : null
-              }
+                valor_rango: typeof value === 'number' ? value : null,
+                fecha: new Date().toISOString()
+              } as RespuestaData
             ]
           }
         }
@@ -120,8 +120,9 @@ const calcularProgresoActual = () => {
           id_pregunta: idPregunta,
           id_opcion: idOpcion || null,
           texto_respuesta: typeof value === 'string' ? value : null,
-          valor_rango: typeof value === 'number' ? value : null
-        }]
+          valor_rango: typeof value === 'number' ? value : null,
+          fecha: new Date().toISOString()
+        } as RespuestaData]
       }))
     }
   }
@@ -136,7 +137,7 @@ const calcularProgresoActual = () => {
       
       const respuestasPreg = respuestas[pregunta.id] || []
       
-      if (pregunta.tipo.nombre === TipoPreguntaNombre.checkbox) {
+      if (pregunta.tipo.nombre === TipoPreguntaNombre.VERDADERO_FALSO) {
         return respuestasPreg.length === 0
       }
       
@@ -164,17 +165,17 @@ const calcularProgresoActual = () => {
     return (respuestas[idPregunta] || []).some(r => r.id_opcion === idOpcion)
   }
 
-  const renderPregunta = (pregunta: PreguntaResponse) => {
+  const renderPregunta = (pregunta: PreguntaData) => {
     const estaRespondida = (respuestas[pregunta.id]?.length ?? 0) > 0
     const claseInput = (estaCompletado && respuestasGuardadas) 
       ? 'bg-gray-100 cursor-not-allowed' 
       : 'focus:border-blue-500 focus:ring-blue-500'
 
     switch (pregunta.tipo.nombre) {
-      case TipoPreguntaNombre.radio:
+      case TipoPreguntaNombre.OPCION_MULTIPLE:
         return (
           <div className="space-y-2">
-            {pregunta.opciones.map(opcion => (
+            {pregunta.opciones?.map(opcion => (
               <div key={opcion.id} className="flex items-center">
                 <input
                   type="radio"
@@ -193,10 +194,10 @@ const calcularProgresoActual = () => {
           </div>
         )
       
-      case TipoPreguntaNombre.checkbox:
+      case TipoPreguntaNombre.VERDADERO_FALSO:
         return (
           <div className="space-y-2">
-            {pregunta.opciones.map(opcion => (
+            {pregunta.opciones?.map(opcion => (
               <div key={opcion.id} className="flex items-center">
                 <input
                   type="checkbox"
@@ -219,12 +220,13 @@ const calcularProgresoActual = () => {
           </div>
         )
       
-      case TipoPreguntaNombre.text:
+      case TipoPreguntaNombre.RESPUESTA_CORTA:
         const textAnswer = respuestas[pregunta.id]?.[0] || {
           id_pregunta: pregunta.id,
           id_opcion: null,
           texto_respuesta: null,
-          valor_rango: null
+          valor_rango: null,
+          fecha: new Date().toISOString()
         }
         return (
           <input
@@ -237,12 +239,13 @@ const calcularProgresoActual = () => {
           />
         )
       
-      case TipoPreguntaNombre.select:
+      case TipoPreguntaNombre.SELECT:
         const selectAnswer = respuestas[pregunta.id]?.[0] || {
           id_pregunta: pregunta.id,
           id_opcion: null,
           texto_respuesta: null,
-          valor_rango: null
+          valor_rango: null,
+          fecha: new Date().toISOString()
         }
         return (
           <select
@@ -250,14 +253,14 @@ const calcularProgresoActual = () => {
             onChange={(e) => {
               if (estaCompletado && respuestasGuardadas) return
               const opcionId = parseInt(e.target.value)
-              const opcion = pregunta.opciones.find(o => o.id === opcionId)
+              const opcion = pregunta.opciones?.find(o => o.id === opcionId)
               handleChange(pregunta.id, opcion?.valor || '', opcionId)
             }}
             disabled={estaCompletado && respuestasGuardadas}
             className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm ${claseInput}`}
           >
             <option value="">Selecciona una opción</option>
-            {pregunta.opciones.map(opcion => (
+            {pregunta.opciones?.map(opcion => (
               <option key={opcion.id} value={opcion.id}>
                 {opcion.texto}
               </option>
@@ -265,12 +268,13 @@ const calcularProgresoActual = () => {
           </select>
         )
       
-      case TipoPreguntaNombre.range:
+      case TipoPreguntaNombre.RANGO:
         const rangeAnswer = respuestas[pregunta.id]?.[0] || {
           id_pregunta: pregunta.id,
           id_opcion: null,
           texto_respuesta: null,
-          valor_rango: pregunta.min || 0
+          valor_rango: pregunta.min || 0,
+          fecha: new Date().toISOString()
         }
         return (
           <div className="space-y-2">
@@ -291,7 +295,7 @@ const calcularProgresoActual = () => {
         )
       
       default:
-        return <div>Tipo de pregunta no soportado</div>
+        return <div className="text-red-500">Tipo de pregunta no soportado: {pregunta.tipo.nombre}</div>
     }
   }
 
@@ -301,20 +305,19 @@ const calcularProgresoActual = () => {
         <div className="p-6">
           <div className="flex justify-between items-start">
             <div className='flex flex-col m-auto'>
-              <div>
-                <Image
-                  src={svg}
-                  width={180}
-                  height={90}
-                  alt="Logo de la empresa"
-                  priority
-                />
-              </div>
+              <Image
+                src={svg}
+                width={180}
+                height={90}
+                alt="Logo de la empresa"
+                priority
+              />
             </div>
             <button
               onClick={onClose}
               disabled={isSubmitting}
               className="text-gray-400 hover:text-gray-500"
+              aria-label="Cerrar modal"
             >
               <span className="sr-only">Cerrar</span>
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -1,12 +1,12 @@
 'use client'
 import React from 'react'
-import { PreguntaResponse, RespuestaResponse, TipoPreguntaNombre } from "@/app/types/test"
+import { PreguntaData, RespuestaData, TipoPreguntaNombre } from "@/app/types/test"
 import svg from "./../../app/public/logos/logo_texto.svg"
 import Image from 'next/image'
 
 interface ModalVerPacientesTestResultadosProps {
-  preguntas: PreguntaResponse[]
-  respuestas: RespuestaResponse[]
+  preguntas: PreguntaData[]
+  respuestas: RespuestaData[]
   onClose: () => void
 }
 
@@ -15,7 +15,7 @@ export function ModalVerPacientesTestResultados({ preguntas, respuestas, onClose
     return respuestas.find(r => r.id_pregunta === preguntaId)
   }
 
-  const renderRespuesta = (pregunta: PreguntaResponse) => {
+  const renderRespuesta = (pregunta: PreguntaData) => {
     const respuesta = getRespuestaForPregunta(pregunta.id)
     
     if (!respuesta) return <div className="text-sm text-gray-500">Sin respuesta</div>

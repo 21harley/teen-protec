@@ -26,8 +26,8 @@ interface DatosPaciente {
   adolecente?: {
     id_tutor?: number;
     tutor?: {
-      cedula?: string;
-      nombre?: string;
+      cedula_tutor?: string;
+      nombre_tutor?: string;
       profesion_tutor?: string;
       telefono_contacto?: string;
       correo_contacto?: string;
@@ -169,9 +169,6 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const data: { id_paciente: number } = await request.json();
-
-    // Obtener el token de autenticación de las cookies
     const cookieStore = await cookies();
     const authToken = cookieStore.get('auth-token')?.value;
 
@@ -203,14 +200,15 @@ export async function POST(request: Request) {
     // Verificar que el usuario es psicólogo
     if (!usuarioAutenticado.psicologo) {
       return NextResponse.json(
-        { error: 'Solo los psicólogos pueden asignar pacientes' },
+        { error: 'Solo los psicólogos pueden realizar estas acciones' },
         { status: 403 }
       );
     }
 
     const idPsicologo = usuarioAutenticado.id;
+    const data = await request.json();
 
-    // Resto de la lógica de validación y asignación...
+    // Validación básica de datos
     if (!data.id_paciente) {
       return NextResponse.json(
         { error: 'ID de paciente es requerido' },
@@ -238,22 +236,115 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verificar si ya está asignado
-    if (paciente.id_psicologo === idPsicologo) {
+    // Caso 1: Solo asignar paciente (sin id_plantilla)
+    if (!data.id_plantilla) {
+      // Verificar si ya está asignado
+      if (paciente.id_psicologo === idPsicologo) {
+        return NextResponse.json(
+          { error: 'El paciente ya está asignado a este psicólogo' },
+          { status: 400 }
+        );
+      }
+
+      // Actualizar el campo id_psicologo en el usuario
+      const usuarioActualizado = await prisma.usuario.update({
+        where: { id: data.id_paciente },
+        data: { id_psicologo: idPsicologo }
+      });
+
       return NextResponse.json(
-        { error: 'El paciente ya está asignado a este psicólogo' },
-        { status: 400 }
+        { 
+          message: 'Paciente asignado correctamente', 
+          usuario: usuarioActualizado,
+          testAsignado: false
+        },
+        { status: 200 }
       );
     }
 
-    // Actualizar el campo id_psicologo en el usuario
-    const usuarioActualizado = await prisma.usuario.update({
-      where: { id: data.id_paciente },
-      data: { id_psicologo: idPsicologo }
+    // Caso 2: Asignar test a paciente (con id_plantilla)
+    // Verificar que el paciente está asignado a este psicólogo
+    if (paciente.id_psicologo !== idPsicologo) {
+      return NextResponse.json(
+        { error: 'El paciente no está asignado a este psicólogo' },
+        { status: 403 }
+      );
+    }
+
+    // Verificar que la plantilla existe y pertenece al psicólogo
+    const plantilla = await prisma.testPlantilla.findUnique({
+      where: { id: data.id_plantilla },
+      include: {
+        preguntas: {
+          include: {
+            opciones: true,
+            tipo: true
+          },
+          orderBy: { orden: 'asc' }
+        }
+      }
+    });
+
+    if (!plantilla) {
+      return NextResponse.json(
+        { error: 'Plantilla de test no encontrada' },
+        { status: 404 }
+      );
+    }
+
+    if (plantilla.id_psicologo !== idPsicologo) {
+      return NextResponse.json(
+        { error: 'La plantilla no pertenece a este psicólogo' },
+        { status: 403 }
+      );
+    }
+
+    // Crear el nuevo test basado en la plantilla
+    const nuevoTest = await prisma.test.create({
+      data: {
+        nombre: plantilla.nombre,
+        id_psicologo: idPsicologo,
+        id_usuario: data.id_paciente,
+        estado: 'no_iniciado',
+        progreso: 0,
+        fecha_creacion: new Date(),
+        preguntas: {
+          create: plantilla.preguntas.map(preguntaPlantilla => ({
+            id_tipo: preguntaPlantilla.id_tipo,
+            texto_pregunta: preguntaPlantilla.texto_pregunta,
+            orden: preguntaPlantilla.orden,
+            obligatoria: preguntaPlantilla.obligatoria,
+            placeholder: preguntaPlantilla.placeholder,
+            min: preguntaPlantilla.min,
+            max: preguntaPlantilla.max,
+            paso: preguntaPlantilla.paso,
+            opciones: {
+              create: preguntaPlantilla.opciones.map(opcionPlantilla => ({
+                texto: opcionPlantilla.texto,
+                valor: opcionPlantilla.valor,
+                orden: opcionPlantilla.orden,
+                es_otro: opcionPlantilla.es_otro
+              }))
+            }
+          }))
+        }
+      },
+      include: {
+        preguntas: {
+          include: {
+            opciones: true
+          }
+        }
+      }
     });
 
     return NextResponse.json(
-      { message: 'Paciente asignado correctamente', usuario: usuarioActualizado },
+      { 
+        message: 'Test asignado correctamente desde plantilla', 
+        test: nuevoTest,
+        totalPreguntas: plantilla.preguntas.length,
+        testAsignado: true
+      },
       { status: 200 }
     );
 
@@ -338,14 +429,14 @@ export async function PUT(request: Request) {
         await prisma.tutor.upsert({
           where: { id: data.adolecente.id_tutor || -1 },
           update: {
-            nombre: data.adolecente.tutor.nombre,
+            nombre_tutor: data.adolecente.tutor.nombre_tutor,
             profesion_tutor: data.adolecente.tutor.profesion_tutor,
             telefono_contacto: data.adolecente.tutor.telefono_contacto,
             correo_contacto: data.adolecente.tutor.correo_contacto
           },
           create: {
-            cedula: data.adolecente.tutor.cedula || '',
-            nombre: data.adolecente.tutor.nombre || '',
+            cedula_tutor: data.adolecente.tutor.cedula_tutor || '',
+            nombre_tutor: data.adolecente.tutor.nombre_tutor || '',
             profesion_tutor: data.adolecente.tutor.profesion_tutor,
             telefono_contacto: data.adolecente.tutor.telefono_contacto,
             correo_contacto: data.adolecente.tutor.correo_contacto

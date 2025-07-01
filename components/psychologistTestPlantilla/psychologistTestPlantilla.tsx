@@ -119,7 +119,7 @@ export default function TestsPlantillaPage() {
     <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start p-4">
       <div className="flex justify-between flex-col  mb-4">
         <h1 className="text-xl font-medium mb-4">Test</h1>
-        <hr className="w-full max-h-[600px] h-[1px] bg-black" />
+        <hr className="w-full max-h-[600px] h-[0.5px] bg-black" />
       </div>
       <div className="flex items-end flex-col mb-4">
           <button 
@@ -158,6 +158,7 @@ export default function TestsPlantillaPage() {
       )}
 
       <ModalRegistraTestPlantilla
+        isAdmin={false}
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreatePlantilla}

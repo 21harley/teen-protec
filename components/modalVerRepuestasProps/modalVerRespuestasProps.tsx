@@ -1,72 +1,85 @@
 'use client'
 import React from 'react'
-import { PreguntaResponse, RespuestaResponse, TipoPreguntaNombre } from "@/app/types/test"
+import { PreguntaData, RespuestaData, TipoPreguntaNombre, OpcionData } from "@/app/types/test"
 import svg from "./../../app/public/logos/logo_texto.svg"
 import Image from 'next/image'
 
 interface ModalVerRespuestasProps {
-  preguntas: PreguntaResponse[]
-  respuestas: RespuestaResponse[]
+  preguntas: PreguntaData[]
+  respuestas: RespuestaData[]
   onClose: () => void
 }
 
 export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerRespuestasProps) {
-  const getRespuestaForPregunta = (preguntaId: number) => {
-    return respuestas.find(r => r.id_pregunta === preguntaId)
+  // Función para obtener respuestas de una pregunta específica
+  const getRespuestasForPregunta = (preguntaId: number): RespuestaData[] => {
+    return respuestas.filter(r => r.id_pregunta === preguntaId)
   }
 
-  const renderRespuesta = (pregunta: PreguntaResponse) => {
-    const respuesta = getRespuestaForPregunta(pregunta.id)
+  // Función para renderizar la respuesta según el tipo de pregunta
+  const renderRespuesta = (pregunta: PreguntaData) => {
+    const respuestasPregunta = getRespuestasForPregunta(pregunta.id)
     
-    if (!respuesta) return <div className="text-sm text-gray-500">Sin respuesta</div>
+    if (respuestasPregunta.length === 0) {
+      return <div className="text-sm text-gray-500 italic">Sin respuesta</div>
+    }
 
     switch (pregunta.tipo.nombre) {
-      case TipoPreguntaNombre.radio:
-      case TipoPreguntaNombre.select:
+      case TipoPreguntaNombre.OPCION_MULTIPLE:
+      case TipoPreguntaNombre.SELECT:
         return (
           <div className="text-sm text-gray-700">
-            {respuesta.opcion?.texto || 'Opción no disponible'}
+            {respuestasPregunta[0]?.opcion?.texto || 'Opción no disponible'}
           </div>
         )
       
-      case TipoPreguntaNombre.checkbox:
+      case TipoPreguntaNombre.VERDADERO_FALSO:
         return (
-          <div className="text-sm text-gray-700">
-            {respuesta.opcion ? (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                {respuesta.opcion.texto}
-              </span>
+          <div className="flex flex-wrap gap-2">
+            {respuestasPregunta.length > 0 ? (
+              respuestasPregunta.map((respuesta, index) => (
+                respuesta.opcion && (
+                  <span 
+                    key={`respuesta-${index}`}
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                  >
+                    {respuesta.opcion.texto}
+                  </span>
+                )
+              ))
             ) : (
-              'No seleccionado'
+              <div className="text-sm text-gray-500 italic">No seleccionado</div>
             )}
           </div>
         )
       
-      case TipoPreguntaNombre.text:
+      case TipoPreguntaNombre.RESPUESTA_CORTA:
         return (
           <div className="text-sm text-gray-700 bg-gray-50 p-2 rounded">
-            {respuesta.texto_respuesta || 'Sin texto'}
+            {respuestasPregunta[0]?.texto_respuesta || 'Sin texto proporcionado'}
           </div>
         )
       
-      case TipoPreguntaNombre.range:
+      case TipoPreguntaNombre.RANGO:
+        const valor = respuestasPregunta[0]?.valor_rango ?? 0
+        const min = pregunta.min ?? 0
+        const max = pregunta.max ?? 100
+        const porcentaje = ((valor - min) / (max - min)) * 100
+        
         return (
           <div className="flex items-center space-x-2">
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div 
                 className="bg-blue-600 h-2.5 rounded-full" 
-                style={{ 
-                  width: `${((respuesta.valor_rango || 0) - (pregunta.min || 0)) / 
-                          ((pregunta.max || 100) - (pregunta.min || 0)) * 100}%` 
-                }}
+                style={{ width: `${Math.max(0, Math.min(100, porcentaje))}%` }}
               ></div>
             </div>
-            <span className="text-sm text-gray-700">{respuesta.valor_rango}</span>
+            <span className="text-sm text-gray-700">{valor}</span>
           </div>
         )
       
       default:
-        return <div className="text-sm text-gray-500">Tipo de respuesta no soportado</div>
+        return <div className="text-sm text-gray-500">Tipo de respuesta no soportado: {pregunta.tipo.nombre}</div>
     }
   }
 
@@ -75,8 +88,7 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-start">
-              <div className='flex flex-col m-auto'>
-                <div>
+            <div className='flex flex-col m-auto'>
               <Image
                 src={svg}
                 width={180}
@@ -84,12 +96,12 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
                 alt="Logo de la empresa"
                 priority
               />
+              <h2 className="text-xl font-medium text-gray-900 mt-2">Respuestas del Test</h2>
             </div>
-            <h2 className="text-xl font-medium text-gray-900">Respuestas del Test</h2>
-              </div>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-500 cursor-pointer"
+              aria-label="Cerrar modal de respuestas"
             >
               <span className="sr-only">Cerrar</span>
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -100,10 +112,16 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
 
           <div className="mt-6 space-y-6">
             {preguntas.map((pregunta, index) => (
-              <div key={pregunta.id} className="space-y-2 border-b pb-4 last:border-b-0">
-                <h3 className="text-sm font-medium text-gray-700">
-                  {index + 1}. {pregunta.texto_pregunta}
-                </h3>
+              <div key={`pregunta-${pregunta.id}`} className="space-y-2 border-b pb-4 last:border-b-0">
+                <div className="flex justify-between items-start">
+                  <h3 className="text-sm font-medium text-gray-700">
+                    {index + 1}. {pregunta.texto_pregunta}
+                    {pregunta.obligatoria && <span className="text-red-500 ml-1">*</span>}
+                  </h3>
+                  <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
+                    {pregunta.tipo.nombre}
+                  </span>
+                </div>
                 {renderRespuesta(pregunta)}
               </div>
             ))}
@@ -112,7 +130,8 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
           <div className="flex justify-center pt-6">
             <button
               onClick={onClose}
-              className="cursor-pointer  p-2 px-[100px] bg-[#6DC7E4] text-white text-sm rounded-md transition"
+              className="cursor-pointer p-2 px-[100px] bg-[#6DC7E4] text-white text-sm rounded-md hover:bg-[#5ab3d0] transition-colors"
+              aria-label="Volver al listado"
             >
               Volver
             </button>

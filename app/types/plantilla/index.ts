@@ -119,3 +119,32 @@ export interface CreateTestPlantillaInput extends Omit<TestPlantillaInput, 'id'>
 export interface UpdateTestPlantillaInput extends TestPlantillaInput {
   id: number;
 }
+export interface Plantilla {
+  id: number;
+  nombre: string;
+  estado: 'no_iniciado' | 'en_progreso' | 'completado';
+  fecha_creacion: string;
+  id_psicologo: number;
+  psicologo?: {
+    usuario: {
+      nombre: string;
+    };
+  };
+  preguntas?: {
+    id: number;
+    texto_pregunta: string;
+    id_tipo: number;
+    orden: number;
+    obligatoria: boolean;
+    tipo: {
+      nombre: string;
+    };
+    opciones?: {
+      id: number;
+      texto: string;
+      valor: string;
+      orden: number;
+      es_otro: boolean;
+    }[];
+  }[];
+}

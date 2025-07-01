@@ -87,10 +87,10 @@ export default function Pacientes() {
         <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start p-4">
           <div className="flex justify-between flex-col mb-4">
             <h1 className="text-xl font-medium mb-4">Pacientes</h1>
-            <hr className="w-full max-h-[600px] h-[1px] bg-black" />
+            <hr className="w-full max-h-[600px] h-[0.5px] bg-black" />
           </div>
           
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-end items-end mb-4">
             <button
               onClick={() => setShowModal(true)}
               className="w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center cursor-pointer"
