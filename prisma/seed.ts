@@ -45,11 +45,41 @@ const tipoUsuarioData = [
 ];
 
 const tipoAlertaData = [
-  { nombre: "Test" },
-  { nombre: "Asignación de test" },
-  { nombre: "Test finalizado" },
-  { nombre: "Test por revisar" },
-  { nombre: "Alarma" }
+  { 
+    nombre: "Test asignado", 
+    url_destino: "/test",
+    id_tipo_usuario: 3 // Adolecente
+  },
+  { 
+    nombre: "Test completado", 
+    url_destino: "/pacientes",
+    id_tipo_usuario: 2 // Psicólogo
+  },
+  { 
+    nombre: "Test por revisar", 
+    url_destino: "/pacientes",
+    id_tipo_usuario: 2 // Psicólogo
+  },
+  { 
+    nombre: "Nuevo paciente asignado", 
+    url_destino: "/pacientes",
+    id_tipo_usuario: 2 // Psicólogo
+  },
+  { 
+    nombre: "Datos actualizados", 
+    url_destino: "/perfil",
+    id_tipo_usuario: 3 // Adolecente
+  },
+  { 
+    nombre: "Paciente dado de alta", 
+    url_destino: "/pacientes",
+    id_tipo_usuario: 2 // Psicólogo
+  },
+  { 
+    nombre: "Alerta de sistema", 
+    url_destino: "/alertas",
+    id_tipo_usuario: 1 // Administrador
+  }
 ];
 
 const tiposPreguntaData = [
@@ -228,7 +258,8 @@ const dataUsuarios = [
 ];
 
 async function main() {
-  // Eliminar datos existentes
+  console.log("🧹 Eliminando datos existentes...");
+  // Eliminar datos existentes en el orden correcto para evitar violaciones de FK
   await prisma.respuesta.deleteMany({});
   await prisma.opcion.deleteMany({});
   await prisma.pregunta.deleteMany({});
@@ -243,7 +274,10 @@ async function main() {
   await prisma.tipoAlerta.deleteMany({});
   await prisma.tipoUsuario.deleteMany({});
 
-  // Crear tipos de usuario
+  console.log("✅ Todos los datos existentes eliminados");
+
+  // 1. Primero crear tipos de usuario
+  console.log("🔧 Creando tipos de usuario...");
   for (const tipoUsuario of tipoUsuarioData) {
     await prisma.tipoUsuario.create({
       data: {
@@ -253,16 +287,22 @@ async function main() {
     });
   }
 
-  // Crear tipos de alerta
+  // 2. Luego crear tipos de alerta (que dependen de tipos de usuario)
+  console.log("🔔 Creando tipos de alerta...");
   for (const tipoAlerta of tipoAlertaData) {
     await prisma.tipoAlerta.create({
       data: {
-        nombre: tipoAlerta.nombre
+        nombre: tipoAlerta.nombre,
+        url_destino: tipoAlerta.url_destino,
+        tipo_usuario: {
+          connect: { id: tipoAlerta.id_tipo_usuario }
+        }
       }
     });
   }
 
-  // Crear tipos de pregunta
+  // 3. Crear tipos de pregunta (no tienen dependencias)
+  console.log("❓ Creando tipos de pregunta...");
   for (const tipoPregunta of tiposPreguntaData) {
     await prisma.tipoPregunta.create({
       data: {
@@ -272,53 +312,71 @@ async function main() {
     });
   }
 
-  // Crear usuarios con sus relaciones
+  // 4. Crear usuarios con sus relaciones
+  console.log("👥 Creando usuarios y relaciones...");
   for (const usuario of dataUsuarios) {
     await prisma.usuario.create({
       data: usuario
     });
   }
 
-  // Crear alarmas de prueba
+  // 5. Crear alarmas de prueba según los flujos descritos
+  console.log("🚨 Creando alarmas de prueba...");
   await prisma.alarma.createMany({
     data: [
+      // Test asignado (para adolescente)
       {
-        id_usuario: 4,
-        id_tipo_alerta: 1,
-        mensaje: "Posibles síntomas de depresión detectados",
-        url_destino: "/test",
+        id_usuario: 4, // Adolescente 1
+        id_tipo_alerta: 1, // Test asignado
+        mensaje: "Se te ha asignado un nuevo test de evaluación psicológica",
         vista: false,
         fecha_vista: null
       },
+      // Test completado (para psicólogo)
       {
-        id_usuario: 4,
-        id_tipo_alerta: 2,
-        mensaje: "Se te ha asignado un nuevo test",
-        url_destino: "/test",
+        id_usuario: 2, // Psicólogo 1
+        id_tipo_alerta: 2, // Test completado
+        mensaje: "Ana López ha completado el test de evaluación",
         vista: false,
         fecha_vista: null
       },
+      // Test por revisar (para psicólogo)
       {
-        id_usuario: 5,
-        id_tipo_alerta: 3,
-        mensaje: "Test completado exitosamente",
-        url_destino: "/test",
+        id_usuario: 2, // Psicólogo 1
+        id_tipo_alerta: 3, // Test por revisar
+        mensaje: "Tienes 1 test pendiente de revisión",
         vista: false,
         fecha_vista: null
       },
+      // Nuevo paciente asignado (para psicólogo)
       {
-        id_usuario: 2,
-        id_tipo_alerta: 4,
-        mensaje: "Tienes tests pendientes de revisión",
-        url_destino: "/pacientes",
+        id_usuario: 3, // Psicólogo 2
+        id_tipo_alerta: 4, // Nuevo paciente asignado
+        mensaje: "Se te ha asignado un nuevo paciente: Laura Fernández",
         vista: false,
         fecha_vista: null
       },
+      // Datos actualizados (para adolescente)
       {
-        id_usuario: 1, 
-        id_tipo_alerta: 5,
-        mensaje: "Nuevo test disponible para todos los usuarios",
-        url_destino: "/test",
+        id_usuario: 5, // Adolescente 2
+        id_tipo_alerta: 5, // Datos actualizados
+        mensaje: "Tus datos personales han sido actualizados",
+        vista: false,
+        fecha_vista: null
+      },
+      // Paciente dado de alta (para psicólogo)
+      {
+        id_usuario: 2, // Psicólogo 1
+        id_tipo_alerta: 6, // Paciente dado de alta
+        mensaje: "Carlos Sánchez ha sido dado de alta del sistema",
+        vista: false,
+        fecha_vista: null
+      },
+      // Alerta de sistema (para admin)
+      {
+        id_usuario: 1, // Admin
+        id_tipo_alerta: 7, // Alerta de sistema
+        mensaje: "Se ha detectado un intento de acceso no autorizado",
         vista: false,
         fecha_vista: null
       }
@@ -385,10 +443,9 @@ async function main() {
   ];
 
   // Función para crear tests con preguntas y opciones
-async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, estado: 'no_iniciado' | 'en_progreso' | 'completado', progreso: number) {
+  async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, estado: 'no_iniciado' | 'en_progreso' | 'completado', progreso: number) {
     const codigoSesion = `TEST-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     
-    // Calcular el estado real basado en las respuestas
     let estadoReal = estado;
     let progresoReal = progreso;
     
@@ -431,7 +488,6 @@ async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, 
         }
     });
 
-    // Si el test está completado o en progreso, añadir respuestas
     if (estado !== 'no_iniciado') {
         let preguntasRespondidas = 0;
         let todasObligatoriasRespondidas = true;
@@ -440,7 +496,6 @@ async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, 
             let respondida = false;
             
             if (pregunta.opciones.length > 0) {
-                // Para preguntas con opciones, seleccionar una al azar
                 const opcionSeleccionada = pregunta.opciones[Math.floor(Math.random() * pregunta.opciones.length)];
                 
                 await prisma.respuesta.create({
@@ -449,13 +504,12 @@ async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, 
                         id_pregunta: pregunta.id,
                         id_usuario: idUsuario,
                         id_opcion: opcionSeleccionada.id,
-                        texto_respuesta: pregunta.id_tipo === 2 ? "Otra información" : null, // Para checkbox
-                        valor_rango: pregunta.id_tipo === 5 ? Math.floor(Math.random() * 10) + 1 : null // Para range
+                        texto_respuesta: pregunta.id_tipo === 2 ? "Otra información" : null,
+                        valor_rango: pregunta.id_tipo === 5 ? Math.floor(Math.random() * 10) + 1 : null
                     }
                 });
                 respondida = true;
             } else if (pregunta.id_tipo === 3) {
-                // Para preguntas de texto
                 await prisma.respuesta.create({
                     data: {
                         id_test: test.id,
@@ -474,13 +528,10 @@ async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, 
             }
         }
         
-        // Calcular progreso real
         progresoReal = Math.round((preguntasRespondidas / test.preguntas.length) * 100);
         
-        // Determinar estado real
         if (estado === 'completado' && !todasObligatoriasRespondidas) {
             estadoReal = 'en_progreso';
-            // Ajustar progreso si no está completo
             if (progresoReal === 100) {
                 progresoReal = 99;
             }
@@ -491,7 +542,6 @@ async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, 
             estadoReal = 'en_progreso';
         }
         
-        // Actualizar test con valores reales
         await prisma.test.update({
             where: { id: test.id },
             data: {
@@ -502,31 +552,23 @@ async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, 
     }
 
     return test;
-}
+  }
+
   // Crear tests para diferentes usuarios
-  console.log("Creando tests de ejemplo...");
+  console.log("📝 Creando tests de ejemplo...");
   
-  // Test completado para adolescente 1 (paciente del Psicólogo 1)
-  await crearTestCompleto(2, 4, 'completado', 100);
-  
-  // Test en progreso para adolescente 2 (paciente del Psicólogo 2)
-  await crearTestCompleto(3, 5, 'en_progreso', 50);
-  
-  // Test no iniciado para adolescente 3 (paciente del Psicólogo 1)
-  await crearTestCompleto(2, 6, 'no_iniciado', 0);
-  
-  // Test completado para usuario adulto (paciente del Psicólogo 2)
-  await crearTestCompleto(3, 7, 'completado', 100);
-  
-  // Test en progreso para admin (sin psicólogo asignado)
-  await crearTestCompleto(null, 1, 'en_progreso', 75);
+  await crearTestCompleto(2, 4, 'completado', 100); // Test completado para adolescente 1
+  await crearTestCompleto(3, 5, 'en_progreso', 50); // Test en progreso para adolescente 2
+  await crearTestCompleto(2, 6, 'no_iniciado', 0);  // Test no iniciado para adolescente 3
+  await crearTestCompleto(3, 7, 'completado', 100);  // Test completado para usuario adulto
+  await crearTestCompleto(null, 1, 'en_progreso', 75); // Test en progreso para admin
 
   console.log("✅ Seed completado exitosamente!");
 }
 
 main()
   .catch((e) => {
-    console.error("Error durante el seed:", e);
+    console.error("❌ Error durante el seed:", e);
     process.exit(1);
   })
   .finally(async () => {

@@ -43,26 +43,37 @@ export type Adolescente = {
 };
 
 // Tipo principal de usuario
-export type Usuario = {
+export interface Usuario {
   id: number;
   nombre: string;
   email: string;
   cedula: string;
-  fecha_nacimiento: Date | string;
-  id_tipo_usuario: number;
-  id_psicologo?: number | null;
-  tipo_usuario?: TipoUsuario;
-  adolecente?: Adolescente;
-  psicologo?: Psicologo;
-  psicologoAsignado?: {
-    usuario: {
-      id: number;
-      nombre: string;
-      email: string;
-      psicologo?: Psicologo;
-    };
+  fecha_nacimiento: string;
+  tipo_usuario: {
+    id: number;
+    nombre: string;
   };
-};
+  adolecente?: {
+    tutor: {
+      id: number;
+      nombre_tutor: string;
+      cedula_tutor: string;
+      profesion_tutor?: string;
+      telefono_contacto?: string;
+      correo_contacto?: string;
+    };
+  } | null;
+  psicologo?: {
+    numero_de_titulo: string;
+    nombre_universidad: string;
+    monto_consulta: number;
+    telefono_trabajo: string;
+    redes_sociales: {
+      nombre_red: string;
+      url_perfil: string;
+    }[];
+  } | null;
+}
 
 // Tipo para la respuesta de login
 export type LoginResponse = {
@@ -140,3 +151,15 @@ export type PsicologoData = {
 };
 
 export type TipoRegistro = 'usuario' | 'adolescente' | 'psicologo' | 'admin';
+
+
+
+// Para respuestas paginadas
+export interface PaginatedUsuariosResponse {
+  data: Usuario[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+

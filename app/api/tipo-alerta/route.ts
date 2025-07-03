@@ -7,6 +7,8 @@ const prisma = new PrismaClient()
 // Tipos para los datos
 interface TipoAlertaData {
   nombre: string;
+  url_destino?: string;
+  id_tipo_usuario: number;
 }
 
 // Tipos para la paginación
@@ -23,6 +25,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const nombre = searchParams.get('nombre');
+    const id_tipo_usuario = searchParams.get('id_tipo_usuario');
     
     // Parámetros de paginación
     const page = parseInt(searchParams.get('page') || '1');
@@ -37,7 +40,8 @@ export async function GET(request: Request) {
             include: {
               usuario: true
             }
-          }
+          },
+          tipo_usuario: true
         }
       });
 
@@ -58,7 +62,8 @@ export async function GET(request: Request) {
             include: {
               usuario: true
             }
-          }
+          },
+          tipo_usuario: true
         }
       });
 
@@ -78,6 +83,10 @@ export async function GET(request: Request) {
         whereClause.nombre = { contains: nombre, mode: 'insensitive' };
       }
 
+      if (id_tipo_usuario) {
+        whereClause.id_tipo_usuario = parseInt(id_tipo_usuario);
+      }
+
       // Obtener el total de tipos de alerta que coinciden con los filtros
       const total = await prisma.tipoAlerta.count({
         where: whereClause
@@ -94,7 +103,8 @@ export async function GET(request: Request) {
             include: {
               usuario: true
             }
-          }
+          },
+          tipo_usuario: true
         },
         orderBy: {
           id: 'asc'
@@ -127,13 +137,32 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { nombre }: TipoAlertaData = await request.json();
+    const { nombre, url_destino, id_tipo_usuario }: TipoAlertaData = await request.json();
 
     // Validación básica
     if (!nombre) {
       return NextResponse.json(
         { error: 'El nombre del tipo de alerta es requerido' },
         { status: 400 }
+      );
+    }
+
+    if (!id_tipo_usuario) {
+      return NextResponse.json(
+        { error: 'El tipo de usuario asociado es requerido' },
+        { status: 400 }
+      );
+    }
+
+    // Verificar si el tipo de usuario existe
+    const tipoUsuarioExistente = await prisma.tipoUsuario.findUnique({
+      where: { id: id_tipo_usuario }
+    });
+
+    if (!tipoUsuarioExistente) {
+      return NextResponse.json(
+        { error: 'El tipo de usuario especificado no existe' },
+        { status: 404 }
       );
     }
 
@@ -150,11 +179,16 @@ export async function POST(request: Request) {
     }
 
     // Crear nuevo tipo de alerta
-    const nuevoTipoAlerta = await prisma.tipoAlerta.create({
-      data: {
-        nombre
-      }
-    });
+const nuevoTipoAlerta = await prisma.tipoAlerta.create({
+  data: {
+    nombre,
+    url_destino,
+    id_tipo_usuario
+  },
+  include: {
+    tipo_usuario: true
+  }
+});
 
     return NextResponse.json(nuevoTipoAlerta, { status: 201 });
 
@@ -169,6 +203,13 @@ export async function POST(request: Request) {
       );
     }
     
+    if (error.code === 'P2025') {
+      return NextResponse.json(
+        { error: 'El tipo de usuario especificado no existe' },
+        { status: 404 }
+      );
+    }
+    
     return NextResponse.json(
       { error: error.message || 'Error interno del servidor', details: error.message },
       { status: 500 }
@@ -180,7 +221,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const { id, nombre }: TipoAlertaData & { id: number } = await request.json();
+    const { id, nombre, url_destino, id_tipo_usuario }: TipoAlertaData & { id: number } = await request.json();
 
     // Validación básica
     if (!id) {
@@ -197,6 +238,13 @@ export async function PUT(request: Request) {
       );
     }
 
+    if (!id_tipo_usuario) {
+      return NextResponse.json(
+        { error: 'El tipo de usuario asociado es requerido' },
+        { status: 400 }
+      );
+    }
+
     // Verificar si el tipo de alerta existe
     const tipoExistente = await prisma.tipoAlerta.findUnique({
       where: { id }
@@ -205,6 +253,18 @@ export async function PUT(request: Request) {
     if (!tipoExistente) {
       return NextResponse.json(
         { error: 'Tipo de alerta no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Verificar si el tipo de usuario existe
+    const tipoUsuarioExistente = await prisma.tipoUsuario.findUnique({
+      where: { id: id_tipo_usuario }
+    });
+
+    if (!tipoUsuarioExistente) {
+      return NextResponse.json(
+        { error: 'El tipo de usuario especificado no existe' },
         { status: 404 }
       );
     }
@@ -227,19 +287,22 @@ export async function PUT(request: Request) {
     }
 
     // Actualizar tipo de alerta
-    const tipoActualizado = await prisma.tipoAlerta.update({
-      where: { id },
-      data: {
-        nombre
-      },
+const tipoActualizado = await prisma.tipoAlerta.update({
+  where: { id },
+  data: {
+    nombre,
+    url_destino,
+    id_tipo_usuario
+  },
+  include: {
+    alarmas: {
       include: {
-        alarmas: {
-          include: {
-            usuario: true
-          }
-        }
+        usuario: true
       }
-    });
+    },
+    tipo_usuario: true
+  }
+});
 
     return NextResponse.json(tipoActualizado);
 
@@ -250,6 +313,13 @@ export async function PUT(request: Request) {
       return NextResponse.json(
         { error: 'Este nombre de tipo de alerta ya está en uso' },
         { status: 409 }
+      );
+    }
+    
+    if (error.code === 'P2025') {
+      return NextResponse.json(
+        { error: 'El tipo de usuario especificado no existe' },
+        { status: 404 }
       );
     }
     
@@ -280,7 +350,8 @@ export async function DELETE(request: Request) {
     const tipoExistente = await prisma.tipoAlerta.findUnique({
       where: { id: tipoAlertaId },
       include: {
-        alarmas: true
+        alarmas: true,
+        tipo_usuario: true
       }
     });
 

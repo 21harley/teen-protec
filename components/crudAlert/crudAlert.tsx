@@ -13,6 +13,11 @@ interface Alarma {
   tipo_alerta?: {
     id: number;
     nombre: string;
+    url_destino?: string;
+    id_tipo_usuario: number;
+    tipo_usuario: {
+      nombre: string;
+    };
   } | null;
   usuario?: {
     nombre: string;
@@ -22,8 +27,8 @@ interface Alarma {
   } | null;
   mensaje: string;
   fecha_creacion: string;
+  fecha_vista?: string | null;
   vista: boolean;
-  url_destino?: string | null;
 }
 
 interface Usuario {
@@ -37,6 +42,11 @@ interface Usuario {
 interface TipoAlerta {
   id: number;
   nombre: string;
+  url_destino?: string;
+  id_tipo_usuario: number;
+  tipo_usuario: {
+    nombre: string;
+  };
 }
 
 interface PaginatedResponse {
@@ -88,7 +98,6 @@ export default function CrudAlert() {
     id_usuario: "",
     id_tipo_alerta: "",
     mensaje: "",
-    url_destino: "",
     vista: false
   });
   
@@ -177,14 +186,12 @@ export default function CrudAlert() {
         totalPages: data.totalPages
       });
     } catch (err) {
-      //setError(err instanceof Error ? err.message : 'Error desconocido');
       setPagination({
         total: 0,
         page: 0,
         pageSize: 0,
         totalPages:0
       });
-      //setAlarmas([]);
     } finally {
       setLoading(prev => ({ ...prev, table: false }));
     }
@@ -255,7 +262,6 @@ export default function CrudAlert() {
           id_usuario: alertaForm.id_usuario ? parseInt(alertaForm.id_usuario) : null,
           id_tipo_alerta: parseInt(alertaForm.id_tipo_alerta),
           mensaje: alertaForm.mensaje,
-          url_destino: alertaForm.url_destino || null,
           vista: alertaForm.vista
         })
       });
@@ -269,7 +275,6 @@ export default function CrudAlert() {
         id_usuario: "",
         id_tipo_alerta: "",
         mensaje: "",
-        url_destino: "",
         vista: false
       });
       setFormErrors({});
@@ -319,7 +324,6 @@ export default function CrudAlert() {
       id_usuario: alarma.id_usuario?.toString() || "",
       id_tipo_alerta: alarma.id_tipo_alerta?.toString() || "",
       mensaje: alarma.mensaje,
-      url_destino: alarma.url_destino || "",
       vista: alarma.vista || false
     });
     setShowCreateModal(true);
@@ -333,7 +337,6 @@ export default function CrudAlert() {
       id_usuario: "",
       id_tipo_alerta: "",
       mensaje: "",
-      url_destino: "",
       vista: false
     });
     setShowCreateModal(true);
@@ -352,6 +355,11 @@ export default function CrudAlert() {
     return (
       <div className="flex flex-col">
         <span className="text-sm"><strong>Creado:</strong> {formatDate(alarma.fecha_creacion)}</span>
+        {alarma.vista && alarma.fecha_vista && (
+          <span className="text-sm">
+            <strong>Visto:</strong> {formatDate(alarma.fecha_vista)}
+          </span>
+        )}
         <span className={`text-sm ${!alarma.vista ? 'text-gray-500 italic' : ''}`}>
           <strong>Estado:</strong> {alarma.vista ? 'Visto' : 'No visto'}
         </span>
@@ -452,15 +460,16 @@ export default function CrudAlert() {
                     <th className="p-3 text-left font-semibold whitespace-nowrap">ID</th>
                     <th className="p-3 text-left font-semibold whitespace-nowrap">Tipo Alerta</th>
                     <th className="p-3 text-left font-semibold whitespace-nowrap">Usuario</th>
-                    <th className="p-3 text-left font-semibold whitespace-nowrap ">Mensaje</th>
-                    <th className="p-3 text-left font-semibold whitespace-nowrap ">Información</th>
+                    <th className="p-3 text-left font-semibold whitespace-nowrap">Mensaje</th>
+                    <th className="p-3 text-left font-semibold whitespace-nowrap">URL Destino</th>
+                    <th className="p-3 text-left font-semibold whitespace-nowrap">Información</th>
                     <th className="p-3 text-left font-semibold whitespace-nowrap">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {alarmas.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-4 text-center text-gray-500">
+                      <td colSpan={7} className="p-4 text-center text-gray-500">
                         No hay alertas para mostrar con los filtros actuales
                       </td>
                     </tr>
@@ -481,6 +490,9 @@ export default function CrudAlert() {
                         </td>
                         <td className="p-3 max-w-[300px] overflow-hidden text-ellipsis" title={alarma.mensaje}>
                           {alarma.mensaje}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {alarma.tipo_alerta?.url_destino || 'N/A'}
                         </td>
                         <td className="p-3 max-w-[300px] overflow-hidden text-ellipsis">
                           {renderCombinedInfo(alarma)}
@@ -640,7 +652,7 @@ export default function CrudAlert() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Mensaje:*</label>
                 <textarea
-                  className={`w-full p-2 border rounded ${formErrors.mensaje ? 'border-red-500' : 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}`}
+                  className={`w-full p-2 border rounded resize-none ${formErrors.mensaje ? 'border-red-500' : 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}`}
                   rows={3}
                   value={alertaForm.mensaje}
                   onChange={(e) => setAlertaForm({...alertaForm, mensaje: e.target.value})}
@@ -649,15 +661,17 @@ export default function CrudAlert() {
                 {formErrors.mensaje && <p className="text-red-500 text-sm mt-1">{formErrors.mensaje}</p>}
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL Destino:</label>
+              <div className="flex items-center">
                 <input
-                  type="text"
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={alertaForm.url_destino}
-                  onChange={(e) => setAlertaForm({...alertaForm, url_destino: e.target.value})}
-                  placeholder="Ej: /test, /pacientes/1"
+                  type="checkbox"
+                  id="vista"
+                  checked={alertaForm.vista}
+                  onChange={(e) => setAlertaForm({...alertaForm, vista: e.target.checked})}
+                  className="mr-2"
                 />
+                <label htmlFor="vista" className="text-sm font-medium text-gray-700">
+                  Marcar como vista
+                </label>
               </div>
             </div>
             

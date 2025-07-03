@@ -8,7 +8,6 @@ interface AlarmaData {
   id_tipo_alerta?: number | null;
   mensaje: string;
   vista?: boolean;
-  url_destino?: string | null;
 }
 
 export async function GET(request: Request) {
@@ -24,7 +23,6 @@ export async function GET(request: Request) {
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const skip = (page - 1) * pageSize;
 
-    // Obtener una alarma específica
     if (id) {
       const alarma = await prisma.alarma.findUnique({
         where: { id: parseInt(id) },
@@ -52,55 +50,45 @@ export async function GET(request: Request) {
       });
     }
 
-    // Construcción del filtro
     let whereClause: any = {};
 
     if (usuarioId) whereClause.id_usuario = parseInt(usuarioId);
     if (tipoAlertaId) whereClause.id_tipo_alerta = parseInt(tipoAlertaId);
     if (noVistas) whereClause.vista = false;
 
-    // Filtro por búsqueda
     if (search) {
       const [usuariosConNombre, tiposConNombre] = await Promise.all([
         prisma.usuario.findMany({
-          where: { nombre: { contains: search } }, // sin mode
+          where: { nombre: { contains: search } },
           select: { id: true }
         }),
         prisma.tipoAlerta.findMany({
-          where: { nombre: { contains: search } }, // sin mode
+          where: { nombre: { contains: search } },
           select: { id: true }
         })
       ]);
 
       const orConditions: any[] = [];
-
-      // Buscar por mensaje
       orConditions.push({ mensaje: { contains: search } });
 
-      // Buscar por usuario relacionado
       if (usuariosConNombre.length > 0) {
         orConditions.push({ id_usuario: { in: usuariosConNombre.map(u => u.id) } });
       }
 
-      // Buscar por tipo de alerta relacionado
       if (tiposConNombre.length > 0) {
         orConditions.push({ id_tipo_alerta: { in: tiposConNombre.map(t => t.id) } });
       }
 
-      // Validar si hay algo válido en el OR
       if (orConditions.length > 0) {
         whereClause.OR = orConditions;
       } else {
-        // Fuerza resultado vacío sin error
         whereClause.OR = [{ id: -1 }];
       }
     }
 
-    // Contar resultados
     const total = await prisma.alarma.count({ where: whereClause });
     const totalPages = Math.ceil(total / pageSize);
 
-    // Obtener resultados paginados
     const alarmas = await prisma.alarma.findMany({
       where: whereClause,
       include: {
@@ -144,7 +132,6 @@ export async function POST(request: Request) {
   try {
     const alarmaData: AlarmaData = await request.json();
 
-    // Basic validation
     if (!alarmaData.mensaje) {
       return NextResponse.json(
         { error: 'El mensaje es requerido' },
@@ -152,7 +139,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate user exists if provided
     if (alarmaData.id_usuario) {
       const usuarioExistente = await prisma.usuario.findUnique({
         where: { id: alarmaData.id_usuario }
@@ -166,7 +152,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Validate alert type exists if provided
     if (alarmaData.id_tipo_alerta) {
       const tipoAlertaExistente = await prisma.tipoAlerta.findUnique({
         where: { id: alarmaData.id_tipo_alerta }
@@ -180,14 +165,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create new alert
     const nuevaAlarma = await prisma.alarma.create({
       data: {
         id_usuario: alarmaData.id_usuario || null,
         id_tipo_alerta: alarmaData.id_tipo_alerta || null,
         mensaje: alarmaData.mensaje,
-        vista: alarmaData.vista || false,
-        url_destino: alarmaData.url_destino || null
+        vista: alarmaData.vista || false
       },
       include: {
         usuario: {
@@ -239,7 +222,6 @@ export async function PATCH(request: Request) {
 
     const data: any = { ...restoDatos };
 
-    // Si se provee un usuario, valida y conecta
     if (id_usuario) {
       const usuarioExistente = await prisma.usuario.findUnique({ where: { id: id_usuario } });
       if (!usuarioExistente) {
@@ -248,7 +230,6 @@ export async function PATCH(request: Request) {
       data.usuario = { connect: { id: id_usuario } };
     }
 
-    // Si se provee un tipo de alerta, valida y conecta
     if (id_tipo_alerta) {
       const tipoAlertaExistente = await prisma.tipoAlerta.findUnique({ where: { id: id_tipo_alerta } });
       if (!tipoAlertaExistente) {
@@ -302,7 +283,6 @@ export async function DELETE(request: Request) {
 
     const alarmaId = parseInt(id);
 
-    // Check if alert exists
     const alarmaExistente = await prisma.alarma.findUnique({
       where: { id: alarmaId }
     });
@@ -314,7 +294,6 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Delete alert
     await prisma.alarma.delete({
       where: { id: alarmaId }
     });

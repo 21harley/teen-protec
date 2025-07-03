@@ -4,13 +4,34 @@ export enum TestStatus {
   EnProgreso = 'en_progreso',
   Completado = 'completado'
 }
-
+const tiposPreguntaData = [
+  {
+    nombre: "radio",
+    descripcion: "Pregunta con opciones de selección única"
+  },
+  {
+    nombre: "checkbox",
+    descripcion: "Pregunta con opciones de selección múltiple"
+  },
+  {
+    nombre: "text",
+    descripcion: "Pregunta con respuesta de texto"
+  },
+  {
+    nombre: "select",
+    descripcion: "Pregunta con desplegable de opciones"
+  },
+  {
+    nombre: "range",
+    descripcion: "Pregunta con respuesta en rango numérico"
+  }
+];
 export enum TipoPreguntaNombre {
-  OPCION_MULTIPLE = 'OPCION_MULTIPLE',
-  VERDADERO_FALSO = 'VERDADERO_FALSO',
-  RESPUESTA_CORTA = 'RESPUESTA_CORTA',
-  SELECT = 'SELECT',
-  RANGO = 'RANGO'
+  OPCION_MULTIPLE = 'checkbox',
+  OPCION_UNICA = 'radio',
+  RESPUESTA_CORTA = 'text',
+  SELECT = 'select',
+  RANGO = 'range'
 }
 
 // Interfaces básicas

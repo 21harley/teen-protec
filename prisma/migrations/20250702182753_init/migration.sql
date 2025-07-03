@@ -8,7 +8,10 @@ CREATE TABLE "TipoUsuario" (
 -- CreateTable
 CREATE TABLE "TipoAlerta" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "nombre" TEXT NOT NULL
+    "nombre" TEXT NOT NULL,
+    "url_destino" TEXT,
+    "id_tipo_usuario" INTEGER NOT NULL,
+    CONSTRAINT "TipoAlerta_id_tipo_usuario_fkey" FOREIGN KEY ("id_tipo_usuario") REFERENCES "TipoUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -33,8 +36,8 @@ CREATE TABLE "Usuario" (
 -- CreateTable
 CREATE TABLE "Tutor" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "cedula" TEXT NOT NULL,
-    "nombre" TEXT NOT NULL,
+    "cedula_tutor" TEXT NOT NULL,
+    "nombre_tutor" TEXT NOT NULL,
     "profesion_tutor" TEXT,
     "telefono_contacto" TEXT,
     "correo_contacto" TEXT
@@ -57,7 +60,6 @@ CREATE TABLE "Alarma" (
     "fecha_creacion" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "fecha_vista" DATETIME,
     "vista" BOOLEAN NOT NULL DEFAULT false,
-    "url_destino" TEXT,
     CONSTRAINT "Alarma_id_usuario_fkey" FOREIGN KEY ("id_usuario") REFERENCES "Usuario" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Alarma_id_tipo_alerta_fkey" FOREIGN KEY ("id_tipo_alerta") REFERENCES "TipoAlerta" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
@@ -207,10 +209,10 @@ CREATE INDEX "Usuario_cedula_idx" ON "Usuario"("cedula");
 CREATE INDEX "Usuario_id_psicologo_idx" ON "Usuario"("id_psicologo");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Tutor_cedula_key" ON "Tutor"("cedula");
+CREATE UNIQUE INDEX "Tutor_cedula_tutor_key" ON "Tutor"("cedula_tutor");
 
 -- CreateIndex
-CREATE INDEX "Tutor_cedula_idx" ON "Tutor"("cedula");
+CREATE INDEX "Tutor_cedula_tutor_idx" ON "Tutor"("cedula_tutor");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Adolecente_id_usuario_key" ON "Adolecente"("id_usuario");

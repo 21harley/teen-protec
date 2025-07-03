@@ -9,16 +9,20 @@ datasource db {
 }
 
 model TipoUsuario {
-  id       Int       @id @default(autoincrement())
-  nombre   String    @unique
-  menu     Json
-  usuarios Usuario[]
+  id          Int          @id @default(autoincrement())
+  nombre      String       @unique
+  menu        Json
+  usuarios    Usuario[]
+  tiposAlerta TipoAlerta[]
 }
 
 model TipoAlerta {
-  id      Int     @id @default(autoincrement())
-  nombre  String  @unique
-  alarmas Alarma[]
+  id              Int       @id @default(autoincrement())
+  nombre          String    @unique
+  url_destino     String?
+  id_tipo_usuario Int
+  alarmas         Alarma[]
+  tipo_usuario    TipoUsuario @relation(fields: [id_tipo_usuario], references: [id])
 }
 
 model Usuario {
@@ -30,7 +34,7 @@ model Usuario {
   password_iv              String
   fecha_nacimiento         DateTime
   id_tipo_usuario          Int
-  id_psicologo             Int?            // Relación con psicólogo asignado
+  id_psicologo             Int?
   authToken                String?
   authTokenExpiry          DateTime?
   resetPasswordToken       String?         @unique
@@ -39,7 +43,7 @@ model Usuario {
   // Relaciones
   adolecente               Adolecente?
   alarmas                  Alarma[]
-  psicologo                Psicologo?      // Cuando el usuario ES psicólogo
+  psicologo                Psicologo?
   respuestas               Respuesta[]
   tests                    Test[]          @relation("TestUsuario")
   tipo_usuario             TipoUsuario     @relation(fields: [id_tipo_usuario], references: [id])
@@ -78,7 +82,6 @@ model Alarma {
   fecha_creacion DateTime  @default(now())
   fecha_vista    DateTime?
   vista          Boolean   @default(false)
-  url_destino    String?
   
   // Relaciones
   usuario        Usuario?  @relation(fields: [id_usuario], references: [id])
@@ -102,7 +105,7 @@ model Psicologo {
   redes_sociales     RedSocialPsicologo[]
   tests              Test[]               @relation("TestPsicologo")
   plantillas         TestPlantilla[]
-  pacientes          Usuario[]            @relation("PacientesPsicologo") // Relación inversa
+  pacientes          Usuario[]            @relation("PacientesPsicologo")
 
   // Índices
   @@index([numero_de_titulo])

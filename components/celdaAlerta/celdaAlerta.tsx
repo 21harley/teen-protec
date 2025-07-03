@@ -1,35 +1,38 @@
 'use client'
-import React, { useState, useEffect, useRef } from "react"
-import Link from "next/link"
-import { AlarmaData } from "@/app/types/alarma";
+import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { Alarma } from "@/app/types/alarma";
 
 export default function CeldaAlert({
   id,
   id_usuario,
+  id_tipo_alerta,
   mensaje,
   vista,
+  fecha_creacion,
   fecha_vista,
-  url_destino
-}: AlarmaData) {
+  tipo_alerta,
+  usuario
+}: Alarma) {
   const [mostrarCompleto, setMostrarCompleto] = useState(false);
   const [alarmaVista, setAlarmaVista] = useState(vista);
   const [necesitaVerMas, setNecesitaVerMas] = useState(false);
   const textoRef = useRef<HTMLParagraphElement>(null);
 
-  // Check if text is truncated when component mounts or message changes
+  // Verifica si el texto está truncado
   useEffect(() => {
     if (textoRef.current) {
       const element = textoRef.current;
-      setNecesitaVerMas(element.scrollWidth > element.clientWidth);
+      setNecesitaVerMas(element.scrollWidth > element.clientWidth || mensaje.length > 100);
     }
   }, [mensaje]);
 
-  // Mark as viewed when component is mounted (shown to user)
+  // Marca como vista al montarse si aún no ha sido vista
   useEffect(() => {
     if (!alarmaVista) {
       marcarComoVista();
     }
-  }, []); // Empty dependency array to run only once on mount
+  }, []);
 
   const toggleMostrarTexto = () => {
     setMostrarCompleto(!mostrarCompleto);
@@ -58,36 +61,50 @@ export default function CeldaAlert({
     }
   };
 
+  const urlDestino = tipo_alerta?.url_destino || null;
+  const remitente = usuario?.nombre ? `De: ${usuario.nombre}` : 'Sistema';
+
   return (
-    <div className={`bg-amber-50 w-full ${!alarmaVista ? 'border-l-4 border-blue-500' : ''}  rounded-xl p-3`}>
+    <div className={`bg-amber-50 w-full ${!alarmaVista ? 'border-l-4 border-blue-500' : ''} rounded-xl p-3`}>
+      <div className="flex justify-between items-start mb-1">
+        <span className="text-sm text-gray-600">{remitente}</span>
+        <span className="text-xs text-gray-500">
+          {new Date(fecha_creacion).toLocaleString()}
+        </span>
+      </div>
+
       <p 
         ref={textoRef}
-        className={mostrarCompleto ? "" : "whitespace-nowrap overflow-hidden text-ellipsis"}
+        className={mostrarCompleto ? "" : "line-clamp-3"}
       >
         {mensaje}
-        {necesitaVerMas && (
-          <span 
-            onClick={toggleMostrarTexto} 
-            className="text-blue-500 hover:text-blue-700 cursor-pointer ml-1"
-          >
-            {mostrarCompleto ? " ver menos" : " ver más"}
-          </span>
-        )}
       </p>
+
+      {(necesitaVerMas || mensaje.length > 100) && (
+        <button 
+          onClick={toggleMostrarTexto} 
+          className="text-blue-500 hover:text-blue-700 text-sm mt-1"
+        >
+          {mostrarCompleto ? "Ver menos" : "Ver más"}
+        </button>
+      )}
+
       {fecha_vista && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-500 mt-1">
           Visto el: {new Date(fecha_vista).toLocaleString()}
         </p>
       )}
+
       <div className="flex mt-2">
-        {url_destino ? (
+        {urlDestino && (
           <Link 
-            href={url_destino} 
+            href={urlDestino} 
             className="text-blue-500 hover:text-blue-700 text-sm"
+            onClick={marcarComoVista}
           >
             Ir a página
           </Link>
-        ) : null}
+        )}
       </div>
     </div>
   );

@@ -25,7 +25,7 @@ export default function Test(){
   const data = storageManager.load<UsuarioInfo>('userData')
 
   if(data){
-    console.log(data);
+    //console.log(data);
     switch(data.tipoUsuario.nombre){
       case "administrador":
         return (

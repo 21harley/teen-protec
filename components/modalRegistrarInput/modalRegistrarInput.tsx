@@ -18,7 +18,7 @@ interface ModalRegistrarInputProps {
 
 const tipoPreguntaMap: Record<TipoPreguntaNombre, number> = {
   [TipoPreguntaNombre.OPCION_MULTIPLE]: 1,
-  [TipoPreguntaNombre.VERDADERO_FALSO]: 2,
+  [TipoPreguntaNombre.OPCION_UNICA]: 2,
   [TipoPreguntaNombre.RESPUESTA_CORTA]: 3,
   [TipoPreguntaNombre.SELECT]: 4,
   [TipoPreguntaNombre.RANGO]: 5
@@ -26,7 +26,7 @@ const tipoPreguntaMap: Record<TipoPreguntaNombre, number> = {
 
 const reverseTipoPreguntaMap: Record<number, TipoPreguntaNombre> = {
   1: TipoPreguntaNombre.OPCION_MULTIPLE,
-  2: TipoPreguntaNombre.VERDADERO_FALSO,
+  2: TipoPreguntaNombre.OPCION_UNICA,
   3: TipoPreguntaNombre.RESPUESTA_CORTA,
   4: TipoPreguntaNombre.SELECT,
   5: TipoPreguntaNombre.RANGO
@@ -125,9 +125,13 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
       alert('Por favor ingrese el texto de la pregunta');
       return;
     }
+    if ((questionType === TipoPreguntaNombre.OPCION_UNICA) && 
+        options.length === 0) {
+      alert('Por favor agregue  una opción para este tipo de pregunta');
+      return;
+    }
 
     if ((questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
-         questionType === TipoPreguntaNombre.VERDADERO_FALSO || 
          questionType === TipoPreguntaNombre.SELECT) && 
         options.length === 0) {
       alert('Por favor agregue al menos una opción para este tipo de pregunta');
@@ -157,7 +161,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
       max: maxValue,
       paso: stepValue,
       opciones: (questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
-                questionType === TipoPreguntaNombre.VERDADERO_FALSO || 
+                questionType === TipoPreguntaNombre.OPCION_UNICA || 
                 questionType === TipoPreguntaNombre.SELECT) ? options : undefined,
       tipo: {
         id: tipoPreguntaMap[questionType],
@@ -195,8 +199,8 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
             className="w-full p-2 border border-gray-300 rounded"
           >
             <option value={TipoPreguntaNombre.RESPUESTA_CORTA}>Texto</option>
-            <option value={TipoPreguntaNombre.OPCION_MULTIPLE}>Opción única (radio)</option>
-            <option value={TipoPreguntaNombre.VERDADERO_FALSO}>Opción múltiple (checkbox)</option>
+            <option value={TipoPreguntaNombre.OPCION_MULTIPLE}>Opción múltiple (checkbox)</option>
+            <option value={TipoPreguntaNombre.OPCION_UNICA}>Opción única (radio)</option>
             <option value={TipoPreguntaNombre.SELECT}>Selección (dropdown)</option>
             <option value={TipoPreguntaNombre.RANGO}>Rango</option>
           </select>
@@ -263,7 +267,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
         
         {/* Opciones para radio, checkbox y select */}
         {(questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
-          questionType === TipoPreguntaNombre.VERDADERO_FALSO || 
+          questionType === TipoPreguntaNombre.OPCION_UNICA || 
           questionType === TipoPreguntaNombre.SELECT) && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">

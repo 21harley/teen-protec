@@ -52,7 +52,7 @@ export default function Pacientes() {
       
       const data = await response.json()
       // Añadir propiedad esAdolescente basada en id_tipo_usuario o adolecente
-      console.log(data);
+      //console.log(data);
 
       const pacientesConAdolescente = data.map((paciente: any) => ({
         ...paciente,

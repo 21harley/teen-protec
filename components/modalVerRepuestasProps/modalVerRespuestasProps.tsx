@@ -26,36 +26,29 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
 
     switch (pregunta.tipo.nombre) {
       case TipoPreguntaNombre.OPCION_MULTIPLE:
-      case TipoPreguntaNombre.SELECT:
+        // Mostrar todas las opciones seleccionadas para checkboxes
+        const opcionesSeleccionadas = respuestasPregunta
+          .map(r => r.opcion?.texto)
+          .filter(Boolean)
+          .join(', ')
+        
         return (
-          <div className="text-sm text-gray-700">
-            {respuestasPregunta[0]?.opcion?.texto || 'Opción no disponible'}
+          <div className="text-sm text-gray-700 bg-green-50 p-2 rounded border border-green-100">
+            {opcionesSeleccionadas || 'Ninguna opción seleccionada'}
           </div>
         )
       
-      case TipoPreguntaNombre.VERDADERO_FALSO:
+      case TipoPreguntaNombre.SELECT:
+      case TipoPreguntaNombre.OPCION_UNICA:
         return (
-          <div className="flex flex-wrap gap-2">
-            {respuestasPregunta.length > 0 ? (
-              respuestasPregunta.map((respuesta, index) => (
-                respuesta.opcion && (
-                  <span 
-                    key={`respuesta-${index}`}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                  >
-                    {respuesta.opcion.texto}
-                  </span>
-                )
-              ))
-            ) : (
-              <div className="text-sm text-gray-500 italic">No seleccionado</div>
-            )}
+          <div className="text-sm text-gray-700 bg-green-50 p-2 rounded border border-green-100">
+            {respuestasPregunta[0]?.opcion?.texto || 'No seleccionado'}
           </div>
         )
       
       case TipoPreguntaNombre.RESPUESTA_CORTA:
         return (
-          <div className="text-sm text-gray-700 bg-gray-50 p-2 rounded">
+          <div className="text-sm text-gray-700 bg-green-50 p-2 rounded border border-green-100">
             {respuestasPregunta[0]?.texto_respuesta || 'Sin texto proporcionado'}
           </div>
         )
@@ -70,7 +63,7 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
           <div className="flex items-center space-x-2">
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div 
-                className="bg-blue-600 h-2.5 rounded-full" 
+                className="bg-green-500 h-2.5 rounded-full" 
                 style={{ width: `${Math.max(0, Math.min(100, porcentaje))}%` }}
               ></div>
             </div>
@@ -118,9 +111,6 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
                     {index + 1}. {pregunta.texto_pregunta}
                     {pregunta.obligatoria && <span className="text-red-500 ml-1">*</span>}
                   </h3>
-                  <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
-                    {pregunta.tipo.nombre}
-                  </span>
                 </div>
                 {renderRespuesta(pregunta)}
               </div>
@@ -130,7 +120,7 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
           <div className="flex justify-center pt-6">
             <button
               onClick={onClose}
-              className="cursor-pointer p-2 px-[100px] bg-[#6DC7E4] text-white text-sm rounded-md hover:bg-[#5ab3d0] transition-colors"
+              className="cursor-pointer p-2 px-[100px] bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
               aria-label="Volver al listado"
             >
               Volver

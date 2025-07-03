@@ -126,7 +126,7 @@ export default function TestsPlantillaPage() {
             className="w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center cursor-pointer"
             onClick={() => setIsCreateModalOpen(true)}
           >
-            Crear Nueva test <Image src={IconMas} alt="Icono de crear alerta" width={20} height={20} />
+            Crear Nueva test <span className="font-bold text-2xl">+</span>
           </button>
       </div>
       
@@ -138,9 +138,9 @@ export default function TestsPlantillaPage() {
           {isPsychologist && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center cursor-pointer"
+              className="w-[250px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center cursor-pointer"
             >
-              Crear tu primera test <Image src={IconMas} alt="Icono de crear alerta" width={20} height={20} />
+              Crear tu primera test <span className="font-bold text-2xl">+</span>
             </button> 
           )}
         </div>

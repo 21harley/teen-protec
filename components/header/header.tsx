@@ -27,8 +27,6 @@ export default function Header() {
       try {
         const storedData = storageManager.load<UsuarioInfo>("userData");
         if (storedData && !user) {
-          console.log(storedData,user,"Error usesr");
-          
           login(
             storedData,
             storedData.resetPasswordToken ?? "",
@@ -61,7 +59,7 @@ export default function Header() {
         if (response.ok) {
           const data = await response.json()
           setAlertCount(data.data.length)
-          console.log(data.data.length);
+          //console.log(data.data.length);
         }
       } catch (error) {
         console.error('Error fetching alert count:', error)
@@ -71,13 +69,11 @@ export default function Header() {
     if (user?.id) {
       fetchAlertCount(user.id)
     }
-    //console.log(user,"user consulta alerta")
   }, [user])
 
   const toggleModal = () => setIsModalOpen(!isModalOpen)
   const closeModal = () => setIsModalOpen(false)
   const ajustarNombre = (user:UsuarioInfo) => {
-    //console.log(user);
     if(user?.nombre){
     if(user.nombre.length>3){
       return user.nombre.split(' ')[0]
@@ -109,9 +105,6 @@ export default function Header() {
           </li>
         </>
       )
-    }
-    if(!user.tipoUsuario?.menu){
-      console.log(user,user.tipoUsuario,"error menu");
     }
     return (
       <>

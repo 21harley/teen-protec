@@ -8,15 +8,16 @@ import { TutorData, PsicologoData } from "../../app/types/user/dataDB"
 import useUserStore from "../../app/store/store"
 import { StorageManager } from "@/app/lib/storageManager"
 import { useRouter } from "next/navigation"
-import {UsuarioInfo} from "../../app/types/user"
+import {UsuarioInfo,Usuario} from "../../app/types/user"
 
 type Errors = {
   confirmPassword?: string;
   submit?: string;
 };
 
+const tipoUsuarioData = ["administrador","psicologo","adolecente","usuario"];
 type FormUserProps = {
-  user?: UsuarioCompleto;
+  user?: Usuario;
   isEdit?: boolean;
   onSubmit?: (data: any) => void;
   tipoRegistro?: TipoRegistro;
@@ -79,7 +80,6 @@ export default function FormUserAdmin({
 
   useEffect(() => {
     if (user && isEdit) {
-      console.log(user,"Form-Edit");
       setUserData({
         email: user.email,
         password: '',
@@ -88,27 +88,25 @@ export default function FormUserAdmin({
         fecha_nacimiento: formatDateForInput(user.fecha_nacimiento)
       });
 
-      if (user.tutorInfo) {
-        console.log("Tutor");
+      if (user.adolecente?.tutor ){
         setTutorData({
-          cedula_tutor: user.tutorInfo.cedula,
-          nombre_tutor: user.tutorInfo.nombre,
-          profesion_tutor: user.tutorInfo.profesion_tutor || '',
-          telefono_contacto: user.tutorInfo.telefono_contacto || '',
-          correo_contacto: user.tutorInfo.correo_contacto || ''
+          cedula_tutor: user.adolecente?.tutor.cedula_tutor,
+          nombre_tutor: user.adolecente?.tutor.nombre_tutor,
+          profesion_tutor: user.adolecente?.tutor.profesion_tutor || '',
+          telefono_contacto: user.adolecente?.tutor.telefono_contacto || '',
+          correo_contacto: user.adolecente?.tutor.correo_contacto || ''
         });
         setIsMinor(true);
         setCurrentTipoRegistro('adolescente');
       }
 
-      if (user.psicologoInfo) {
-         console.log("Psicologo");
+      if (user?.psicologo) {
         setPsicologoData({
-          numero_de_titulo: user.psicologoInfo.numero_de_titulo,
-          nombre_universidad: user.psicologoInfo.nombre_universidad,
-          monto_consulta: user.psicologoInfo.monto_consulta,
-          telefono_trabajo: user.psicologoInfo.telefono_trabajo,
-          redes_sociales: user.psicologoInfo.redes_sociales || []
+          numero_de_titulo: user.psicologo.numero_de_titulo,
+          nombre_universidad: user.psicologo.nombre_universidad,
+          monto_consulta: user.psicologo.monto_consulta,
+          telefono_trabajo: user.psicologo.telefono_trabajo,
+          redes_sociales: user.psicologo.redes_sociales || []
         });
         setCurrentTipoRegistro('psicologo');
       }
@@ -127,7 +125,7 @@ export default function FormUserAdmin({
     }));
 
     if (name === 'fecha_nacimiento') {
-      console.log(value,name);
+      console.log("valida fecha",name,value);
       validateAge(value);
     }
   };
@@ -164,12 +162,10 @@ export default function FormUserAdmin({
     }
     
     const minor = age < 18;
+    console.log(minor,user?.tipo_usuario.nombre)
     setIsMinor(minor);
+    setCurrentTipoRegistro(minor ? 'adolescente' : 'usuario');
     
-    // Solo actualizamos el tipo de registro si no estamos en modo edición o es admin session
-    if ((!isEdit)) {
-      setCurrentTipoRegistro(minor ? 'adolescente' : 'usuario');
-    }
   };
 
   const validatePasswords = () => {
@@ -286,9 +282,11 @@ export default function FormUserAdmin({
   return (
     <form
       onSubmit={handleSubmit}
-      className="md:p-8 max-w-[400px] md:max-w-[600px] w-full flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
+      className="md:p-6 w-auto flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
     >
-
+            <h2 className="text-xl font-bold">
+              {isEdit ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+            </h2>
       {successMessage && (
         <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
           {successMessage}
@@ -521,7 +519,7 @@ export default function FormUserAdmin({
         )}
 
         {/* Formulario del psicólogo - Mostrar si es psicólogo y es admin session o si estamos editando un psicólogo */}
-        {(currentTipoRegistro === 'psicologo' ||  isEdit) && currentTipoRegistro!="usuario" && (
+        {(currentTipoRegistro === 'psicologo' ||  isEdit) && (currentTipoRegistro!="usuario" && currentTipoRegistro!="adolescente")&& (
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
               <h2 className="text-sm">Datos de psicólogo:</h2>
@@ -594,7 +592,6 @@ export default function FormUserAdmin({
             : (isEdit ? 'Actualizar' : 'Registrar')}
         </button>
       </div>
-      
     </form>
   );
 }

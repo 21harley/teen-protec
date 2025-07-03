@@ -79,7 +79,7 @@ export default function FormUser({
 
   useEffect(() => {
     if (user && isEdit) {
-      console.log(user,"Form-Edit");
+      //console.log(user,"Form-Edit");
       setUserData({
         email: user.email,
         password: '',
@@ -89,7 +89,7 @@ export default function FormUser({
       });
 
       if ( user.tutorInfo) {
-        console.log("Tutor");
+        //console.log("Tutor");
         setTutorData({
           cedula_tutor: user.tutorInfo.cedula_tutor,
           nombre_tutor: user.tutorInfo.nombre_tutor,
@@ -102,7 +102,7 @@ export default function FormUser({
       }
 
       if ( user.psicologoInfo) {
-         console.log("Psicologo");
+        //console.log("Psicologo");
         setPsicologoData({
           numero_de_titulo: user.psicologoInfo.numero_de_titulo,
           nombre_universidad: user.psicologoInfo.nombre_universidad,
@@ -127,7 +127,7 @@ export default function FormUser({
     }));
 
     if (name === 'fecha_nacimiento') {
-       console.log(value,name);
+      //console.log(value,name);
       validateAge(value);
     }
   };
@@ -164,12 +164,10 @@ export default function FormUser({
     }
     
     const minor = age < 18;
-    console.log(minor)
+    //console.log(minor)
     setIsMinor(minor);
+    setCurrentTipoRegistro(minor ? 'adolescente' : 'usuario');
     
-    if (!isEdit) {
-      setCurrentTipoRegistro(minor ? 'adolescente' : 'usuario');
-    }
   };
 
   const validatePasswords = () => {
@@ -243,7 +241,7 @@ export default function FormUser({
         setSuccessMessage(isEdit ? 'Usuario actualizado correctamente!' : 'Usuario registrado correctamente!');
         
         if((isEdit || user_stora == null)){
-          console.log(data.user);
+          //console.log(data.user);
           login( data.user,
             data.user.resetPasswordToken ?? "",
             data.user.resetPasswordTokenExpiry
@@ -300,7 +298,7 @@ export default function FormUser({
   return (
     <form
       onSubmit={handleSubmit}
-      className="md:p-8 max-w-[400px] md:max-w-[600px] w-full flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
+      className="md:p-6 w-auto flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
     >
       <div>
         <Image
@@ -310,7 +308,6 @@ export default function FormUser({
           alt="Logo"
         />
       </div>
-      
       {successMessage && (
         <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
           {successMessage}
@@ -327,22 +324,7 @@ export default function FormUser({
 
       <div className="flex flex-col justify-center md:flex-row md:justify-around p-5 gap-2 md:gap-2 w-full max-w-[400px] md:max-w-[800px]">
         <div className="grid place-items-center w-[240px] m-auto">
-                        {!isEdit && (
-        <div className="w-full max-w-[190px]">
-          <label htmlFor="tipoRegistro" className="text-sm">Tipo de registro:</label>
-          <select
-            id="tipoRegistro"
-            name="tipoRegistro"
-            value={currentTipoRegistro}
-            onChange={(e) => setCurrentTipoRegistro(e.target.value as TipoRegistro)}
-            className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-          >
-            <option value="usuario">Usuario Adulto</option>
-            <option value="adolescente">Adolescente</option>
-            <option value="psicologo">Psicólogo</option>
-          </select>
-        </div>
-      )}
+                        
           <div className="w-full max-w-[190px]">
             <label htmlFor="email" className="text-sm">Correo electrónico:</label>
             <input 
@@ -465,7 +447,7 @@ export default function FormUser({
         </div>
         
         {/* Formulario del tutor - Mostrar si es adolescente o si estamos editando un adolescente */}
-        {(currentTipoRegistro == 'adolescente' || user_stora?.tutorInfo || isMinor) && isEdit && (
+        {( (isMinor || isEdit || currentTipoRegistro === 'adolescente'))&&(currentTipoRegistro!="usuario" && currentTipoRegistro!="psicologo" )&&(
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
             <h2 className="text-sm">Datos de tutor:</h2>
@@ -540,7 +522,7 @@ export default function FormUser({
         )}
 
         {/* Formulario del psicólogo - Mostrar si es psicólogo y es admin session o si estamos editando un psicólogo */}
-        {(currentTipoRegistro == 'psicologo' && isEdit )  && (
+        {(currentTipoRegistro === 'psicologo' ||  isEdit) && (currentTipoRegistro!="usuario" && currentTipoRegistro!="adolescente")&& (
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
             <h2 className="text-sm">Datos de psicólogo:</h2>

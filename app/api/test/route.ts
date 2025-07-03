@@ -180,12 +180,12 @@ async function todasPreguntasRespondidas(
     return tieneRespuesta;
   });
 
-  console.log(`[todasPreguntasRespondidas] Todas obligatorias respondidas: ${todasObligatoriasRespondidas}`);
+  //console.log(`[todasPreguntasRespondidas] Todas obligatorias respondidas: ${todasObligatoriasRespondidas}`);
   return todasObligatoriasRespondidas;
 }
 // Función auxiliar para determinar estado (sin cambios)
 function determinarEstado(progreso: number, todasRespondidas: boolean): TestStatus {
-  console.log(`[determinarEstado] Progreso: ${progreso}, TodasRespondidas: ${todasRespondidas}`);
+  //console.log(`[determinarEstado] Progreso: ${progreso}, TodasRespondidas: ${todasRespondidas}`);
   
   if (progreso === 100 || todasRespondidas) {
     return TestStatus.Completado;
@@ -468,7 +468,6 @@ export async function GET(request: Request) {
   }
 }
 
-
 export async function POST(request: Request) {
   try {
     const { 
@@ -622,7 +621,7 @@ export async function POST(request: Request) {
           });
         }
         
-        console.log("Consulta POST");
+        //console.log("Consulta POST");
         // Actualizar progreso y estado después de agregar respuestas
         const nuevoProgreso = await calcularProgreso(nuevoTest.id, id_usuario,preguntas,respuestas);
         const completado = await todasPreguntasRespondidas(nuevoTest.id,id_usuario,preguntas,respuestas);

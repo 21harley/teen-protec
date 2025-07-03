@@ -30,7 +30,7 @@ export default function PasswordRecovery() {
     }
     
     // Simular envío de correo (en producción sería una llamada a la API)
-    console.log('Correo enviado a:', email)
+    //console.log('Correo enviado a:', email)
     setSuccess(true)
     setError('')
   }

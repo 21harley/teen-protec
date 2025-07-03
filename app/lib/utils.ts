@@ -18,8 +18,8 @@ export function adaptLoginResponseToUsuarioCompleto( {user} : LoginResponse): Us
   if (user.tutorInfo) {
     tutorInfo = {
       id: user.tutorInfo.id,
-      cedula: user.tutorInfo.cedula,
-      nombre: user.tutorInfo.nombre,
+      cedula_tutor: user.tutorInfo.cedula_tutor,
+      nombre_tutor: user.tutorInfo.nombre_tutor,
       profesion_tutor: user.tutorInfo.profesion_tutor,
       telefono_contacto: user.tutorInfo.telefono_contacto,
       correo_contacto: user.tutorInfo.correo_contacto
@@ -85,8 +85,8 @@ export function adaptLoginResponseDBToUsuarioCompleto( {user} : LoginResponseDB)
   if (user.adolecente?.tutor) {
     tutorInfo = {
       id: user.adolecente.tutor.id,
-      cedula: user.adolecente.tutor.cedula,
-      nombre: user.adolecente.tutor.nombre,
+      cedula_tutor: user.adolecente.tutor.cedula_tutor,
+      nombre_tutor: user.adolecente.tutor.nombre_tutor,
       profesion_tutor: user.adolecente.tutor.profesion_tutor,
       telefono_contacto: user.adolecente.tutor.telefono_contacto,
       correo_contacto: user.adolecente.tutor.correo_contacto

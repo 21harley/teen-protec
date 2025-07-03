@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from "react"
-import { UsuarioCompleto, TutorInfo } from "./../../app/types/gestionPaciente/index"
+import { UsuarioCompleto, TutorInfo  } from "./../../app/types/gestionPaciente/index"
 import { useRouter } from "next/navigation"
 
 type Errors = {
@@ -35,7 +35,7 @@ export default function FormPacientes({
   onToggleEdit
 }: FormPacientesProps) {
   const router = useRouter();
-  
+
   const [userData, setUserData] = useState({
     email: user.email,
     password: '',
@@ -144,7 +144,7 @@ export default function FormPacientes({
     };
 
     try {
-      console.log(requestData);
+      //console.log(requestData);
       const response = await onSubmit(requestData);
       
       
@@ -162,10 +162,12 @@ export default function FormPacientes({
     }
   };
 
+
+
   return (
     <form
       onSubmit={handleSubmit}
-      className="md:p-8 max-w-[400px] md:max-w-[600px] w-full flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
+      className="md:p-6 w-auto flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
     >
       {successMessage && (
         <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
@@ -248,18 +250,6 @@ export default function FormPacientes({
             />
           </div>
           
-          <div className="w-full max-w-[190px]">
-            <label htmlFor="fecha_nacimiento" className="text-sm">Fecha de nacimiento:</label>
-            <input 
-              required 
-              type="date" 
-              name="fecha_nacimiento" 
-              id="fecha_nacimiento" 
-              value={formatDateForInput(userData.fecha_nacimiento)}
-              onChange={handleUserChange}
-              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-            />
-          </div>
         </div>
         
         {/* Formulario del tutor - Mostrar si es adolescente */}

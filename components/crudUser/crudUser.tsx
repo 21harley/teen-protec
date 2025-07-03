@@ -3,43 +3,10 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import IconEditar from "./../../app/public/logos/icon_editar.svg";
 import IconEliminar from "./../../app/public/logos/icon_eliminar.svg";
-import IconMas from "./../../app/public/logos/icon_mas.svg";
 import Image from "next/image";
 import FormUserAdmin from "./../formUserAdmin/formUserAdmin";
-import { UsuarioCompleto } from "@/app/types/user/user";
-import { adaptLoginResponseDBToUsuarioCompleto } from "@/app/lib/utils";
-
-interface Usuario {
-  id: number;
-  nombre: string;
-  email: string;
-  cedula: string;
-  fecha_nacimiento: string;
-  tipo_usuario: {
-    id: number;
-    nombre: string;
-  };
-  adolecente?: {
-    tutor: {
-      id: number;
-      nombre: string;
-      cedula: string;
-      profesion_tutor?: string;
-      telefono_contacto?: string;
-      correo_contacto?: string;
-    };
-  } | null;
-  psicologo?: {
-    numero_de_titulo: string;
-    nombre_universidad: string;
-    monto_consulta: number;
-    telefono_trabajo: string;
-    redes_sociales: {
-      nombre_red: string;
-      url_perfil: string;
-    }[];
-  } | null;
-}
+import { Usuario } from "@/app/types/user";
+import useUserStore from "@/app/store/store";
 
 interface TipoUsuario {
   id: number;
@@ -55,6 +22,7 @@ interface PaginatedResponse {
 }
 
 export default function CrudUsuarios() {
+  const storeUser = useUserStore((state) => state.user);
   const router = useRouter();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [tiposUsuario, setTiposUsuario] = useState<TipoUsuario[]>([]);
@@ -81,7 +49,7 @@ export default function CrudUsuarios() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [usuarioToDelete, setUsuarioToDelete] = useState<number | null>(null);
-  const [usuarioToEdit, setUsuarioToEdit] = useState<UsuarioCompleto | null>(null);
+  const [usuarioToEdit, setUsuarioToEdit] = useState<Usuario | null>(null);
   
   // Filters state
   const [filtros, setFiltros] = useState({
@@ -150,7 +118,7 @@ const fetchUsuarios = async () => {
     }
 
     const data: PaginatedResponse | Usuario = await response.json();
-    console.log(data, "data");
+    //console.log(data, "data");
 
     let normalizedData: Usuario[] = [];
 
@@ -174,7 +142,7 @@ const fetchUsuarios = async () => {
       });
     }
 
-    console.log(normalizedData, "normalizedData");
+    //console.log(normalizedData, "normalizedData");
     setUsuarios(normalizedData);
     
   } catch (err) {
@@ -235,12 +203,17 @@ const fetchUsuarios = async () => {
   };
 
   const confirmDelete = (id: number) => {
-    setUsuarioToDelete(id);
-    setShowDeleteModal(true);
-    setModalError(prev => ({ ...prev, delete: '' }));
+    if(storeUser?.id == id){
+      alert("No se puede eliminar aun admin,amenos que sea por base de datos.");
+    }else{
+      setUsuarioToDelete(id);
+      setShowDeleteModal(true);
+      setModalError(prev => ({ ...prev, delete: '' }));
+    }
   };
 
   const handleEliminarUsuario = async () => {
+    if(usuarios)
     if (!usuarioToDelete) return;
     
     try {
@@ -263,7 +236,7 @@ const fetchUsuarios = async () => {
     }
   };
 
-  const handleEditUsuario = (usuario: UsuarioCompleto) => {
+  const handleEditUsuario = (usuario: Usuario) => {
     setUsuarioToEdit(usuario);
     setShowCreateModal(true);
   };
@@ -390,17 +363,7 @@ const fetchUsuarios = async () => {
                           <div className="flex space-x-2">
                             <button
                               className="p-1 bg-blue-100 rounded hover:bg-blue-200 transition-colors"
-                              onClick={() => handleEditUsuario(
-                                adaptLoginResponseDBToUsuarioCompleto({ 
-                                  user: { 
-                                    ...usuario, 
-                                    tipo_usuario: { 
-                                      ...usuario.tipo_usuario, 
-                                      menu: (usuario.tipo_usuario as any).menu ?? [] 
-                                    } 
-                                  } 
-                                })
-                              )}
+                              onClick={() => handleEditUsuario(usuario)}
                               title="Editar"
                             >
                               <Image src={IconEditar} alt="editar" width={20} height={20} />
@@ -506,9 +469,10 @@ const fetchUsuarios = async () => {
       
       {/* Create/Edit Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-[800px] max-h-[90vh] overflow-y-auto relative">
-            <button
+        <div className="fixed inset-0 bg-[#E0F8F0] flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-auto max-h-[90vh] overflow-y-auto relative">
+            <div className="flex w-full justify-end">
+              <button
               className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
               onClick={() => setShowCreateModal(false)}
               aria-label="Cerrar modal"
@@ -517,7 +481,7 @@ const fetchUsuarios = async () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            
+            </div>
             <FormUserAdmin 
               user={usuarioToEdit ?? undefined}
               isEdit={!!usuarioToEdit}

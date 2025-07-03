@@ -7,6 +7,13 @@ import Image from "next/image"
 import svgAzul from "./../../app/public/logos/fondo_azul_logo_celda.svg"
 import svgBlanco from "./../../app/public/logos/fondo_blanco_logo_celda.svg"
 
+interface RespuestaPayload {
+  id_pregunta: number;
+  id_opcion?: number | null;
+  texto_respuesta?: string | null;
+  valor_rango?: number | null;
+}
+
 interface CeldaTestProps extends FullTestData {
   onTestUpdated?: (nuevoEstado?: TestStatus) => Promise<void>;
 }
@@ -34,61 +41,70 @@ export default function CeldaTest({
   const nombrePsicologo = psicologo?.usuario?.nombre || "Psicólogo no asignado"
   const nombreUsuario = usuario?.nombre || "Usuario no asignado"
 
-  const handleSaveRespuestas = async (nuevasRespuestas: any[]) => {
-    setIsSubmitting(true);
+  const handleSaveRespuestas = async (nuevasRespuestas: RespuestaPayload[]) => {
+    if (!usuario?.id) {
+      alert('Usuario no identificado')
+      return
+    }
+
+    setIsSubmitting(true)
     
     try {
+      const payload = {
+        id_usuario: usuario.id,
+        respuestas: nuevasRespuestas.map(r => ({
+          id_pregunta: r.id_pregunta,
+          ...(r.id_opcion !== undefined && { id_opcion: r.id_opcion }),
+          ...(r.texto_respuesta !== undefined && { texto_respuesta: r.texto_respuesta }),
+          ...(r.valor_rango !== undefined && { valor_rango: r.valor_rango })
+        }))
+      }
+
       const response = await fetch(`/api/test?id=${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          respuestas: nuevasRespuestas.map(r => ({
-            id_pregunta: r.id_pregunta,
-            id_opcion: r.id_opcion || null,
-            texto_respuesta: r.texto_respuesta || null,
-            valor_rango: r.valor_rango || null,
-            id_usuario: usuario?.id
-          })),
-          estado: estado
-        }),
-      });
+        body: JSON.stringify(payload),
+      })
 
       if (!response.ok) {
-        throw new Error('Error al guardar las respuestas');
+        throw new Error(await response.text())
       }
 
-      const preguntasRespondidas = nuevasRespuestas.filter(r => 
-        r.id_opcion !== null || 
+      // Calcular nuevo estado basado en respuestas
+      const respuestasValidas = nuevasRespuestas.filter(r => 
+        (r.id_opcion !== null && r.id_opcion !== undefined) ||
         (r.texto_respuesta && r.texto_respuesta.trim() !== '') ||
-        r.valor_rango !== null
-      ).length;
-      
-      const nuevoProgreso = Math.round((preguntasRespondidas / preguntas.length) * 100);
-      let nuevoEstado = estado;
+        (r.valor_rango !== null && r.valor_rango !== undefined)
+      ).length
+
+      const nuevoProgreso = Math.round((respuestasValidas / preguntas.length) * 100)
+      let nuevoEstado = estado
 
       if (nuevoProgreso >= 100) {
-        nuevoEstado = TestStatus.Completado;
+        nuevoEstado = TestStatus.Completado
       } else if (nuevoProgreso > 0) {
-        nuevoEstado = TestStatus.EnProgreso;
+        nuevoEstado = TestStatus.EnProgreso
       }
 
-      if (onTestUpdated && nuevoEstado) {
-        await onTestUpdated(nuevoEstado);
+      if(nuevoEstado){
+        if (onTestUpdated) {
+         await onTestUpdated(nuevoEstado);
+        }
       }
 
-      setShowFormModal(false);
+      setShowFormModal(false)
     } catch (error) {
-      console.error('Error guardando respuestas:', error);
-      alert('Error al guardar las respuestas');
+      console.error('Error guardando respuestas:', error)
+      alert('Error al guardar las respuestas: ' + (error instanceof Error ? error.message : String(error)))
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
   }
 
-  const safeFechaUltimaRespuesta = fecha_ultima_respuesta ? new Date(fecha_ultima_respuesta) : null;
-  const safeFechaCreacion = fecha_creacion ? new Date(fecha_creacion) : null;
+  const safeFechaUltimaRespuesta = fecha_ultima_respuesta ? new Date(fecha_ultima_respuesta) : null
+  const safeFechaCreacion = fecha_creacion ? new Date(fecha_creacion) : null
 
   return (
     <>
@@ -100,6 +116,7 @@ export default function CeldaTest({
             width={180}
             height={90}
             alt="Logo"
+            priority
           />
         </div>
         
@@ -109,7 +126,7 @@ export default function CeldaTest({
               {nombre}
             </h3>
             <p className="text-sm text-gray-600">
-              Creado: {safeFechaCreacion ?safeFechaCreacion.toLocaleString(): ""}
+              Creado: {safeFechaCreacion?.toLocaleString() || "Fecha no disponible"}
             </p>
           </div>
           <span className={`px-2 py-1 text-xs rounded-full ${
@@ -158,8 +175,10 @@ export default function CeldaTest({
                   ? 'bg-white text-blue-700 border border-blue-500 hover:bg-blue-50' 
                   : 'bg-blue-500 text-white hover:bg-blue-600'
               }`}
+              disabled={isSubmitting}
             >
-              {estado === TestStatus.NoIniciado ? 'Comenzar test' : 'Continuar test'}
+              {isSubmitting ? 'Guardando...' : 
+               estado === TestStatus.NoIniciado ? 'Comenzar test' : 'Continuar test'}
             </button>
           )}
         </div>
@@ -172,9 +191,9 @@ export default function CeldaTest({
           onClose={() => setShowFormModal(false)}
           initialRespuestas={respuestas.map(r => ({
             id_pregunta: r.id_pregunta,
-            id_opcion: r.id_opcion || null,
-            texto_respuesta: r.texto_respuesta || null,
-            valor_rango: r.valor_rango || null
+            id_opcion: r.id_opcion ?? null,
+            texto_respuesta: r.texto_respuesta ?? null,
+            valor_rango: r.valor_rango ?? null
           }))}
           isSubmitting={isSubmitting}
         />

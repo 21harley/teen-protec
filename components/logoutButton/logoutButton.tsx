@@ -6,7 +6,6 @@ export function LogoutButton() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    console.log("Entro en logout");
     setIsLoggingOut(true);
     try {
       // Eliminar datos de almacenamiento local
@@ -28,7 +27,7 @@ export function LogoutButton() {
       
     } catch (error) {
       console.error('Error durante logout:', error);
-      setIsLoggingOut(false);
+      //setIsLoggingOut(false);
     }
   };
 

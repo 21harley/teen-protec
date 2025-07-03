@@ -73,14 +73,6 @@ export default function TestsPage() {
   }, [userId, isPsychologist]);
 
   const handleCreateTest = async (testData:Test) => {
-    console.log({
-          id_usuario: isPsychologist ? null : userId,
-          id_psicologo: isPsychologist ? userId : null,
-          preguntas: testData.preguntas,
-          estado: TestStatus.no_iniciado,
-          progreso: 0
-        })
-        console.log(testData)
     
     try {
       const response = await fetch('/api/test', {

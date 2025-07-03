@@ -22,14 +22,14 @@ export function ModalVerPacientesTestResultados({ preguntas, respuestas, onClose
 
     switch (pregunta.id_tipo) {
       case 1: // Radio
-      case 2: // Select
+      case 4: // Select
         return (
           <div className="text-sm text-gray-700">
             {respuesta.id_opcion ? `Opción seleccionada: ${respuesta.id_opcion}` : 'Ninguna opción seleccionada'}
           </div>
         )
       
-      case 3: // Checkbox
+      case 2: // Checkbox
         return (
           <div className="text-sm text-gray-700">
             {respuesta.id_opcion ? (
@@ -42,7 +42,7 @@ export function ModalVerPacientesTestResultados({ preguntas, respuestas, onClose
           </div>
         )
       
-      case 4: // Texto
+      case 3: // Texto
         return (
           <div className="text-sm text-gray-700 bg-gray-50 p-2 rounded">
             {respuesta.texto_respuesta || 'Sin texto proporcionado'}
@@ -71,7 +71,7 @@ export function ModalVerPacientesTestResultados({ preguntas, respuestas, onClose
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-start">

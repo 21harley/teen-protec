@@ -16,8 +16,8 @@ const tipoDatos: Record<number, string> = {
 };
 
 const TIPO_PREGUNTA_DISPLAY: Record<TipoPreguntaNombre, string> = {
-  [TipoPreguntaNombre.OPCION_MULTIPLE]: 'Opción única',
-  [TipoPreguntaNombre.VERDADERO_FALSO]: 'Selección múltiple',
+  [TipoPreguntaNombre.OPCION_UNICA]: 'Opción única',
+  [TipoPreguntaNombre.OPCION_MULTIPLE]: 'Selección múltiple',
   [TipoPreguntaNombre.RESPUESTA_CORTA]: 'Texto corto',
   [TipoPreguntaNombre.SELECT]: 'Lista desplegable',
   [TipoPreguntaNombre.RANGO]: 'Rango numérico'

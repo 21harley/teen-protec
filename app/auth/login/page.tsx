@@ -8,9 +8,9 @@ import { useState } from "react"
 import { apiPost } from './../../lib/apiClient';
 import { StorageManager } from "@/app/lib/storageManager"
 import useUserStore from "./../../../app/store/store"
-import { LoginRequest, LoginResponse } from "./../../types/user/index"
+import { LoginRequest } from "./../../types/user/index"
 import { useRouter } from "next/navigation"
-import {UsuarioInfo} from "./../../types/user"
+import {UsuarioInfo,LoginResponse} from "./../../types/user"
 
 export default function Login() {
   const { login } = useUserStore();
@@ -84,7 +84,7 @@ export default function Login() {
     setApiError(null);
     
     try {
-      const response = await apiPost<UsuarioInfo>('/auth/login', loginData);
+      const response = await apiPost<LoginResponse>('/auth/login', loginData);
  
       if (!response) {
         throw new Error('Invalid server response');
@@ -92,14 +92,16 @@ export default function Login() {
 
       // Guardar en localStorage
       const storage = new StorageManager('local');
-      console.log(response,"login");
       storage.save<UsuarioInfo>("userData", response.user ?? {});
 
       // Actualizar el store de Zustand
+      const expiryDate = typeof response.user.tokenExpiry === 'string' 
+            ? new Date(response.user.tokenExpiry) 
+            : response.user.tokenExpiry;
       login(
         response.user,
          '',
-        response.user.tokenExpir
+        expiryDate
       );
       // setIsAuthenticated(true); // Removed because setIsAuthenticated does not exist
 

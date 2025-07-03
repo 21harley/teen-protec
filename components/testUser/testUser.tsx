@@ -55,7 +55,7 @@ export default function UserTests() {
 
           switch (pregunta.tipo.nombre) {
             case TipoPreguntaNombre.OPCION_MULTIPLE:
-            case TipoPreguntaNombre.VERDADERO_FALSO:
+            case TipoPreguntaNombre.OPCION_UNICA:
             case TipoPreguntaNombre.SELECT:
               return respuestas.some(r => r.id_opcion != null)
             case TipoPreguntaNombre.RESPUESTA_CORTA:

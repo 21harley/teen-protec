@@ -86,8 +86,8 @@ export interface LoginResponseDB {
   adolecente?: {
     tutor: {
       id: number;
-      nombre: string;
-      cedula: string;
+      nombre_tutor: string;
+      cedula_tutor: string;
       profesion_tutor?: string;
       telefono_contacto?: string;
       correo_contacto?: string;

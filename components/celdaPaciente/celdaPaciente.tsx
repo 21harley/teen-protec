@@ -153,14 +153,14 @@ const PacienteCell: React.FC<PacienteCellProps> = ({
         
         <div className="relative w-full">
           <Image
-            className="absolute w-[100px] h-[60px] right-0 button-[5px] top-[-60px]"
+            className="absolute w-[200px] h-[160px] right-0 button-[5px] top-[-130px]"
             src={IconCardPacientes}
             width={180}
             height={90}
             alt="Logo"
           />
         </div>
-        
+
         <div className="flex flex-col gap-2 sm:flex-row justify-between w-full p-1 mt-3">
           <button
             onClick={() => setShowDetailsModal(true)}

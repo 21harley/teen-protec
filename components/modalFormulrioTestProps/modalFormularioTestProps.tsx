@@ -20,14 +20,13 @@ export function ModalFormularioTest({
   isSubmitting = false
 }: ModalFormularioTestProps) {
   const [respuestas, setRespuestas] = useState<Record<number, RespuestaData[]>>(() => {
-    const initialData: Record<number, RespuestaData[]> = {}
-    initialRespuestas.forEach(r => {
-      if (!initialData[r.id_pregunta]) {
-        initialData[r.id_pregunta] = []
-      }
-      initialData[r.id_pregunta].push(r)
-    })
-    return initialData
+    const initialData: Record<number, RespuestaData[]> = {};
+    preguntas.forEach(pregunta => {
+      initialData[pregunta.id] = initialRespuestas
+        .filter(r => r.id_pregunta === pregunta.id)
+        .map(r => ({ ...r }));
+    });
+    return initialData;
   })
   const [error, setError] = useState<string | null>(null)
   const [progreso, setProgreso] = useState(0)
@@ -54,10 +53,9 @@ export function ModalFormularioTest({
       const estaRespondida = respuestasPreg.some(r => {
         switch (pregunta.tipo.nombre) {
           case TipoPreguntaNombre.OPCION_MULTIPLE:
-          case TipoPreguntaNombre.SELECT:
             return r.id_opcion !== null
           
-          case TipoPreguntaNombre.VERDADERO_FALSO:
+          case TipoPreguntaNombre.OPCION_UNICA:
             return respuestasPreg.length > 0
           
           case TipoPreguntaNombre.RESPUESTA_CORTA:
@@ -65,6 +63,9 @@ export function ModalFormularioTest({
           
           case TipoPreguntaNombre.RANGO:
             return r.valor_rango !== null
+          
+          case TipoPreguntaNombre.SELECT:
+            return r.id_opcion !== null
           
           default:
             return true
@@ -85,17 +86,20 @@ export function ModalFormularioTest({
   }
 
   const handleChange = (idPregunta: number, value: any, idOpcion?: number, isCheckbox = false) => {
-    if (isCheckbox) {
-      setRespuestas(prev => {
-        const currentAnswers = prev[idPregunta] || []
-        const existingIndex = currentAnswers.findIndex(r => r.id_opcion === idOpcion)
+    setRespuestas(prev => {
+      const pregunta = preguntas.find(p => p.id === idPregunta);
+      if (!pregunta) return prev;
+
+      if (isCheckbox) {
+        const currentAnswers = prev[idPregunta] || [];
+        const existingIndex = currentAnswers.findIndex(r => r.id_opcion === idOpcion);
         
         if (existingIndex >= 0) {
           // Remove if unchecked
           return {
             ...prev,
             [idPregunta]: currentAnswers.filter(r => r.id_opcion !== idOpcion)
-          }
+          };
         } else {
           // Add if checked
           return {
@@ -104,60 +108,92 @@ export function ModalFormularioTest({
               ...currentAnswers,
               {
                 id_pregunta: idPregunta,
-                id_opcion: idOpcion || null,
-                texto_respuesta: typeof value === 'string' ? value : null,
-                valor_rango: typeof value === 'number' ? value : null,
+                id_opcion: idOpcion,
+                texto_respuesta: null,
+                valor_rango: null,
                 fecha: new Date().toISOString()
-              } as RespuestaData
+              }
             ]
-          }
+          };
         }
-      })
-    } else {
-      setRespuestas(prev => ({
-        ...prev,
-        [idPregunta]: [{
-          id_pregunta: idPregunta,
-          id_opcion: idOpcion || null,
-          texto_respuesta: typeof value === 'string' ? value : null,
-          valor_rango: typeof value === 'number' ? value : null,
-          fecha: new Date().toISOString()
-        } as RespuestaData]
-      }))
-    }
+      } else {
+        // For non-checkbox inputs
+        return {
+          ...prev,
+          [idPregunta]: [{
+            id_pregunta: idPregunta,
+            id_opcion: idOpcion || null,
+            texto_respuesta: typeof value === 'string' ? value : null,
+            valor_rango: typeof value === 'number' ? value : null,
+            fecha: new Date().toISOString()
+          }]
+        };
+      }
+    });
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+    e.preventDefault();
+    setError(null);
     
-    // Validar preguntas obligatorias
+    // Validación de preguntas obligatorias
     const faltanObligatorias = preguntas.some(pregunta => {
-      if (!pregunta.obligatoria) return false
+      if (!pregunta.obligatoria) return false;
       
-      const respuestasPreg = respuestas[pregunta.id] || []
+      const respuestasPreg = respuestas[pregunta.id] || [];
       
-      if (pregunta.tipo.nombre === TipoPreguntaNombre.VERDADERO_FALSO) {
-        return respuestasPreg.length === 0
+      // Diferentes validaciones según el tipo de pregunta
+      switch (pregunta.tipo.nombre) {
+        case TipoPreguntaNombre.OPCION_MULTIPLE:
+          return respuestasPreg.length === 0;
+        case TipoPreguntaNombre.OPCION_UNICA:
+          return respuestasPreg.length === 0;
+        case TipoPreguntaNombre.RESPUESTA_CORTA:
+          return !respuestasPreg[0]?.texto_respuesta?.trim();
+        case TipoPreguntaNombre.RANGO:
+          return respuestasPreg[0]?.valor_rango === null;
+        case TipoPreguntaNombre.SELECT:
+          return respuestasPreg[0]?.id_opcion === null;
+        default:
+          return false;
       }
-      
-      return respuestasPreg.length === 0 || 
-             (respuestasPreg[0].texto_respuesta === null && 
-              respuestasPreg[0].valor_rango === null && 
-              respuestasPreg[0].id_opcion === null)
-    })
+    });
 
     if (faltanObligatorias) {
-      setError('Por favor responde todas las preguntas obligatorias')
-      return
+      setError('Por favor responde todas las preguntas obligatorias');
+      return;
     }
 
-    const respuestasArray = Object.values(respuestas).flat()
+    // Preparar respuestas para enviar
+    const respuestasArray = Object.values(respuestas)
+      .flat()
+      .filter(r => {
+        const pregunta = preguntas.find(p => p.id === r.id_pregunta);
+        if (!pregunta) return false;
+        
+        // Filtrar respuestas vacías
+        switch (pregunta.tipo.nombre) {
+          case TipoPreguntaNombre.RESPUESTA_CORTA:
+            return r.texto_respuesta?.trim();
+          case TipoPreguntaNombre.RANGO:
+            return r.valor_rango !== null;
+          case TipoPreguntaNombre.OPCION_MULTIPLE:
+          case TipoPreguntaNombre.OPCION_UNICA:
+          case TipoPreguntaNombre.SELECT:
+            return r.id_opcion !== null;
+          default:
+            return true;
+        }
+      });
+
+    console.log('Respuestas preparadas para enviar:', respuestasArray);
+
     try {
-      await onSave(respuestasArray)
-      setRespuestasGuardadas(true)
+      await onSave(respuestasArray);
+      setRespuestasGuardadas(true);
     } catch (err) {
-      setError('Error al guardar las respuestas. Por favor intenta nuevamente.')
+      setError('Error al guardar las respuestas. Por favor intenta nuevamente.');
+      console.error('Error saving answers:', err);
     }
   }
 
@@ -178,11 +214,10 @@ export function ModalFormularioTest({
             {pregunta.opciones?.map(opcion => (
               <div key={opcion.id} className="flex items-center">
                 <input
-                  type="radio"
+                  type="checkbox"
                   id={`p${pregunta.id}_o${opcion.id}`}
-                  name={`pregunta_${pregunta.id}`}
                   checked={isOptionChecked(pregunta.id, opcion.id)}
-                  onChange={() => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, opcion.valor, opcion.id)}
+                  onChange={() => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, opcion.valor, opcion.id, true)}
                   disabled={estaCompletado && respuestasGuardadas}
                   className={`h-4 w-4 text-blue-600 ${claseInput}`}
                 />
@@ -194,21 +229,18 @@ export function ModalFormularioTest({
           </div>
         )
       
-      case TipoPreguntaNombre.VERDADERO_FALSO:
+      case TipoPreguntaNombre.OPCION_UNICA:
         return (
           <div className="space-y-2">
             {pregunta.opciones?.map(opcion => (
               <div key={opcion.id} className="flex items-center">
                 <input
-                  type="checkbox"
+                  type="radio"
                   id={`p${pregunta.id}_o${opcion.id}`}
+                  name={`pregunta_radio_${pregunta.id}`}
+                  value={opcion.valor}
                   checked={isOptionChecked(pregunta.id, opcion.id)}
-                  onChange={(e) => !(estaCompletado && respuestasGuardadas) && handleChange(
-                    pregunta.id, 
-                    opcion.valor, 
-                    opcion.id,
-                    true
-                  )}
+                  onChange={() => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, opcion.valor, opcion.id)}
                   disabled={estaCompletado && respuestasGuardadas}
                   className={`h-4 w-4 text-blue-600 ${claseInput}`}
                 />
@@ -235,7 +267,7 @@ export function ModalFormularioTest({
             onChange={(e) => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, e.target.value)}
             placeholder={pregunta.placeholder || 'Escribe tu respuesta...'}
             disabled={estaCompletado && respuestasGuardadas}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm ${claseInput}`}
+            className={`mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm sm:text-sm ${claseInput}`}
           />
         )
       
@@ -286,7 +318,7 @@ export function ModalFormularioTest({
               value={rangeAnswer.valor_rango || 0}
               onChange={(e) => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, parseInt(e.target.value))}
               disabled={estaCompletado && respuestasGuardadas}
-              className={`w-full ${(estaCompletado && respuestasGuardadas) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full  ${(estaCompletado && respuestasGuardadas) ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
             <div className="text-sm text-gray-600">
               Valor seleccionado: {rangeAnswer.valor_rango}
@@ -300,7 +332,7 @@ export function ModalFormularioTest({
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-start">

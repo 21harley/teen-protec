@@ -185,8 +185,8 @@ async function todasPreguntasRespondidas(testId: number, usuarioId: number): Pro
     }
   });
 
-  console.log('[todasPreguntasRespondidas] Preguntas obligatorias:', preguntasObligatorias.map(p => p.id));
-  console.log('[todasPreguntasRespondidas] Preguntas respondidas:', respuestasValidas.map(r => r.id_pregunta));
+  //console.log('[todasPreguntasRespondidas] Preguntas obligatorias:', preguntasObligatorias.map(p => p.id));
+  //console.log('[todasPreguntasRespondidas] Preguntas respondidas:', respuestasValidas.map(r => r.id_pregunta));
 
   // Verificar que todas las preguntas obligatorias estén respondidas
   const todasObligatoriasRespondidas = preguntasObligatorias.every(pregunta => {
@@ -199,14 +199,14 @@ async function todasPreguntasRespondidas(testId: number, usuarioId: number): Pro
     return tieneRespuesta;
   });
 
-  console.log(`[todasPreguntasRespondidas] Todas obligatorias respondidas: ${todasObligatoriasRespondidas}`);
+  //console.log(`[todasPreguntasRespondidas] Todas obligatorias respondidas: ${todasObligatoriasRespondidas}`);
   return todasObligatoriasRespondidas;
 }
 
 // Helper para determinar estado basado en progreso
 // Función auxiliar para determinar estado
 function determinarEstado(progreso: number, todasRespondidas: boolean): TestStatus {
-  console.log(`[determinarEstado] Progreso: ${progreso}, TodasRespondidas: ${todasRespondidas}`);
+  //console.log(`[determinarEstado] Progreso: ${progreso}, TodasRespondidas: ${todasRespondidas}`);
   
   if (progreso === 100 || todasRespondidas) {
     return TestStatus.Completado;
@@ -231,7 +231,7 @@ async function calcularProgresoConRespuestas(testId: number, usuarioId: number, 
       return 0;
     }
     
-    console.log(`[calcularProgresoConRespuestas] Preguntas: ${preguntas.length}, Respuestas proporcionadas: ${respuestas.length}`);
+    //console.log(`[calcularProgresoConRespuestas] Preguntas: ${preguntas.length}, Respuestas proporcionadas: ${respuestas.length}`);
     
     // Agrupar respuestas por pregunta
     const respuestasPorPregunta: Record<number, any[]> = {};
@@ -242,7 +242,7 @@ async function calcularProgresoConRespuestas(testId: number, usuarioId: number, 
       respuestasPorPregunta[r.id_pregunta].push(r);
     });
 
-    console.log(`[calcularProgresoConRespuestas] Preguntas con respuestas: ${Object.keys(respuestasPorPregunta).length}`);
+    //console.log(`[calcularProgresoConRespuestas] Preguntas con respuestas: ${Object.keys(respuestasPorPregunta).length}`);
     
     // Contar preguntas válidamente respondidas
     let respondidas = 0;
@@ -250,7 +250,7 @@ async function calcularProgresoConRespuestas(testId: number, usuarioId: number, 
     for (const pregunta of preguntas) {
       const respuestasPreg = respuestasPorPregunta[pregunta.id] || [];
       
-      console.log(`[calcularProgresoConRespuestas] Procesando pregunta ${pregunta.id} (${pregunta.tipo.nombre}), respuestas: ${respuestasPreg.length}, obligatoria: ${pregunta.obligatoria}`);
+      //console.log(`[calcularProgresoConRespuestas] Procesando pregunta ${pregunta.id} (${pregunta.tipo.nombre}), respuestas: ${respuestasPreg.length}, obligatoria: ${pregunta.obligatoria}`);
       
       // Verificar si está respondida adecuadamente según el tipo
       let estaRespondida = false;
@@ -279,7 +279,7 @@ async function calcularProgresoConRespuestas(testId: number, usuarioId: number, 
           estaRespondida = true;
       }
       
-      console.log(`[calcularProgresoConRespuestas] Pregunta ${pregunta.id} respondida: ${estaRespondida}`);
+      //console.log(`[calcularProgresoConRespuestas] Pregunta ${pregunta.id} respondida: ${estaRespondida}`);
       
       // Si es obligatoria y no está respondida, no cuenta
       if (pregunta.obligatoria && !estaRespondida) {
@@ -289,12 +289,12 @@ async function calcularProgresoConRespuestas(testId: number, usuarioId: number, 
       
       if (estaRespondida) {
         respondidas++;
-        console.log(`[calcularProgresoConRespuestas] Pregunta ${pregunta.id} cuenta como respondida`);
+        //console.log(`[calcularProgresoConRespuestas] Pregunta ${pregunta.id} cuenta como respondida`);
       }
     }
     
     const progreso = Math.round((respondidas / preguntas.length) * 100);
-    console.log(`[calcularProgresoConRespuestas] Progreso calculado: ${respondidas}/${preguntas.length} = ${progreso}%`);
+    //console.log(`[calcularProgresoConRespuestas] Progreso calculado: ${respondidas}/${preguntas.length} = ${progreso}%`);
     return progreso;
   } catch (error) {
     console.error('[calcularProgresoConRespuestas] Error al calcular progreso:', error);
@@ -333,8 +333,8 @@ async function todasPreguntasRespondidasConRespuestas(testId: number, usuarioId:
       respuestasPorPregunta[r.id_pregunta].push(r);
     });
 
-    console.log('[todasPreguntasRespondidasConRespuestas] Preguntas obligatorias:', preguntasObligatorias.map(p => p.id));
-    console.log('[todasPreguntasRespondidasConRespuestas] Preguntas respondidas:', Object.keys(respuestasPorPregunta));
+    //console.log('[todasPreguntasRespondidasConRespuestas] Preguntas obligatorias:', preguntasObligatorias.map(p => p.id));
+    //console.log('[todasPreguntasRespondidasConRespuestas] Preguntas respondidas:', Object.keys(respuestasPorPregunta));
 
     // Verificar que todas las preguntas obligatorias estén respondidas
     const todasObligatoriasRespondidas = preguntasObligatorias.every(pregunta => {
@@ -348,7 +348,7 @@ async function todasPreguntasRespondidasConRespuestas(testId: number, usuarioId:
       return tieneRespuesta;
     });
 
-    console.log(`[todasPreguntasRespondidasConRespuestas] Todas obligatorias respondidas: ${todasObligatoriasRespondidas}`);
+    //console.log(`[todasPreguntasRespondidasConRespuestas] Todas obligatorias respondidas: ${todasObligatoriasRespondidas}`);
     return todasObligatoriasRespondidas;
   } catch (error) {
     console.error('[todasPreguntasRespondidasConRespuestas] Error:', error);

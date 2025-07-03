@@ -273,7 +273,7 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
         }
 
         const result = await response.json();
-        console.log(`${isEdit ? 'Actualización' : 'Registro'} exitoso:`, result);
+        //console.log(`${isEdit ? 'Actualización' : 'Registro'} exitoso:`, result);
         
         // Mostrar mensaje de éxito
         setSuccessMessage(`${isEdit ? 'Perfil actualizado' : 'Registro completado'} correctamente!`);

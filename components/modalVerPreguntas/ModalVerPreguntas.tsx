@@ -28,14 +28,14 @@ export function ModalVerPreguntas({ preguntas, testId, onClose, onEdit }: ModalV
           </div>
         )
       
-      case TipoPreguntaNombre.VERDADERO_FALSO:
-        return (
-          <div className="text-sm text-gray-500 italic">
-            {pregunta.opciones?.length ? 
-              `Ejemplo: [✓] ${pregunta.opciones[0]?.texto || 'Opción'}` : 
-              'Opción de selección múltiple'}
-          </div>
-        )
+case TipoPreguntaNombre.OPCION_UNICA:
+  return (
+    <div className="text-sm text-gray-500 italic">
+      {pregunta.opciones?.length ? 
+        `Selección única: ${pregunta.opciones[0]?.texto || 'Opción'}` : 
+        'Botones de radio (selección única)'}
+    </div>
+  )
       
       case TipoPreguntaNombre.RESPUESTA_CORTA:
         return (
@@ -130,9 +130,6 @@ export function ModalVerPreguntas({ preguntas, testId, onClose, onEdit }: ModalV
                     {index + 1}. {pregunta.texto_pregunta}
                     {pregunta.obligatoria && <span className="text-red-500 ml-1">*</span>}
                   </h3>
-                  <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
-                    {pregunta.tipo.nombre}
-                  </span>
                 </div>
                 {renderEjemploRespuesta(pregunta)}
                 {pregunta.opciones && pregunta.opciones.length > 0 && (
