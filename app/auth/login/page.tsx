@@ -89,7 +89,7 @@ export default function Login() {
       if (!response) {
         throw new Error('Invalid server response');
       }
-
+     console.log(response);
       // Guardar en localStorage
       const storage = new StorageManager('local');
       storage.save<UsuarioInfo>("userData", response.user ?? {});

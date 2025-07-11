@@ -6,7 +6,7 @@ import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
-// Tipos mejorados para la API
+// Tipos alineados con el modelo Prisma
 interface TipoUsuarioResponse {
   id: number;
   nombre: string;
@@ -20,6 +20,8 @@ interface TutorResponse {
   profesion_tutor?: string;
   telefono_contacto?: string;
   correo_contacto?: string;
+  sexo?: string;
+  parentesco?: string;
 }
 
 interface RedSocialResponse {
@@ -51,16 +53,14 @@ interface UsuarioResponse {
   fecha_nacimiento: Date;
   id_tipo_usuario: number;
   id_psicologo?: number | null;
-  tipo_usuario?: TipoUsuarioResponse;
+  tipo_usuario: TipoUsuarioResponse;
   adolecente?: AdolecenteResponse;
   psicologo?: PsicologoResponse;
-  psicologoAsignado?: {
-    usuario: {
-      id: number;
-      nombre: string;
-      email: string;
-      psicologo?: PsicologoResponse;
-    };
+  psicologoPacientes?: {
+    id: number;
+    nombre: string;
+    email: string;
+    psicologo?: PsicologoResponse;
   };
 }
 
@@ -73,13 +73,9 @@ interface LoginResponse {
     fecha_nacimiento: Date;
     id_tipo_usuario: number;
     id_psicologo?: number;
-    tipoUsuario: {
-      id: number;
-      nombre: string;
-      menu: any;
-    };
-    tokenExpiry: Date;
-    psicologoAsignado?: {
+    tipoUsuario: TipoUsuarioResponse;
+    authTokenExpiry: Date;
+    psicologoPacientes?: {
       id: number;
       nombre: string;
       email: string;
@@ -93,9 +89,9 @@ interface LoginResponse {
 }
 
 enum TipoRegistro {
-  usuario = 'usuario',
-  adolescente = 'adolescente',
-  psicologo = 'psicologo'
+  USUARIO = 'usuario',
+  ADOLESCENTE = 'adolescente',
+  PSICOLOGO = 'psicologo'
 }
 
 interface TutorData {
@@ -104,6 +100,8 @@ interface TutorData {
   profesion_tutor?: string;
   telefono_contacto?: string;
   correo_contacto?: string;
+  sexo?: string;
+  parentesco?: string;
 }
 
 interface PsicologoData {
@@ -141,13 +139,9 @@ export async function GET(request: Request) {
           tipo_usuario: true,
           adolecente: { include: { tutor: true } },
           psicologo: { include: { redes_sociales: true } },
-          psicologoAsignado: {
+          psicologoPacientes: {
             include: {
-              usuario: {
-                include: {
-                  psicologo: { include: { redes_sociales: true } }
-                }
-              }
+              psicologo: { include: { redes_sociales: true } }
             }
           }
         }
@@ -172,9 +166,32 @@ export async function GET(request: Request) {
                 nombre_tutor: tutor.nombre_tutor,
                 profesion_tutor: tutor.profesion_tutor ?? undefined,
                 telefono_contacto: tutor.telefono_contacto ?? undefined,
-                correo_contacto: tutor.correo_contacto ?? undefined
+                correo_contacto: tutor.correo_contacto ?? undefined,
+                sexo: tutor.sexo ?? undefined,
+                parentesco: tutor.parentesco ?? undefined
               }
             : undefined
+        };
+      }
+
+      let psicologoPacientes = undefined;
+      if (usuario.psicologoPacientes) {
+        psicologoPacientes = {
+          id: usuario.psicologoPacientes.id,
+          nombre: usuario.psicologoPacientes.nombre,
+          email: usuario.psicologoPacientes.email,
+          psicologo: usuario.psicologoPacientes.psicologo ? {
+            id_usuario: usuario.psicologoPacientes.psicologo.id_usuario,
+            numero_de_titulo: usuario.psicologoPacientes.psicologo.numero_de_titulo ?? undefined,
+            nombre_universidad: usuario.psicologoPacientes.psicologo.nombre_universidad ?? undefined,
+            monto_consulta: usuario.psicologoPacientes.psicologo.monto_consulta ?? undefined,
+            telefono_trabajo: usuario.psicologoPacientes.psicologo.telefono_trabajo ?? undefined,
+            redes_sociales: usuario.psicologoPacientes.psicologo.redes_sociales?.map(red => ({
+              id: red.id,
+              nombre_red: red.nombre_red,
+              url_perfil: red.url_perfil
+            })) || []
+          } : undefined
         };
       }
 
@@ -182,6 +199,7 @@ export async function GET(request: Request) {
         ...safeUser,
         ...(includePassword ? { password, password_iv } : {}),
         adolecente,
+        psicologoPacientes,
         id_psicologo: usuario.id_psicologo
       } as UsuarioResponse);
     }
@@ -201,9 +219,9 @@ export async function GET(request: Request) {
     }
 
     if (id_psicologo) whereClause.id_psicologo = parseInt(id_psicologo);
-    if (nombre) whereClause.nombre = { contains: nombre }; // sin mode
-    if (email) whereClause.email = { contains: email };    // sin mode
-    if (cedula) whereClause.cedula = { contains: cedula }; // sin mode
+    if (nombre) whereClause.nombre = { contains: nombre };
+    if (email) whereClause.email = { contains: email };
+    if (cedula) whereClause.cedula = { contains: cedula };
 
     if (paginated) {
       const total = await prisma.usuario.count({ where: whereClause });
@@ -215,13 +233,9 @@ export async function GET(request: Request) {
           tipo_usuario: true,
           adolecente: { include: { tutor: true } },
           psicologo: { include: { redes_sociales: true } },
-          psicologoAsignado: {
+          psicologoPacientes: {
             include: {
-              usuario: {
-                include: {
-                  psicologo: { include: { redes_sociales: true } }
-                }
-              }
+              psicologo: { include: { redes_sociales: true } }
             }
           }
         },
@@ -244,14 +258,39 @@ export async function GET(request: Request) {
                   nombre_tutor: tutor.nombre_tutor,
                   profesion_tutor: tutor.profesion_tutor ?? undefined,
                   telefono_contacto: tutor.telefono_contacto ?? undefined,
-                  correo_contacto: tutor.correo_contacto ?? undefined
+                  correo_contacto: tutor.correo_contacto ?? undefined,
+                  sexo: tutor.sexo ?? undefined,
+                  parentesco: tutor.parentesco ?? undefined
                 }
               : undefined
           };
         }
+
+        let psicologoPacientes = undefined;
+        if (user.psicologoPacientes) {
+          psicologoPacientes = {
+            id: user.psicologoPacientes.id,
+            nombre: user.psicologoPacientes.nombre,
+            email: user.psicologoPacientes.email,
+            psicologo: user.psicologoPacientes.psicologo ? {
+              id_usuario: user.psicologoPacientes.psicologo.id_usuario,
+              numero_de_titulo: user.psicologoPacientes.psicologo.numero_de_titulo ?? undefined,
+              nombre_universidad: user.psicologoPacientes.psicologo.nombre_universidad ?? undefined,
+              monto_consulta: user.psicologoPacientes.psicologo.monto_consulta ?? undefined,
+              telefono_trabajo: user.psicologoPacientes.psicologo.telefono_trabajo ?? undefined,
+              redes_sociales: user.psicologoPacientes.psicologo.redes_sociales?.map(red => ({
+                id: red.id,
+                nombre_red: red.nombre_red,
+                url_perfil: red.url_perfil
+              })) || []
+            } : undefined
+          };
+        }
+
         return {
           ...user,
           adolecente,
+          psicologoPacientes,
           id_psicologo: user.id_psicologo
         } as UsuarioResponse;
       });
@@ -272,13 +311,9 @@ export async function GET(request: Request) {
         tipo_usuario: true,
         adolecente: { include: { tutor: true } },
         psicologo: { include: { redes_sociales: true } },
-        psicologoAsignado: {
+        psicologoPacientes: {
           include: {
-            usuario: {
-              include: {
-                psicologo: { include: { redes_sociales: true } }
-              }
-            }
+            psicologo: { include: { redes_sociales: true } }
           }
         }
       },
@@ -299,14 +334,39 @@ export async function GET(request: Request) {
                 nombre_tutor: tutor.nombre_tutor,
                 profesion_tutor: tutor.profesion_tutor ?? undefined,
                 telefono_contacto: tutor.telefono_contacto ?? undefined,
-                correo_contacto: tutor.correo_contacto ?? undefined
+                correo_contacto: tutor.correo_contacto ?? undefined,
+                sexo: tutor.sexo ?? undefined,
+                parentesco: tutor.parentesco ?? undefined
               }
             : undefined
         };
       }
+
+      let psicologoPacientes = undefined;
+      if (user.psicologoPacientes) {
+        psicologoPacientes = {
+          id: user.psicologoPacientes.id,
+          nombre: user.psicologoPacientes.nombre,
+          email: user.psicologoPacientes.email,
+          psicologo: user.psicologoPacientes.psicologo ? {
+            id_usuario: user.psicologoPacientes.psicologo.id_usuario,
+            numero_de_titulo: user.psicologoPacientes.psicologo.numero_de_titulo ?? undefined,
+            nombre_universidad: user.psicologoPacientes.psicologo.nombre_universidad ?? undefined,
+            monto_consulta: user.psicologoPacientes.psicologo.monto_consulta ?? undefined,
+            telefono_trabajo: user.psicologoPacientes.psicologo.telefono_trabajo ?? undefined,
+            redes_sociales: user.psicologoPacientes.psicologo.redes_sociales?.map(red => ({
+              id: red.id,
+              nombre_red: red.nombre_red,
+              url_perfil: red.url_perfil
+            })) || []
+          } : undefined
+        };
+      }
+
       return {
         ...user,
         adolecente,
+        psicologoPacientes,
         id_psicologo: user.id_psicologo
       } as UsuarioResponse;
     });
@@ -326,6 +386,7 @@ export async function GET(request: Request) {
     await prisma.$disconnect();
   }
 }
+
 export async function POST(request: Request) {
   try {
     const { tipoRegistro, usuarioData, tutorData, psicologoData } = await request.json();
@@ -337,21 +398,21 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!['usuario', 'adolescente', 'psicologo'].includes(tipoRegistro)) {
+    if (!Object.values(TipoRegistro).includes(tipoRegistro)) {
       return NextResponse.json(
         { error: 'Tipo de registro no válido' },
         { status: 400 }
       );
     }
 
-    if (tipoRegistro === 'adolescente' && !tutorData) {
+    if (tipoRegistro === TipoRegistro.ADOLESCENTE && !tutorData) {
       return NextResponse.json(
         { error: 'Datos del tutor son requeridos para registro de adolescente' },
         { status: 400 }
       );
     }
 
-    if (tipoRegistro === 'psicologo' && !psicologoData) {
+    if (tipoRegistro === TipoRegistro.PSICOLOGO && !psicologoData) {
       return NextResponse.json(
         { error: 'Datos profesionales son requeridos para registro de psicólogo' },
         { status: 400 }
@@ -376,8 +437,8 @@ export async function POST(request: Request) {
 
     const contraseñaEncriptada = encriptar(usuarioData.password!);
     const idTipoUsuario = usuarioData.id_tipo_usuario || 
-                         (tipoRegistro === 'psicologo' ? 2 : 
-                          tipoRegistro === 'adolescente' ? 3 : 4);
+                         (tipoRegistro === TipoRegistro.PSICOLOGO ? 2 : 
+                          tipoRegistro === TipoRegistro.ADOLESCENTE ? 3 : 4);
 
     const authToken = crypto.randomBytes(64).toString('hex');
     const authTokenExpiry = generarTokenExpiry();
@@ -389,6 +450,7 @@ export async function POST(request: Request) {
           nombre: usuarioData.nombre,
           password: contraseñaEncriptada.contenido,
           cedula: usuarioData.cedula,
+          sexo: usuarioData?.sexo,
           fecha_nacimiento: new Date(usuarioData.fecha_nacimiento),
           id_tipo_usuario: idTipoUsuario,
           id_psicologo: usuarioData.id_psicologo,
@@ -399,14 +461,16 @@ export async function POST(request: Request) {
       });
 
       switch (tipoRegistro) {
-        case 'adolescente':
+        case TipoRegistro.ADOLESCENTE:
           const tutor = await prisma.tutor.create({
             data: {
               cedula_tutor: tutorData?.cedula_tutor || usuarioData.cedula,
               nombre_tutor: tutorData?.nombre_tutor || usuarioData.nombre,
               profesion_tutor: tutorData?.profesion_tutor,
               telefono_contacto: tutorData?.telefono_contacto,
-              correo_contacto: tutorData?.correo_contacto
+              correo_contacto: tutorData?.correo_contacto,
+              sexo: tutorData?.sexo,
+              parentesco: tutorData?.parentesco
             }
           });
 
@@ -418,7 +482,7 @@ export async function POST(request: Request) {
           });
           break;
 
-        case 'psicologo':
+        case TipoRegistro.PSICOLOGO:
           const psicologo = await prisma.psicologo.create({
             data: {
               id_usuario: nuevoUsuario.id,
@@ -477,15 +541,11 @@ export async function POST(request: Request) {
         psicologo: {
           include: { redes_sociales: true }
         },
-        psicologoAsignado: {
+        psicologoPacientes: {
           include: {
-            usuario: {
+            psicologo: {
               include: {
-                psicologo: {
-                  include: {
-                    redes_sociales: true
-                  }
-                }
+                redes_sociales: true
               }
             }
           }
@@ -509,23 +569,23 @@ export async function POST(request: Request) {
         id_tipo_usuario: usuarioCompleto.id_tipo_usuario,
         id_psicologo: usuarioCompleto.id_psicologo || undefined,
         tipoUsuario: {
-          id: usuarioCompleto.tipo_usuario?.id || 0,
-          nombre: usuarioCompleto.tipo_usuario?.nombre || '',
-          menu: usuarioCompleto.tipo_usuario?.menu || []
+          id: usuarioCompleto.tipo_usuario.id,
+          nombre: usuarioCompleto.tipo_usuario.nombre,
+          menu: usuarioCompleto.tipo_usuario.menu
         },
-        tokenExpiry: usuarioCompleto.authTokenExpiry ?? new Date(0),
-        psicologoAsignado: usuarioCompleto.psicologoAsignado ? {
-          id: usuarioCompleto.psicologoAsignado.usuario.id,
-          nombre: usuarioCompleto.psicologoAsignado.usuario.nombre,
-          email: usuarioCompleto.psicologoAsignado.usuario.email,
-          psicologo: usuarioCompleto.psicologoAsignado.usuario.psicologo
+        authTokenExpiry: usuarioCompleto.authTokenExpiry ?? new Date(0),
+        psicologoPacientes: usuarioCompleto.psicologoPacientes ? {
+          id: usuarioCompleto.psicologoPacientes.id,
+          nombre: usuarioCompleto.psicologoPacientes.nombre,
+          email: usuarioCompleto.psicologoPacientes.email,
+          psicologo: usuarioCompleto.psicologoPacientes.psicologo
             ? {
-                id_usuario: usuarioCompleto.psicologoAsignado.usuario.psicologo.id_usuario,
-                numero_de_titulo: usuarioCompleto.psicologoAsignado.usuario.psicologo.numero_de_titulo ?? undefined,
-                nombre_universidad: usuarioCompleto.psicologoAsignado.usuario.psicologo.nombre_universidad ?? undefined,
-                monto_consulta: usuarioCompleto.psicologoAsignado.usuario.psicologo.monto_consulta ?? undefined,
-                telefono_trabajo: usuarioCompleto.psicologoAsignado.usuario.psicologo.telefono_trabajo ?? undefined,
-                redes_sociales: usuarioCompleto.psicologoAsignado.usuario.psicologo.redes_sociales?.map(red => ({
+                id_usuario: usuarioCompleto.psicologoPacientes.psicologo.id_usuario,
+                numero_de_titulo: usuarioCompleto.psicologoPacientes.psicologo.numero_de_titulo ?? undefined,
+                nombre_universidad: usuarioCompleto.psicologoPacientes.psicologo.nombre_universidad ?? undefined,
+                monto_consulta: usuarioCompleto.psicologoPacientes.psicologo.monto_consulta ?? undefined,
+                telefono_trabajo: usuarioCompleto.psicologoPacientes.psicologo.telefono_trabajo ?? undefined,
+                redes_sociales: usuarioCompleto.psicologoPacientes.psicologo.redes_sociales?.map(red => ({
                   id: red.id,
                   nombre_red: red.nombre_red,
                   url_perfil: red.url_perfil
@@ -547,6 +607,8 @@ export async function POST(request: Request) {
           profesion_tutor: tutor.profesion_tutor ?? undefined,
           telefono_contacto: tutor.telefono_contacto ?? undefined,
           correo_contacto: tutor.correo_contacto ?? undefined,
+          sexo: tutor.sexo ?? undefined,
+          parentesco: tutor.parentesco ?? undefined
         };
       }
     }
@@ -555,10 +617,10 @@ export async function POST(request: Request) {
       responseData.user.esPsicologo = true;
       responseData.user.psicologoInfo = {
         id_usuario: usuarioCompleto.psicologo.id_usuario,
-        numero_de_titulo: usuarioCompleto.psicologo.numero_de_titulo ?? '',
-        nombre_universidad: usuarioCompleto.psicologo.nombre_universidad ?? '',
-        monto_consulta: Number(usuarioCompleto.psicologo.monto_consulta) ?? 0,
-        telefono_trabajo: usuarioCompleto.psicologo.telefono_trabajo ?? '',
+        numero_de_titulo: usuarioCompleto.psicologo.numero_de_titulo ?? undefined,
+        nombre_universidad: usuarioCompleto.psicologo.nombre_universidad ?? undefined,
+        monto_consulta: usuarioCompleto.psicologo.monto_consulta ?? undefined,
+        telefono_trabajo: usuarioCompleto.psicologo.telefono_trabajo ?? undefined,
         redes_sociales: usuarioCompleto.psicologo.redes_sociales?.map(red => ({
           id: red.id,
           nombre_red: red.nombre_red,
@@ -580,7 +642,10 @@ export async function POST(request: Request) {
     }
     
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { 
+        error: 'Error interno del servidor',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {
@@ -609,15 +674,11 @@ export async function PUT(request: Request) {
         psicologo: {
           include: { redes_sociales: true }
         },
-        psicologoAsignado: {
+        psicologoPacientes: {
           include: {
-            usuario: {
+            psicologo: {
               include: {
-                psicologo: {
-                  include: {
-                    redes_sociales: true
-                  }
-                }
+                redes_sociales: true
               }
             }
           }
@@ -660,7 +721,9 @@ export async function PUT(request: Request) {
             cedula_tutor: tutorData.cedula_tutor || undefined,
             profesion_tutor: tutorData.profesion_tutor || undefined,
             telefono_contacto: tutorData.telefono_contacto || undefined,
-            correo_contacto: tutorData.correo_contacto || undefined
+            correo_contacto: tutorData.correo_contacto || undefined,
+            sexo: tutorData.sexo || undefined,
+            parentesco: tutorData.parentesco || undefined
           }
         });
       }
@@ -706,15 +769,11 @@ export async function PUT(request: Request) {
         psicologo: {
           include: { redes_sociales: true }
         },
-        psicologoAsignado: {
+        psicologoPacientes: {
           include: {
-            usuario: {
+            psicologo: {
               include: {
-                psicologo: {
-                  include: {
-                    redes_sociales: true
-                  }
-                }
+                redes_sociales: true
               }
             }
           }
@@ -736,23 +795,23 @@ export async function PUT(request: Request) {
         id_tipo_usuario: usuarioActualizado.id_tipo_usuario,
         id_psicologo: usuarioActualizado.id_psicologo || undefined,
         tipoUsuario: {
-          id: usuarioActualizado.tipo_usuario?.id || 0,
-          nombre: usuarioActualizado.tipo_usuario?.nombre || '',
-          menu: usuarioActualizado.tipo_usuario?.menu || []
+          id: usuarioActualizado.tipo_usuario.id,
+          nombre: usuarioActualizado.tipo_usuario.nombre,
+          menu: usuarioActualizado.tipo_usuario.menu
         },
-        tokenExpiry: usuarioActualizado.authTokenExpiry ?? new Date(0),
-        psicologoAsignado: usuarioActualizado.psicologoAsignado ? {
-          id: usuarioActualizado.psicologoAsignado.usuario.id,
-          nombre: usuarioActualizado.psicologoAsignado.usuario.nombre,
-          email: usuarioActualizado.psicologoAsignado.usuario.email,
-          psicologo: usuarioActualizado.psicologoAsignado.usuario.psicologo
+        authTokenExpiry: usuarioActualizado.authTokenExpiry ?? new Date(0),
+        psicologoPacientes: usuarioActualizado.psicologoPacientes ? {
+          id: usuarioActualizado.psicologoPacientes.id,
+          nombre: usuarioActualizado.psicologoPacientes.nombre,
+          email: usuarioActualizado.psicologoPacientes.email,
+          psicologo: usuarioActualizado.psicologoPacientes.psicologo
             ? {
-                id_usuario: usuarioActualizado.psicologoAsignado.usuario.psicologo.id_usuario,
-                numero_de_titulo: usuarioActualizado.psicologoAsignado.usuario.psicologo.numero_de_titulo ?? undefined,
-                nombre_universidad: usuarioActualizado.psicologoAsignado.usuario.psicologo.nombre_universidad ?? undefined,
-                monto_consulta: usuarioActualizado.psicologoAsignado.usuario.psicologo.monto_consulta ?? undefined,
-                telefono_trabajo: usuarioActualizado.psicologoAsignado.usuario.psicologo.telefono_trabajo ?? undefined,
-                redes_sociales: usuarioActualizado.psicologoAsignado.usuario.psicologo.redes_sociales?.map(red => ({
+                id_usuario: usuarioActualizado.psicologoPacientes.psicologo.id_usuario,
+                numero_de_titulo: usuarioActualizado.psicologoPacientes.psicologo.numero_de_titulo ?? undefined,
+                nombre_universidad: usuarioActualizado.psicologoPacientes.psicologo.nombre_universidad ?? undefined,
+                monto_consulta: usuarioActualizado.psicologoPacientes.psicologo.monto_consulta ?? undefined,
+                telefono_trabajo: usuarioActualizado.psicologoPacientes.psicologo.telefono_trabajo ?? undefined,
+                redes_sociales: usuarioActualizado.psicologoPacientes.psicologo.redes_sociales?.map(red => ({
                   id: red.id,
                   nombre_red: red.nombre_red,
                   url_perfil: red.url_perfil
@@ -774,6 +833,8 @@ export async function PUT(request: Request) {
           profesion_tutor: tutor.profesion_tutor ?? undefined,
           telefono_contacto: tutor.telefono_contacto ?? undefined,
           correo_contacto: tutor.correo_contacto ?? undefined,
+          sexo: tutor.sexo ?? undefined,
+          parentesco: tutor.parentesco ?? undefined
         };
       }
     }
@@ -782,10 +843,10 @@ export async function PUT(request: Request) {
       responseData.user.esPsicologo = true;
       responseData.user.psicologoInfo = {
         id_usuario: usuarioActualizado.psicologo.id_usuario,
-        numero_de_titulo: usuarioActualizado.psicologo.numero_de_titulo ?? '',
-        nombre_universidad: usuarioActualizado.psicologo.nombre_universidad ?? '',
-        monto_consulta: Number(usuarioActualizado.psicologo.monto_consulta) ?? 0,
-        telefono_trabajo: usuarioActualizado.psicologo.telefono_trabajo ?? '',
+        numero_de_titulo: usuarioActualizado.psicologo.numero_de_titulo ?? undefined,
+        nombre_universidad: usuarioActualizado.psicologo.nombre_universidad ?? undefined,
+        monto_consulta: usuarioActualizado.psicologo.monto_consulta ?? undefined,
+        telefono_trabajo: usuarioActualizado.psicologo.telefono_trabajo ?? undefined,
         redes_sociales: usuarioActualizado.psicologo.redes_sociales?.map(red => ({
           id: red.id,
           nombre_red: red.nombre_red,
@@ -894,7 +955,10 @@ export async function DELETE(request: Request) {
   } catch (error: any) {
     console.error('Error eliminando usuario:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { 
+        error: 'Error interno del servidor',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {

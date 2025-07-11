@@ -2,10 +2,11 @@
 
 export interface UsuarioBase {
   email: string;
-  password?: string;
   nombre: string;
   cedula: string;
-  fecha_nacimiento: string;
+  fecha_nacimiento: string | Date | null;
+  sexo?: string;
+  password?: string;
   id_tipo_usuario?: number;
 }
 
@@ -15,6 +16,8 @@ export interface TutorData {
   profesion_tutor?: string;
   telefono_contacto?: string;
   correo_contacto?: string;
+  sexo?: 'Masculino' | 'Femenino' | 'Otro' | string;
+  parentesco?: 'Padre' | 'Madre' | 'Tío' | 'Tía' | 'Abuelo' | 'Abuela' | 'Otro' | string;
 }
 
 export interface PsicologoData {

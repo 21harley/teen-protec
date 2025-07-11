@@ -3,12 +3,12 @@ import Image from "next/image"
 import svg from "./../../app/public/logos/logo_texto.svg"
 import Link from "next/link"
 import React, { useState, useEffect } from "react"
-import {  TipoRegistro, UsuarioBase } from "./../../app/types/user/index"
+import { TipoRegistro, UsuarioBase } from "./../../app/types/user/index"
 import { TutorData, PsicologoData } from "./../../app/types/user/dataDB"
 import useUserStore from "./../../app/store/store"
 import { StorageManager } from "@/app/lib/storageManager"
 import { useRouter } from "next/navigation"
-import {UsuarioInfo} from "./../../app/types/user"
+import { UsuarioInfo } from "./../../app/types/user"
 
 type Errors = {
   confirmPassword?: string;
@@ -51,7 +51,8 @@ export default function FormUser({
     password: '',
     nombre: '',
     cedula: '',
-    fecha_nacimiento: ''
+    fecha_nacimiento: '',
+    sexo: ''
   });
 
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -60,7 +61,9 @@ export default function FormUser({
     nombre_tutor: '',
     profesion_tutor: '',
     telefono_contacto: '',
-    correo_contacto: ''
+    correo_contacto: '',
+    sexo: '',
+    parentesco: ''
   });
 
   const [psicologoData, setPsicologoData] = useState<PsicologoData>({
@@ -76,33 +79,50 @@ export default function FormUser({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [currentTipoRegistro, setCurrentTipoRegistro] = useState<TipoRegistro>(tipoRegistro);
+  const [showOtherSexo, setShowOtherSexo] = useState(false);
+  const [otherSexoValue, setOtherSexoValue] = useState('');
+  const [showOtherParentesco, setShowOtherParentesco] = useState(false);
+  const [otherParentescoValue, setOtherParentescoValue] = useState('');
 
   useEffect(() => {
     if (user && isEdit) {
-      //console.log(user,"Form-Edit");
       setUserData({
         email: user.email,
         password: '',
         nombre: user.nombre,
         cedula: user.cedula,
-        fecha_nacimiento: formatDateForInput(user.fecha_nacimiento)
+        fecha_nacimiento: formatDateForInput(user.fecha_nacimiento ?? undefined),
+        sexo: user.sexo || ''
       });
 
-      if ( user.tutorInfo) {
-        //console.log("Tutor");
+      // Configurar campo de sexo "Otro" si es necesario
+      if (user.sexo && !['Masculino', 'Femenino'].includes(user.sexo)) {
+        setShowOtherSexo(true);
+        setOtherSexoValue(user.sexo);
+      }
+
+      if (user.tutorInfo) {
         setTutorData({
           cedula_tutor: user.tutorInfo.cedula_tutor,
           nombre_tutor: user.tutorInfo.nombre_tutor,
           profesion_tutor: user.tutorInfo.profesion_tutor || '',
           telefono_contacto: user.tutorInfo.telefono_contacto || '',
-          correo_contacto: user.tutorInfo.correo_contacto || ''
+          correo_contacto: user.tutorInfo.correo_contacto || '',
+          sexo: user.tutorInfo.sexo || '',
+          parentesco: user.tutorInfo.parentesco || ''
         });
+
+        // Configurar campo de parentesco "Otro" si es necesario
+        if (user.tutorInfo.parentesco && !['Padre', 'Madre', 'Tío', 'Tía', 'Abuelo', 'Abuela'].includes(user.tutorInfo.parentesco)) {
+          setShowOtherParentesco(true);
+          setOtherParentescoValue(user.tutorInfo.parentesco);
+        }
+
         setIsMinor(true);
         setCurrentTipoRegistro('adolescente');
       }
 
-      if ( user.psicologoInfo) {
-        //console.log("Psicologo");
+      if (user.psicologoInfo) {
         setPsicologoData({
           numero_de_titulo: user.psicologoInfo.numero_de_titulo,
           nombre_universidad: user.psicologoInfo.nombre_universidad,
@@ -127,9 +147,27 @@ export default function FormUser({
     }));
 
     if (name === 'fecha_nacimiento') {
-      //console.log(value,name);
       validateAge(value);
     }
+  };
+
+  const handleSexoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    
+    if (value === 'Otro') {
+      setShowOtherSexo(true);
+      setUserData(prev => ({ ...prev, sexo: '' }));
+    } else {
+      setShowOtherSexo(false);
+      setOtherSexoValue('');
+      setUserData(prev => ({ ...prev, sexo: value }));
+    }
+  };
+
+  const handleOtherSexoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setOtherSexoValue(value);
+    setUserData(prev => ({ ...prev, sexo: value }));
   };
 
   const handleTutorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,6 +176,25 @@ export default function FormUser({
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleParentescoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    
+    if (value === 'Otro') {
+      setShowOtherParentesco(true);
+      setTutorData(prev => ({ ...prev, parentesco: '' }));
+    } else {
+      setShowOtherParentesco(false);
+      setOtherParentescoValue('');
+      setTutorData(prev => ({ ...prev, parentesco: value }));
+    }
+  };
+
+  const handleOtherParentescoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setOtherParentescoValue(value);
+    setTutorData(prev => ({ ...prev, parentesco: value }));
   };
 
   const handlePsicologoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,10 +221,8 @@ export default function FormUser({
     }
     
     const minor = age < 18;
-    //console.log(minor)
     setIsMinor(minor);
     setCurrentTipoRegistro(minor ? 'adolescente' : 'usuario');
-    
   };
 
   const validatePasswords = () => {
@@ -175,6 +230,34 @@ export default function FormUser({
       setErrors({ confirmPassword: 'Las contraseñas no coinciden' });
       return false;
     }
+    return true;
+  };
+
+  const validateSexo = () => {
+    if (!userData.sexo) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor seleccione su sexo' }));
+      return false;
+    }
+
+    if (showOtherSexo && !otherSexoValue) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor especifique su sexo' }));
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateParentesco = () => {
+    if (currentTipoRegistro === 'adolescente' && !tutorData.parentesco) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor seleccione el parentesco del tutor' }));
+      return false;
+    }
+
+    if (showOtherParentesco && !otherParentescoValue) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor especifique el parentesco del tutor' }));
+      return false;
+    }
+
     return true;
   };
 
@@ -189,8 +272,18 @@ export default function FormUser({
       return;
     }
     
+    if (!validateSexo()) {
+      setIsSubmitting(false);
+      return;
+    }
+
     if (currentTipoRegistro === 'adolescente') {
-      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula_tutor', 'nombre_tutor'];
+      if (!validateParentesco()) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula_tutor', 'nombre_tutor', 'sexo'];
       const missingFields = requiredTutorFields.filter(field => !tutorData[field as keyof typeof tutorData]);
       if (missingFields.length > 0) {
         setErrors({ submit: 'Por favor complete todos los datos del tutor' });
@@ -215,78 +308,93 @@ export default function FormUser({
       tipoRegistro: currentTipoRegistro,
       usuarioData: {
         ...userData,
+        sexo: showOtherSexo ? otherSexoValue : userData.sexo,
         ...(isEdit && !userData.password && { password: undefined }),
       },
-      ...(currentTipoRegistro === 'adolescente' && { tutorData }),
+      ...(currentTipoRegistro === 'adolescente' && { 
+        tutorData: {
+          ...tutorData,
+          parentesco: showOtherParentesco ? otherParentescoValue : tutorData.parentesco
+        } 
+      }),
       ...(currentTipoRegistro === 'psicologo' && { psicologoData })
     };
-
-    try {
-        const endpoint = isEdit ? '/api/usuario' : '/api/usuario';
-        const method = isEdit ? 'PUT' : 'POST';
-        
-        const response = await fetch(endpoint, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestData)
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || `Error en ${isEdit ? 'actualización' : 'registro'}`);
-        }
-
-        setSuccessMessage(isEdit ? 'Usuario actualizado correctamente!' : 'Usuario registrado correctamente!');
-        
-        if((isEdit || user_stora == null)){
-          //console.log(data.user);
-          login( data.user,
-            data.user.resetPasswordToken ?? "",
-            data.user.resetPasswordTokenExpiry
-              ? (typeof data.resetPasswordTokenExpiry === "string"
-                  ? new Date(data.resetPasswordTokenExpiry)
-                  : data.resetPasswordTokenExpiry)
-              : new Date()
-              )
-          storageManager.save<UsuarioInfo>("userData", data.user);
-        }
-        
-        if (!isEdit) {
-          setUserData({
-            email: '',
-            password: '',
-            nombre: '',
-            cedula: '',
-            fecha_nacimiento: ''
-          });
-          
-          setTutorData({
-            cedula_tutor: '',
-            nombre_tutor: '',
-            profesion_tutor: '',
-            telefono_contacto: '',
-            correo_contacto: ''
-          });
-          
-          setPsicologoData({
-            numero_de_titulo: '',
-            nombre_universidad: '',
-            monto_consulta: 0,
-            telefono_trabajo: '',
-            redes_sociales: []
-          });
-          
-          setIsMinor(false);
-          setConfirmPassword('');
   
-          if(user_stora == null ) router.push('/');
-          
-          if( typeof onToggleEditAndCreate === 'function'){
-            onToggleEditAndCreate(true)
-          }
+    try {
+      const endpoint = isEdit ? '/api/usuario' : '/api/usuario';
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      console.log(requestData);
+
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || `Error en ${isEdit ? 'actualización' : 'registro'}`);
+      }
+
+      setSuccessMessage(isEdit ? 'Usuario actualizado correctamente!' : 'Usuario registrado correctamente!');
+      
+      if((isEdit || user_stora == null)){
+        login(
+          data.user,
+          data.user.resetPasswordToken ?? "",
+          data.user.resetPasswordTokenExpiry
+            ? (typeof data.resetPasswordTokenExpiry === "string"
+                ? new Date(data.resetPasswordTokenExpiry)
+                : data.resetPasswordTokenExpiry)
+            : new Date()
+        );
+        storageManager.save<UsuarioInfo>("userData", data.user);
+      }
+      
+      if (!isEdit) {
+        setUserData({
+          email: '',
+          password: '',
+          nombre: '',
+          cedula: '',
+          fecha_nacimiento: '',
+          sexo: ''
+        });
+        
+        setTutorData({
+          cedula_tutor: '',
+          nombre_tutor: '',
+          profesion_tutor: '',
+          telefono_contacto: '',
+          correo_contacto: '',
+          sexo: '',
+          parentesco: ''
+        });
+        
+        setPsicologoData({
+          numero_de_titulo: '',
+          nombre_universidad: '',
+          monto_consulta: 0,
+          telefono_trabajo: '',
+          redes_sociales: []
+        });
+        
+        setIsMinor(false);
+        setConfirmPassword('');
+        setShowOtherSexo(false);
+        setOtherSexoValue('');
+        setShowOtherParentesco(false);
+        setOtherParentescoValue('');
+
+        if(user_stora == null ) router.push('/');
+        
+        if( typeof onToggleEditAndCreate === 'function'){
+          onToggleEditAndCreate(true);
         }
+      }
     } catch (error: any) {
       console.error('Error:', error);
       setErrors({ submit: error.message || (isEdit ? 'Error al actualizar el usuario' : 'Error al registrar el usuario') });
@@ -320,11 +428,8 @@ export default function FormUser({
         </div>
       )}
 
-
-
       <div className="flex flex-col justify-center md:flex-row md:justify-around p-5 gap-2 md:gap-2 w-full max-w-[400px] md:max-w-[800px]">
         <div className="grid place-items-center w-[240px] m-auto">
-                        
           <div className="w-full max-w-[190px]">
             <label htmlFor="email" className="text-sm">Correo electrónico:</label>
             <input 
@@ -349,6 +454,33 @@ export default function FormUser({
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
+          </div>
+
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="sexo" className="text-sm">Sexo:</label>
+            <select
+              name="sexo"
+              id="sexo"
+              value={showOtherSexo ? 'Otro' : userData.sexo}
+              onChange={handleSexoChange}
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              required
+            >
+              <option value="">Seleccione...</option>
+              <option value="Masculino">Masculino</option>
+              <option value="Femenino">Femenino</option>
+              <option value="Otro">Otro</option>
+            </select>
+            {showOtherSexo && (
+              <input
+                type="text"
+                placeholder="Especifique su sexo"
+                value={otherSexoValue}
+                onChange={handleOtherSexoChange}
+                className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 mt-2"
+                required
+              />
+            )}
           </div>
           
           {!isEdit && (
@@ -436,150 +568,198 @@ export default function FormUser({
               type="date" 
               name="fecha_nacimiento" 
               id="fecha_nacimiento" 
-              value={formatDateForInput(userData.fecha_nacimiento)}
+              value={formatDateForInput(userData.fecha_nacimiento ?? undefined)}
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
-            {isMinor  && !isEdit && (
+            {isMinor && !isEdit && (
               <p className="text-yellow-600 text-xs mt-1">Se registrará como adolescente (requiere datos de tutor)</p>
             )}
           </div>
         </div>
         
-        {/* Formulario del tutor - Mostrar si es adolescente o si estamos editando un adolescente */}
-        {( (isMinor || isEdit || currentTipoRegistro === 'adolescente'))&&(currentTipoRegistro!="usuario" && currentTipoRegistro!="psicologo" )&&(
+        {/* Formulario del tutor - Mostrar si es adolescente */}
+        {(isMinor || isEdit || currentTipoRegistro === 'adolescente') && (currentTipoRegistro !== "usuario" && currentTipoRegistro !== "psicologo") && (
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
-            <h2 className="text-sm">Datos de tutor:</h2>
-            <hr className="my-1" />
+              <h2 className="text-sm">Datos de tutor:</h2>
+              <hr className="my-1" />
             </div>
-          <div className="w-[240px] border border-[#8f8f8f] rounded-[0.4rem] p-4 pt-1 m-auto">
-            <div className="w-full h-[90%] grid place-items-center"> 
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="cedula_tutor" className="text-sm">Cédula del tutor:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="cedula_tutor" 
-                  id="cedula_tutor" 
-                  value={tutorData.cedula_tutor}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="nombre_tutor" className="text-sm">Nombre completo del tutor:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="nombre_tutor" 
-                  id="nombre_tutor" 
-                  value={tutorData.nombre_tutor}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="profesion_tutor" className="text-sm">Profesión del tutor:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="profesion_tutor" 
-                  id="profesion_tutor" 
-                  value={tutorData.profesion_tutor}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="telefono_contacto" className="text-sm">Teléfono contacto:</label>
-                <input 
-                  required
-                  type="tel" 
-                  name="telefono_contacto" 
-                  id="telefono_contacto" 
-                  value={tutorData.telefono_contacto}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="correo_contacto" className="text-sm">Correo contacto:</label>
-                <input 
-                  required
-                  type="email" 
-                  name="correo_contacto" 
-                  id="correo_contacto" 
-                  value={tutorData.correo_contacto}
-                  onChange={handleTutorChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
+            <div className="w-[240px] border border-[#8f8f8f] rounded-[0.4rem] p-4 pt-1 m-auto">
+              <div className="w-full h-[90%] grid place-items-center"> 
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="cedula_tutor" className="text-sm">Cédula del tutor:</label>
+                  <input 
+                    required
+                    type="text" 
+                    name="cedula_tutor" 
+                    id="cedula_tutor" 
+                    value={tutorData.cedula_tutor}
+                    onChange={handleTutorChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="nombre_tutor" className="text-sm">Nombre completo del tutor:</label>
+                  <input 
+                    required
+                    type="text" 
+                    name="nombre_tutor" 
+                    id="nombre_tutor" 
+                    value={tutorData.nombre_tutor}
+                    onChange={handleTutorChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="sexo" className="text-sm">Sexo del tutor:</label>
+                  <select
+                    name="sexo"
+                    id="sexo_tutor"
+                    value={tutorData.sexo}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTutorData(prev => ({ ...prev, sexo: value }));
+                    }}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                    required
+                  >
+                    <option value="">Seleccione...</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Femenino">Femenino</option>
+                  </select>
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="parentesco" className="text-sm">Parentesco:</label>
+                  <select
+                    name="parentesco"
+                    id="parentesco"
+                    value={showOtherParentesco ? 'Otro' : tutorData.parentesco}
+                    onChange={handleParentescoChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                    required
+                  >
+                    <option value="">Seleccione...</option>
+                    <option value="Padre">Padre</option>
+                    <option value="Madre">Madre</option>
+                    <option value="Tío">Tío</option>
+                    <option value="Tía">Tía</option>
+                    <option value="Abuelo">Abuelo</option>
+                    <option value="Abuela">Abuela</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                  {showOtherParentesco && (
+                    <input
+                      type="text"
+                      placeholder="Especifique el parentesco"
+                      value={otherParentescoValue}
+                      onChange={handleOtherParentescoChange}
+                      className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 mt-2"
+                      required
+                    />
+                  )}
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="profesion_tutor" className="text-sm">Profesión del tutor:</label>
+                  <input 
+                    required
+                    type="text" 
+                    name="profesion_tutor" 
+                    id="profesion_tutor" 
+                    value={tutorData.profesion_tutor}
+                    onChange={handleTutorChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="telefono_contacto" className="text-sm">Teléfono contacto:</label>
+                  <input 
+                    required
+                    type="tel" 
+                    name="telefono_contacto" 
+                    id="telefono_contacto" 
+                    value={tutorData.telefono_contacto}
+                    onChange={handleTutorChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="correo_contacto" className="text-sm">Correo contacto:</label>
+                  <input 
+                    required
+                    type="email" 
+                    name="correo_contacto" 
+                    id="correo_contacto" 
+                    value={tutorData.correo_contacto}
+                    onChange={handleTutorChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
               </div>
             </div>
-          </div>
           </div>
         )}
 
-        {/* Formulario del psicólogo - Mostrar si es psicólogo y es admin session o si estamos editando un psicólogo */}
-        {(currentTipoRegistro === 'psicologo' ||  isEdit) && (currentTipoRegistro!="usuario" && currentTipoRegistro!="adolescente")&& (
+        {/* Formulario del psicólogo */}
+        {(currentTipoRegistro === 'psicologo' || isEdit) && (currentTipoRegistro !== "usuario" && currentTipoRegistro !== "adolescente") && (
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
-            <h2 className="text-sm">Datos de psicólogo:</h2>
-            <hr className="my-1" />
+              <h2 className="text-sm">Datos de psicólogo:</h2>
+              <hr className="my-1" />
             </div>
-            <div className="w-full h-[90%] border border-[#8f8f8f] rounded-[0.4rem]  p-4 pt-0.5">
-            <div className="w-full h-full grid place-items-center"> 
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="numero_de_titulo" className="text-sm">Número de título:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="numero_de_titulo" 
-                  id="numero_de_titulo" 
-                  value={psicologoData.numero_de_titulo}
-                  onChange={handlePsicologoChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="nombre_universidad" className="text-sm">Universidad:</label>
-                <input 
-                  required
-                  type="text" 
-                  name="nombre_universidad" 
-                  id="nombre_universidad" 
-                  value={psicologoData.nombre_universidad}
-                  onChange={handlePsicologoChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="monto_consulta" className="text-sm">Monto de consulta ($):</label>
-                <input 
-                  required
-                  type="number" 
-                  name="monto_consulta" 
-                  id="monto_consulta" 
-                  value={psicologoData.monto_consulta}
-                  onChange={handlePsicologoChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              <div className="w-full max-w-[190px]">
-                <label htmlFor="telefono_trabajo" className="text-sm">Teléfono de trabajo:</label>
-                <input 
-                  required
-                  type="tel" 
-                  name="telefono_trabajo" 
-                  id="telefono_trabajo" 
-                  value={psicologoData.telefono_trabajo}
-                  onChange={handlePsicologoChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
+            <div className="w-full h-[90%] border border-[#8f8f8f] rounded-[0.4rem] p-4 pt-0.5">
+              <div className="w-full h-full grid place-items-center"> 
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="numero_de_titulo" className="text-sm">Número de título:</label>
+                  <input 
+                    required
+                    type="text" 
+                    name="numero_de_titulo" 
+                    id="numero_de_titulo" 
+                    value={psicologoData.numero_de_titulo}
+                    onChange={handlePsicologoChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="nombre_universidad" className="text-sm">Universidad:</label>
+                  <input 
+                    required
+                    type="text" 
+                    name="nombre_universidad" 
+                    id="nombre_universidad" 
+                    value={psicologoData.nombre_universidad}
+                    onChange={handlePsicologoChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="monto_consulta" className="text-sm">Monto de consulta ($):</label>
+                  <input 
+                    required
+                    type="number" 
+                    name="monto_consulta" 
+                    id="monto_consulta" 
+                    value={psicologoData.monto_consulta}
+                    onChange={handlePsicologoChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="telefono_trabajo" className="text-sm">Teléfono de trabajo:</label>
+                  <input 
+                    required
+                    type="tel" 
+                    name="telefono_trabajo" 
+                    id="telefono_trabajo" 
+                    value={psicologoData.telefono_trabajo}
+                    onChange={handlePsicologoChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
               </div>
             </div>
-          </div>
           </div>
         )}
       </div>

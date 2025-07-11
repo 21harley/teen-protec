@@ -52,7 +52,7 @@ export default function UserTests() {
 
         const preguntasRespondidas = preguntasConRespuestas.filter(({ pregunta, respuestas }) => {
           if (pregunta.obligatoria && respuestas.length === 0) return false
-
+          if (!pregunta.tipo) return false
           switch (pregunta.tipo.nombre) {
             case TipoPreguntaNombre.OPCION_MULTIPLE:
             case TipoPreguntaNombre.OPCION_UNICA:
@@ -72,11 +72,11 @@ export default function UserTests() {
           ? Math.round((preguntasRespondidas / totalPreguntas) * 100)
           : 0
 
-        let estado: TestStatus = test.estado || TestStatus.NoIniciado;
+        let estado: TestStatus = test.estado || TestStatus.NO_INICIADO;
         if (test.estado === undefined) {
-          estado = progreso >= 100 ? TestStatus.Completado :
-                   progreso > 0 ? TestStatus.EnProgreso :
-                   TestStatus.NoIniciado
+          estado = progreso >= 100 ? TestStatus.COMPLETADO :
+                   progreso > 0 ? TestStatus.EN_PROGRESO :
+                   TestStatus.NO_INICIADO
         }
 
         const fechaUltimaRespuesta = test.respuestas?.length
@@ -88,7 +88,6 @@ export default function UserTests() {
           id: test.id || 0,
           nombre: test.nombre || 'Test sin nombre',
           estado,
-          progreso,
           fecha_creacion: test.fecha_creacion || new Date().toISOString(),
           fecha_ultima_respuesta: fechaUltimaRespuesta?.toISOString() || null,
           preguntas: test.preguntas || [],
@@ -192,7 +191,6 @@ export default function UserTests() {
   id={test.id}
   nombre={test.nombre}
   estado={test.estado}
-  progreso={test.progreso}
   fecha_creacion={test.fecha_creacion}
   fecha_ultima_respuesta={test.fecha_ultima_respuesta}
   preguntas={test.preguntas}

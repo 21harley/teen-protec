@@ -5,6 +5,8 @@ export interface TutorInfo {
   profesion_tutor?: string;
   telefono_contacto?: string;
   correo_contacto?: string;
+  sexo?: string; // Nuevo campo: 'Masculino', 'Femenino', 'Otro', etc.
+  parentesco?: string; // (Opcional) Ej: 'Padre', 'Madre', 'Tutor legal'
 }
 
 export interface TestInfo {
@@ -26,6 +28,7 @@ export interface UsuarioCompleto {
   cedula: string;
   fecha_nacimiento: Date | null;
   id_tipo_usuario: number;
+  sexo?: string; // Nuevo campo: 'Masculino', 'Femenino', 'No binario', etc.
   esAdolescente?: boolean;
   esPsicologo?: boolean;
   adolecente?: {

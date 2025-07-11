@@ -23,6 +23,7 @@ interface DatosPaciente {
   email?: string;
   cedula?: string;
   fecha_nacimiento?: string;
+  sexo?: string;
   adolecente?: {
     id_tutor?: number;
     tutor?: {
@@ -31,6 +32,8 @@ interface DatosPaciente {
       profesion_tutor?: string;
       telefono_contacto?: string;
       correo_contacto?: string;
+      sexo?: string;
+      parentesco?: string;
     };
   };
 }
@@ -75,9 +78,18 @@ export async function GET(request: Request) {
     // Configuración de relaciones a incluir
     const includeOptions: any = {
       adolecente: {
-        include: { tutor: true }
+        include: { 
+          tutor: true 
+        }
       },
-      tipo_usuario: true
+      tipo_usuario: true,
+      psicologoPacientes: {
+        select: {
+          id: true,
+          nombre: true,
+          email: true
+        }
+      }
     };
 
     if (conTests) {
@@ -183,10 +195,11 @@ export async function POST(request: Request) {
     const usuarioAutenticado = await prisma.usuario.findFirst({
       where: { 
         authToken,
-        authTokenExpiry: { gt: new Date() } // Token aún no expirado
+        authTokenExpiry: { gt: new Date() }
       },
       include: {
-        psicologo: true
+        psicologo: true,
+        tipo_usuario: true
       }
     });
 
@@ -198,7 +211,7 @@ export async function POST(request: Request) {
     }
 
     // Verificar que el usuario es psicólogo
-    if (!usuarioAutenticado.psicologo) {
+    if (usuarioAutenticado.tipo_usuario.nombre !== 'psicologo') {
       return NextResponse.json(
         { error: 'Solo los psicólogos pueden realizar estas acciones' },
         { status: 403 }
@@ -219,7 +232,10 @@ export async function POST(request: Request) {
     // Verificar que el paciente existe y no es psicólogo
     const paciente = await prisma.usuario.findUnique({
       where: { id: data.id_paciente },
-      include: { psicologo: true }
+      include: { 
+        tipo_usuario: true,
+        psicologo: true 
+      }
     });
 
     if (!paciente) {
@@ -229,7 +245,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (paciente.psicologo) {
+    if (paciente.tipo_usuario.nombre === 'psicologo' || paciente.psicologo) {
       return NextResponse.json(
         { error: 'El usuario es un psicólogo, no puede ser paciente' },
         { status: 400 }
@@ -249,13 +265,28 @@ export async function POST(request: Request) {
       // Actualizar el campo id_psicologo en el usuario
       const usuarioActualizado = await prisma.usuario.update({
         where: { id: data.id_paciente },
-        data: { id_psicologo: idPsicologo }
+        data: { id_psicologo: idPsicologo },
+        include: {
+          psicologoPacientes: {
+            select: {
+              id: true,
+              nombre: true,
+              email: true
+            }
+          }
+        }
       });
 
       return NextResponse.json(
         { 
           message: 'Paciente asignado correctamente', 
-          usuario: usuarioActualizado,
+          usuario: {
+            id: usuarioActualizado.id,
+            nombre: usuarioActualizado.nombre,
+            email: usuarioActualizado.email,
+            tienePsicologo: true,
+            psicologo: usuarioActualizado.psicologoPacientes
+          },
           testAsignado: false
         },
         { status: 200 }
@@ -299,21 +330,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // Crear el nuevo test basado en la plantilla
+    // Crear el nuevo test basado en la plantilla (usando el enfoque unchecked)
     const nuevoTest = await prisma.test.create({
       data: {
-        nombre: plantilla.nombre,
+        nombre: data.nombre || plantilla.nombre,
+        estado: 'NO_INICIADO',
+        peso_preguntas: plantilla.peso_preguntas,
+        config_baremo: plantilla.config_baremo === null ? undefined : plantilla.config_baremo,
+        valor_total: plantilla.valor_total,
         id_psicologo: idPsicologo,
         id_usuario: data.id_paciente,
-        estado: 'no_iniciado',
-        progreso: 0,
-        fecha_creacion: new Date(),
         preguntas: {
           create: plantilla.preguntas.map(preguntaPlantilla => ({
             id_tipo: preguntaPlantilla.id_tipo,
             texto_pregunta: preguntaPlantilla.texto_pregunta,
             orden: preguntaPlantilla.orden,
             obligatoria: preguntaPlantilla.obligatoria,
+            peso: preguntaPlantilla.peso,
+            baremo_detalle: preguntaPlantilla.baremo_detalle === null ? undefined : preguntaPlantilla.baremo_detalle,
             placeholder: preguntaPlantilla.placeholder,
             min: preguntaPlantilla.min,
             max: preguntaPlantilla.max,
@@ -332,32 +366,44 @@ export async function POST(request: Request) {
       include: {
         preguntas: {
           include: {
-            opciones: true
+            opciones: true,
+            tipo: true
           }
         }
       }
     });
 
+    // Calcular el progreso del test
+    const testConProgreso = {
+      ...nuevoTest,
+      progreso: calcularProgreso(nuevoTest.id, nuevoTest.id_usuario ?? undefined)
+    };
+
     return NextResponse.json(
       { 
         message: 'Test asignado correctamente desde plantilla', 
-        test: nuevoTest,
+        test: testConProgreso,
         totalPreguntas: plantilla.preguntas.length,
         testAsignado: true
       },
-      { status: 200 }
+      { status: 201 }
     );
 
   } catch (error: any) {
     console.error('Error en asignación:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { 
+        error: 'Error interno del servidor',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     );
   } finally {
     await prisma.$disconnect();
   }
 }
+
 // Actualizar datos de un paciente
 export async function PUT(request: Request) {
   try {
@@ -373,14 +419,17 @@ export async function PUT(request: Request) {
     }
 
     // Verificar que el paciente está asignado al psicólogo
-    const asignacionExistente = await prisma.test.findFirst({
+    const paciente = await prisma.usuario.findFirst({
       where: {
-        id_usuario: parseInt(id_paciente),
+        id: parseInt(id_paciente),
         id_psicologo: parseInt(id_psicologo)
+      },
+      include: {
+        tipo_usuario: true
       }
     });
 
-    if (!asignacionExistente) {
+    if (!paciente) {
       return NextResponse.json(
         { error: 'El paciente no está asignado a este psicólogo' },
         { status: 403 }
@@ -407,39 +456,68 @@ export async function PUT(request: Request) {
         nombre: data.nombre,
         email: data.email,
         cedula: data.cedula,
-        fecha_nacimiento: data.fecha_nacimiento ? new Date(data.fecha_nacimiento) : undefined
+        fecha_nacimiento: data.fecha_nacimiento ? new Date(data.fecha_nacimiento) : undefined,
+        sexo: data.sexo
       }
     });
 
     // Si es adolescente, actualizar tutor si viene en los datos
     if (data.adolecente) {
-      await prisma.adolecente.upsert({
-        where: { id_usuario: parseInt(id_paciente) },
-        update: {
-          id_tutor: data.adolecente.id_tutor
-        },
-        create: {
-          id_usuario: parseInt(id_paciente),
-          id_tutor: data.adolecente.id_tutor
-        }
-      });
-
-      // Actualizar datos del tutor si vienen
+      // Actualizar o crear tutor si se proporcionan datos
       if (data.adolecente.tutor) {
-        await prisma.tutor.upsert({
-          where: { id: data.adolecente.id_tutor || -1 },
+        const tutorData = data.adolecente.tutor;
+        
+        // Si hay un id_tutor, actualizamos ese tutor
+        if (data.adolecente.id_tutor) {
+          await prisma.tutor.update({
+            where: { id: data.adolecente.id_tutor },
+            data: {
+              nombre_tutor: tutorData.nombre_tutor,
+              profesion_tutor: tutorData.profesion_tutor,
+              telefono_contacto: tutorData.telefono_contacto,
+              correo_contacto: tutorData.correo_contacto,
+              sexo: tutorData.sexo,
+              parentesco: tutorData.parentesco
+            }
+          });
+        } else if (tutorData.cedula_tutor) {
+          // Si no hay id_tutor pero hay cédula, buscamos o creamos
+          const tutor = await prisma.tutor.upsert({
+            where: { cedula_tutor: tutorData.cedula_tutor },
+            update: {
+              nombre_tutor: tutorData.nombre_tutor,
+              profesion_tutor: tutorData.profesion_tutor,
+              telefono_contacto: tutorData.telefono_contacto,
+              correo_contacto: tutorData.correo_contacto,
+              sexo: tutorData.sexo,
+              parentesco: tutorData.parentesco
+            },
+            create: {
+              cedula_tutor: tutorData.cedula_tutor,
+              nombre_tutor: tutorData.nombre_tutor || '',
+              profesion_tutor: tutorData.profesion_tutor,
+              telefono_contacto: tutorData.telefono_contacto,
+              correo_contacto: tutorData.correo_contacto,
+              sexo: tutorData.sexo,
+              parentesco: tutorData.parentesco
+            }
+          });
+
+          // Actualizamos la relación del adolescente con el tutor
+          data.adolecente.id_tutor = tutor.id;
+        }
+      }
+
+      // Actualizar la relación adolescente-tutor
+      if (paciente.tipo_usuario.nombre === 'adolecente') {
+        await prisma.adolecente.upsert({
+          where: { id_usuario: parseInt(id_paciente) },
           update: {
-            nombre_tutor: data.adolecente.tutor.nombre_tutor,
-            profesion_tutor: data.adolecente.tutor.profesion_tutor,
-            telefono_contacto: data.adolecente.tutor.telefono_contacto,
-            correo_contacto: data.adolecente.tutor.correo_contacto
+            id_tutor: data.adolecente.id_tutor
           },
           create: {
-            cedula_tutor: data.adolecente.tutor.cedula_tutor || '',
-            nombre_tutor: data.adolecente.tutor.nombre_tutor || '',
-            profesion_tutor: data.adolecente.tutor.profesion_tutor,
-            telefono_contacto: data.adolecente.tutor.telefono_contacto,
-            correo_contacto: data.adolecente.tutor.correo_contacto
+            id_usuario: parseInt(id_paciente),
+            id_tutor: data.adolecente.id_tutor
           }
         });
       }
@@ -449,7 +527,10 @@ export async function PUT(request: Request) {
   } catch (error: any) {
     console.error('Error actualizando paciente:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { 
+        error: 'Error interno del servidor',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   } finally {

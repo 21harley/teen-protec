@@ -1,23 +1,22 @@
 // Enums
 export enum TestStatus {
-  NoIniciado = 'no_iniciado',
-  EnProgreso = 'en_progreso',
-  Completado = 'completado'
+  NoIniciado = 'NO_INICIADO',
+  EnProgreso = 'EN_PROGRESO',
+  Completado = 'COMPLETADO'
 }
 
-export enum TipoPreguntaNombre {
-  Radio = 'radio',
-  Checkbox = 'checkbox',
-  Text = 'text',
-  Select = 'select',
-  Range = 'range'
+export enum PesoPreguntaTipo {
+  SinValor = 'SIN_VALOR',
+  IgualValor = 'IGUAL_VALOR',
+  Baremo = 'BAREMO'
 }
 
 // Tipos base
 export interface TipoPregunta {
   id: number;
-  nombre: TipoPreguntaNombre;
-  descripcion: string;
+  nombre: string;
+  descripcion?: string;
+  tipo_respuesta: string;
 }
 
 // Tipos para Opciones
@@ -35,10 +34,13 @@ export interface OpcionPlantilla extends OpcionPlantillaBase {
 
 // Tipos para Preguntas
 export interface PreguntaPlantillaBase {
+  id?:number,
   texto_pregunta: string;
   id_tipo: number;
   orden: number;
   obligatoria?: boolean;
+  peso?: number;
+  baremo_detalle?: any;
   placeholder?: string;
   min?: number;
   max?: number;
@@ -59,8 +61,16 @@ export interface Usuario {
   nombre: string;
   email: string;
   cedula: string;
-  fecha_nacimiento: Date;
+  password?: string;
+  password_iv?: string;
+  fecha_nacimiento: Date | string;
+  sexo?: string;
   id_tipo_usuario: number;
+  id_psicologo?: number;
+  authToken?: string;
+  authTokenExpiry?: Date | string;
+  resetPasswordToken?: string;
+  resetPasswordTokenExpiry?: Date | string;
 }
 
 export interface Psicologo {
@@ -76,18 +86,21 @@ export interface Psicologo {
 export interface TestPlantillaBase {
   nombre: string;
   estado: TestStatus;
+  peso_preguntas: PesoPreguntaTipo;
+  config_baremo?: any;
+  valor_total?: number;
   id_psicologo?: number;
-  fecha_creacion?: Date;
+  fecha_creacion?: Date | string;
 }
 
 export interface TestPlantillaInput extends TestPlantillaBase {
-  preguntas: PreguntaPlantillaBase[];
+  preguntas?: PreguntaPlantillaBase[];
 }
 
 export interface TestPlantilla extends TestPlantillaBase {
   id: number;
   id_psicologo: number;
-  fecha_creacion: Date;
+  fecha_creacion: Date | string;
   psicologo?: Psicologo;
   preguntas?: PreguntaPlantilla[];
 }
@@ -107,6 +120,7 @@ export interface FilterTestPlantillaParams {
   nombre?: string;
   id_psicologo?: string;
   estado?: TestStatus;
+  peso_preguntas?: PesoPreguntaTipo;
   search?: string;
   fecha_inicio?: string;
   fecha_fin?: string;
@@ -119,16 +133,25 @@ export interface CreateTestPlantillaInput extends Omit<TestPlantillaInput, 'id'>
 export interface UpdateTestPlantillaInput extends TestPlantillaInput {
   id: number;
 }
-export interface Plantilla {
+
+// Tipo para respuesta detallada de plantilla
+export interface PlantillaDetailResponse {
   id: number;
   nombre: string;
-  estado: 'no_iniciado' | 'en_progreso' | 'completado';
+  estado: TestStatus;
+  peso_preguntas: PesoPreguntaTipo;
+  config_baremo?: any;
+  valor_total?: number;
   fecha_creacion: string;
   id_psicologo: number;
   psicologo?: {
     usuario: {
       nombre: string;
+      email: string;
+      cedula: string;
     };
+    numero_de_titulo?: string;
+    nombre_universidad?: string;
   };
   preguntas?: {
     id: number;
@@ -136,15 +159,13 @@ export interface Plantilla {
     id_tipo: number;
     orden: number;
     obligatoria: boolean;
-    tipo: {
-      nombre: string;
-    };
-    opciones?: {
-      id: number;
-      texto: string;
-      valor: string;
-      orden: number;
-      es_otro: boolean;
-    }[];
+    peso?: number;
+    baremo_detalle?: any;
+    placeholder?: string;
+    min?: number;
+    max?: number;
+    paso?: number;
+    tipo: TipoPregunta;
+    opciones?: OpcionPlantilla[];
   }[];
 }

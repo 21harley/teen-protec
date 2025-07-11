@@ -223,7 +223,7 @@ export default function ModalPaciente({
           {/* Datos del paciente */}
           <div className="space-y-4">
             <div className="space-y-2 p-2 bg-gray-50 rounded-lg m-0">
-              <p><span className="font-medium">Nombre:</span> {paciente.nombre}</p>
+              <p><span className="font-medium">Nombre Completo:</span> {paciente.nombre}</p>
               <p><span className="font-medium">Email:</span> {paciente.email}</p>
               <p><span className="font-medium">Cédula:</span> {paciente.cedula || 'No especificado'}</p>
               <p>
@@ -245,7 +245,7 @@ export default function ModalPaciente({
                   <hr className='w-full max-h-[600px] h-[0.5px] bg-black'/>
                 </div>
                 <div className="space-y-1 border border-black rounded-2xl p-2">
-                  <p><span className="font-medium">Nombre:</span> {paciente.adolecente.tutor?.nombre_tutor || 'No especificado'}</p>
+                  <p><span className="font-medium">Nombre Completo:</span> {paciente.adolecente.tutor?.nombre_tutor || 'No especificado'}</p>
                   <p><span className="font-medium">Cédula:</span> {paciente.adolecente.tutor?.cedula_tutor || 'No especificado'}</p>
                   <p><span className="font-medium">Profesión:</span> {paciente.adolecente.tutor?.profesion_tutor || 'No especificado'}</p>
                   <p><span className="font-medium">Teléfono:</span> {paciente.adolecente.tutor?.telefono_contacto || 'No especificado'}</p>

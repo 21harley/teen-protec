@@ -3,33 +3,36 @@ import {
   PreguntaData, 
   OpcionData, 
   TipoPregunta,
-  TipoPreguntaNombre
+  TipoPreguntaNombre,
+  PesoPreguntaTipo
 } from './../../app/types/test/index';
 import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
 import Image from "next/image";
+import { PreguntaPlantillaBase } from '@/app/types/plantilla';
 
 interface ModalRegistrarInputProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (question: PreguntaData) => void;
+  onSave: (question: PreguntaData | PreguntaPlantillaBase) => void;
   initialData?: PreguntaData | null;
   isEditing?: boolean;
+  pesoPreguntaTipo: PesoPreguntaTipo;
 }
 
 const tipoPreguntaMap: Record<TipoPreguntaNombre, number> = {
-  [TipoPreguntaNombre.OPCION_MULTIPLE]: 1,
-  [TipoPreguntaNombre.OPCION_UNICA]: 2,
-  [TipoPreguntaNombre.RESPUESTA_CORTA]: 3,
+  [TipoPreguntaNombre.RADIO]: 1,
+  [TipoPreguntaNombre.CHECKBOX]: 2,
+  [TipoPreguntaNombre.TEXT]: 3,
   [TipoPreguntaNombre.SELECT]: 4,
-  [TipoPreguntaNombre.RANGO]: 5
+  [TipoPreguntaNombre.RANGE]: 5
 };
 
 const reverseTipoPreguntaMap: Record<number, TipoPreguntaNombre> = {
-  1: TipoPreguntaNombre.OPCION_MULTIPLE,
-  2: TipoPreguntaNombre.OPCION_UNICA,
-  3: TipoPreguntaNombre.RESPUESTA_CORTA,
+  1: TipoPreguntaNombre.RADIO,
+  2: TipoPreguntaNombre.CHECKBOX,
+  3: TipoPreguntaNombre.TEXT,
   4: TipoPreguntaNombre.SELECT,
-  5: TipoPreguntaNombre.RANGO
+  5: TipoPreguntaNombre.RANGE
 };
 
 const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({ 
@@ -37,10 +40,11 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
   onClose, 
   onSave, 
   initialData,
-  isEditing = false 
+  isEditing = false,
+  pesoPreguntaTipo = PesoPreguntaTipo.SIN_VALOR
 }) => {
   // Estados para los datos de la pregunta
-  const [questionType, setQuestionType] = useState<TipoPreguntaNombre>(TipoPreguntaNombre.RESPUESTA_CORTA);
+  const [questionType, setQuestionType] = useState<TipoPreguntaNombre>(TipoPreguntaNombre.TEXT);
   const [questionText, setQuestionText] = useState('');
   const [isRequired, setIsRequired] = useState(false);
   const [placeholder, setPlaceholder] = useState<string | null>(null);
@@ -50,16 +54,19 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
   const [maxValue, setMaxValue] = useState<number | null>(null);
   const [stepValue, setStepValue] = useState<number | null>(null);
   const [order, setOrder] = useState(1);
+  const [weight, setWeight] = useState<number | null>(null);
+  const [baremoDetalle, setBaremoDetalle] = useState<any>(null);
   const [tipoPregunta, setTipoPregunta] = useState<TipoPregunta>({
-    id: 3, // Default to RESPUESTA_CORTA
-    nombre: TipoPreguntaNombre.RESPUESTA_CORTA,
-    descripcion: null
+    id: 3, // Default to TEXT
+    nombre: TipoPreguntaNombre.TEXT,
+    descripcion: null,
+    tipo_respuesta: 'text'
   });
 
   // Efecto para inicializar con datos existentes si se proporcionan
   useEffect(() => {
     if (initialData) {
-      const tipoNombre = reverseTipoPreguntaMap[initialData.id_tipo] || TipoPreguntaNombre.RESPUESTA_CORTA;
+      const tipoNombre = reverseTipoPreguntaMap[initialData.id_tipo] || TipoPreguntaNombre.TEXT;
       
       setQuestionType(tipoNombre);
       setQuestionText(initialData.texto_pregunta);
@@ -70,14 +77,21 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
       setMaxValue(initialData.max || null);
       setStepValue(initialData.paso || null);
       setOrder(initialData.orden);
-      setTipoPregunta(initialData.tipo);
+      setWeight(initialData.peso || null);
+      setBaremoDetalle(initialData.baremo_detalle || null);
+      setTipoPregunta(initialData.tipo || {
+        id: initialData.id_tipo,
+        nombre: tipoNombre,
+        descripcion: null,
+        tipo_respuesta: tipoNombre === TipoPreguntaNombre.RANGE ? 'number' : 'text'
+      });
     } else {
       resetForm();
     }
   }, [initialData, isOpen]);
 
   const resetForm = () => {
-    setQuestionType(TipoPreguntaNombre.RESPUESTA_CORTA);
+    setQuestionType(TipoPreguntaNombre.TEXT);
     setQuestionText('');
     setIsRequired(false);
     setPlaceholder(null);
@@ -87,10 +101,13 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
     setMaxValue(null);
     setStepValue(null);
     setOrder(1);
+    setWeight(null);
+    setBaremoDetalle(null);
     setTipoPregunta({
       id: 3,
-      nombre: TipoPreguntaNombre.RESPUESTA_CORTA,
-      descripcion: null
+      nombre: TipoPreguntaNombre.TEXT,
+      descripcion: null,
+      tipo_respuesta: 'text'
     });
   };
 
@@ -125,20 +142,16 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
       alert('Por favor ingrese el texto de la pregunta');
       return;
     }
-    if ((questionType === TipoPreguntaNombre.OPCION_UNICA) && 
-        options.length === 0) {
-      alert('Por favor agregue  una opción para este tipo de pregunta');
-      return;
-    }
 
-    if ((questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
+    if ((questionType === TipoPreguntaNombre.RADIO || 
+         questionType === TipoPreguntaNombre.CHECKBOX || 
          questionType === TipoPreguntaNombre.SELECT) && 
         options.length === 0) {
       alert('Por favor agregue al menos una opción para este tipo de pregunta');
       return;
     }
 
-    if (questionType === TipoPreguntaNombre.RANGO) {
+    if (questionType === TipoPreguntaNombre.RANGE) {
       if (minValue === null || maxValue === null) {
         alert('Por favor especifique los valores mínimo y máximo para el rango');
         return;
@@ -149,9 +162,23 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
       }
     }
 
+    // Validar peso según el tipo de ponderación
+    if (pesoPreguntaTipo === PesoPreguntaTipo.IGUAL_VALOR && weight === null) {
+      alert('Por favor especifique el peso de la pregunta');
+      return;
+    }
+
+    // Para baremo, validar que las opciones tengan peso si es necesario
+    if (pesoPreguntaTipo === PesoPreguntaTipo.BAREMO && 
+        (questionType === TipoPreguntaNombre.RADIO || 
+         questionType === TipoPreguntaNombre.CHECKBOX || 
+         questionType === TipoPreguntaNombre.SELECT)) {
+      // Aquí podrías agregar validación adicional para el baremo si es necesario
+    }
+
     const questionData: PreguntaData = {
       ...(initialData || {}),
-      id: initialData?.id || 0, // Temporal ID if new
+      id: initialData?.id,
       texto_pregunta: questionText,
       id_tipo: tipoPreguntaMap[questionType],
       orden: order,
@@ -160,13 +187,16 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
       min: minValue,
       max: maxValue,
       paso: stepValue,
-      opciones: (questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
-                questionType === TipoPreguntaNombre.OPCION_UNICA || 
+      peso: pesoPreguntaTipo !== PesoPreguntaTipo.SIN_VALOR ? weight : null,
+      baremo_detalle: pesoPreguntaTipo === PesoPreguntaTipo.BAREMO ? baremoDetalle : null,
+      opciones: (questionType === TipoPreguntaNombre.CHECKBOX || 
+                questionType === TipoPreguntaNombre.RADIO || 
                 questionType === TipoPreguntaNombre.SELECT) ? options : undefined,
       tipo: {
         id: tipoPreguntaMap[questionType],
         nombre: questionType,
-        descripcion: null
+        descripcion: null,
+        tipo_respuesta: questionType === TipoPreguntaNombre.RANGE ? 'number' : 'text'
       }
     };
 
@@ -181,11 +211,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
     <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
       <div className={`bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto`}>
         <h2 className="text-xl font-medium mb-4">
-          {isEditing ? (
-            <span>Editar Pregunta</span>
-          ) : (
-            <span>Agregar Pregunta</span>
-          )}
+          {isEditing ? "Editar Pregunta" : "Agregar Pregunta"}
         </h2>
         
         {/* Tipo de pregunta */}
@@ -198,11 +224,11 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
             onChange={(e) => setQuestionType(e.target.value as TipoPreguntaNombre)}
             className="w-full p-2 border border-gray-300 rounded"
           >
-            <option value={TipoPreguntaNombre.RESPUESTA_CORTA}>Texto</option>
-            <option value={TipoPreguntaNombre.OPCION_MULTIPLE}>Opción múltiple (checkbox)</option>
-            <option value={TipoPreguntaNombre.OPCION_UNICA}>Opción única (radio)</option>
+            <option value={TipoPreguntaNombre.TEXT}>Texto</option>
+            <option value={TipoPreguntaNombre.CHECKBOX}>Opción múltiple (checkbox)</option>
+            <option value={TipoPreguntaNombre.RADIO}>Opción única (radio)</option>
             <option value={TipoPreguntaNombre.SELECT}>Selección (dropdown)</option>
-            <option value={TipoPreguntaNombre.RANGO}>Rango</option>
+            <option value={TipoPreguntaNombre.RANGE}>Rango</option>
           </select>
         </div>
         
@@ -249,8 +275,54 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
           </label>
         </div>
         
+        {/* Peso (si aplica) */}
+        {pesoPreguntaTipo !== PesoPreguntaTipo.SIN_VALOR && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Peso de la pregunta {pesoPreguntaTipo === PesoPreguntaTipo.IGUAL_VALOR ? '*' : ''}
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              value={weight || ''}
+              onChange={(e) => setWeight(parseFloat(e.target.value) || null)}
+              className="w-full p-2 border border-gray-300 rounded"
+              disabled={pesoPreguntaTipo === PesoPreguntaTipo.BAREMO}
+              required={pesoPreguntaTipo === PesoPreguntaTipo.IGUAL_VALOR}
+            />
+            {pesoPreguntaTipo === PesoPreguntaTipo.BAREMO && (
+              <p className="text-sm text-gray-500 mt-1">
+                El peso se calculará según el baremo configurado
+              </p>
+            )}
+          </div>
+        )}
+        
+        {/* Configuración de baremo para preguntas con opciones */}
+        {pesoPreguntaTipo === PesoPreguntaTipo.BAREMO && 
+          (questionType === TipoPreguntaNombre.RADIO || 
+           questionType === TipoPreguntaNombre.CHECKBOX || 
+           questionType === TipoPreguntaNombre.SELECT) && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Configuración de Baremo (opcional)
+            </label>
+            <textarea
+              value={baremoDetalle || ''}
+              onChange={(e) => setBaremoDetalle(e.target.value || null)}
+              className="w-full p-2 border border-gray-300 rounded"
+              placeholder="Ingrese la configuración del baremo en formato JSON"
+              rows={3}
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Para preguntas con opciones, especifique el peso de cada opción en formato JSON.
+            </p>
+          </div>
+        )}
+        
         {/* Placeholder (solo para texto) */}
-        {questionType === TipoPreguntaNombre.RESPUESTA_CORTA && (
+        {questionType === TipoPreguntaNombre.TEXT && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Placeholder (texto de ejemplo)
@@ -266,8 +338,8 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
         )}
         
         {/* Opciones para radio, checkbox y select */}
-        {(questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
-          questionType === TipoPreguntaNombre.OPCION_UNICA || 
+        {(questionType === TipoPreguntaNombre.CHECKBOX || 
+          questionType === TipoPreguntaNombre.RADIO || 
           questionType === TipoPreguntaNombre.SELECT) && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -285,7 +357,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
               />
               <button
                 onClick={handleAddOption}
-                className={`px-4 py-2 text-white rounded-r bg-blue-600 hover:bg-blue-700`}
+                className="px-4 py-2 text-white rounded-r bg-blue-600 hover:bg-blue-700"
               >
                 Agregar
               </button>
@@ -319,7 +391,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
         )}
         
         {/* Configuración de rango */}
-        {questionType === TipoPreguntaNombre.RANGO && (
+        {questionType === TipoPreguntaNombre.RANGE && (
           <div className="mb-4 space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -371,15 +443,13 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
               onClose();
               resetForm();
             }}
-            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 cursor-pointer"
+            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
-            className={`px-4 py-2 text-white rounded cursor-pointer ${
-              'bg-blue-500 hover:bg-blue-600' 
-            }`}
+            className="px-4 py-2 text-white rounded bg-blue-500 hover:bg-blue-600"
           >
             {isEditing ? 'Actualizar' : 'Agregar'} Pregunta
           </button>

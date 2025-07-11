@@ -51,6 +51,7 @@ export function ModalFormularioTest({
       
       // Verificar si la pregunta está respondida adecuadamente según su tipo
       const estaRespondida = respuestasPreg.some(r => {
+        if (!pregunta.tipo) return false;
         switch (pregunta.tipo.nombre) {
           case TipoPreguntaNombre.OPCION_MULTIPLE:
             return r.id_opcion !== null
@@ -143,6 +144,7 @@ export function ModalFormularioTest({
       const respuestasPreg = respuestas[pregunta.id] || [];
       
       // Diferentes validaciones según el tipo de pregunta
+      if (!pregunta.tipo) return false;
       switch (pregunta.tipo.nombre) {
         case TipoPreguntaNombre.OPCION_MULTIPLE:
           return respuestasPreg.length === 0;
@@ -172,6 +174,7 @@ export function ModalFormularioTest({
         if (!pregunta) return false;
         
         // Filtrar respuestas vacías
+        if (!pregunta.tipo) return false;
         switch (pregunta.tipo.nombre) {
           case TipoPreguntaNombre.RESPUESTA_CORTA:
             return r.texto_respuesta?.trim();
@@ -206,7 +209,8 @@ export function ModalFormularioTest({
     const claseInput = (estaCompletado && respuestasGuardadas) 
       ? 'bg-gray-100 cursor-not-allowed' 
       : 'focus:border-blue-500 focus:ring-blue-500'
-
+    
+      if (!pregunta.tipo) return false;
     switch (pregunta.tipo.nombre) {
       case TipoPreguntaNombre.OPCION_MULTIPLE:
         return (
@@ -216,7 +220,7 @@ export function ModalFormularioTest({
                 <input
                   type="checkbox"
                   id={`p${pregunta.id}_o${opcion.id}`}
-                  checked={isOptionChecked(pregunta.id, opcion.id)}
+                  checked={isOptionChecked(pregunta.id, opcion.id ?? 0)}
                   onChange={() => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, opcion.valor, opcion.id, true)}
                   disabled={estaCompletado && respuestasGuardadas}
                   className={`h-4 w-4 text-blue-600 ${claseInput}`}
@@ -239,7 +243,7 @@ export function ModalFormularioTest({
                   id={`p${pregunta.id}_o${opcion.id}`}
                   name={`pregunta_radio_${pregunta.id}`}
                   value={opcion.valor}
-                  checked={isOptionChecked(pregunta.id, opcion.id)}
+                  checked={isOptionChecked(pregunta.id, opcion.id ?? 0)}
                   onChange={() => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, opcion.valor, opcion.id)}
                   disabled={estaCompletado && respuestasGuardadas}
                   className={`h-4 w-4 text-blue-600 ${claseInput}`}

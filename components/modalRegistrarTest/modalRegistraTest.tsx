@@ -189,7 +189,7 @@ const ModalRegistraTest: React.FC<ModalRegistraTestProps> = ({
   return (
     <>
       <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
-        <div className={`bg-white rounded-lg p-6 w-full max-w-[800px] h-auto flex flex-col`}>
+        <div className={`bg-white rounded-lg p-6 w-full max-w-[800px] h-auto flex flex-col scale-[0.85]`}>
           <div className="w-full flex justify-end ">
             <button onClick={onClose} className="text-black hover:text-gray-700 cursor-pointer">
               ✕
@@ -211,7 +211,7 @@ const ModalRegistraTest: React.FC<ModalRegistraTestProps> = ({
               {isAdmin && (
                 <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 ">
                       Psicólogo asignado
                     </label>
                     <select
@@ -228,7 +228,7 @@ const ModalRegistraTest: React.FC<ModalRegistraTestProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 ">
                       Usuario asignado (adolescente)
                     </label>
                     <select
@@ -248,7 +248,7 @@ const ModalRegistraTest: React.FC<ModalRegistraTestProps> = ({
               )}
               
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 ">
                   Nombre del Test *
                 </label>
                 <input
@@ -263,7 +263,7 @@ const ModalRegistraTest: React.FC<ModalRegistraTestProps> = ({
               
               {isAdmin && (
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 ">
                     Estado del Test
                   </label>
                   <select
@@ -281,7 +281,7 @@ const ModalRegistraTest: React.FC<ModalRegistraTestProps> = ({
               )}
               
               <div className="mb-4">
-                <div className="flex justify-between items-start flex-col mb-2">
+                <div className="flex justify-between items-start flex-col ">
                   <h3 className="text-lg font-medium">Preguntas</h3>
                   <div className='border rounded-2xl w-full'>
                     <div className='p-2'>
@@ -290,7 +290,7 @@ const ModalRegistraTest: React.FC<ModalRegistraTestProps> = ({
                           No hay preguntas agregadas aún
                         </div>
                       ) : (
-                        <div className="space-y-3 overflow-scroll h-full max-h-[300px]">
+                        <div className="space-y-3 overflow-scroll h-full max-h-[150px]">
                           {questions.map((question, index) => (
                             <div key={index} className="border rounded p-3 bg-gray-50 group hover:bg-gray-100">
                               <div className="flex justify-between items-start">
@@ -340,7 +340,7 @@ const ModalRegistraTest: React.FC<ModalRegistraTestProps> = ({
                         </div>
                       )}
                     </div>
-                    <div className='w-full flex flex-col items-end p-2'>
+                    <div className='w-full flex flex-col items-end p-[1rem]'>
                       <button
                         onClick={handleAddQuestion}
                         className="px-3 py-1 bg-[#E0F8F0] rounded text-sm cursor-pointer"

@@ -8,14 +8,15 @@ import { TutorData, PsicologoData } from "../../app/types/user/dataDB"
 import useUserStore from "../../app/store/store"
 import { StorageManager } from "@/app/lib/storageManager"
 import { useRouter } from "next/navigation"
-import {UsuarioInfo,Usuario} from "../../app/types/user"
+import {UsuarioInfo, Usuario} from "../../app/types/user"
 
 type Errors = {
   confirmPassword?: string;
   submit?: string;
 };
 
-const tipoUsuarioData = ["administrador","psicologo","adolecente","usuario"];
+const tipoUsuarioData = ["administrador","psicologo","adolescente","usuario"];
+
 type FormUserProps = {
   user?: Usuario;
   isEdit?: boolean;
@@ -52,7 +53,8 @@ export default function FormUserAdmin({
     password: '',
     nombre: '',
     cedula: '',
-    fecha_nacimiento: ''
+    fecha_nacimiento: '',
+    sexo: ''
   });
 
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -61,7 +63,9 @@ export default function FormUserAdmin({
     nombre_tutor: '',
     profesion_tutor: '',
     telefono_contacto: '',
-    correo_contacto: ''
+    correo_contacto: '',
+    sexo: '',
+    parentesco: ''
   });
 
   const [psicologoData, setPsicologoData] = useState<PsicologoData>({
@@ -77,6 +81,10 @@ export default function FormUserAdmin({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [currentTipoRegistro, setCurrentTipoRegistro] = useState<TipoRegistro>(tipoRegistro);
+  const [showOtherSexo, setShowOtherSexo] = useState(false);
+  const [otherSexoValue, setOtherSexoValue] = useState('');
+  const [showOtherParentesco, setShowOtherParentesco] = useState(false);
+  const [otherParentescoValue, setOtherParentescoValue] = useState('');
 
   useEffect(() => {
     if (user && isEdit) {
@@ -85,22 +93,38 @@ export default function FormUserAdmin({
         password: '',
         nombre: user.nombre,
         cedula: user.cedula,
-        fecha_nacimiento: formatDateForInput(user.fecha_nacimiento)
+        fecha_nacimiento: formatDateForInput(user.fecha_nacimiento ?? undefined),
+        sexo: user.sexo || ''
       });
 
-      if (user.adolecente?.tutor ){
+      // Configurar campo de sexo "Otro" si es necesario
+      if (user.sexo && !['Masculino', 'Femenino'].includes(user.sexo)) {
+        setShowOtherSexo(true);
+        setOtherSexoValue(user.sexo);
+      }
+
+      if (user.adolecente?.tutor) {
         setTutorData({
-          cedula_tutor: user.adolecente?.tutor.cedula_tutor,
-          nombre_tutor: user.adolecente?.tutor.nombre_tutor,
-          profesion_tutor: user.adolecente?.tutor.profesion_tutor || '',
-          telefono_contacto: user.adolecente?.tutor.telefono_contacto || '',
-          correo_contacto: user.adolecente?.tutor.correo_contacto || ''
+          cedula_tutor: user.adolecente.tutor.cedula_tutor,
+          nombre_tutor: user.adolecente.tutor.nombre_tutor,
+          profesion_tutor: user.adolecente.tutor.profesion_tutor || '',
+          telefono_contacto: user.adolecente.tutor.telefono_contacto || '',
+          correo_contacto: user.adolecente.tutor.correo_contacto || '',
+          sexo: user.adolecente.tutor.sexo || '',
+          parentesco: user.adolecente.tutor.parentesco || ''
         });
+
+        // Configurar campo de parentesco "Otro" si es necesario
+        if (user.adolecente.tutor.parentesco && !['Padre', 'Madre', 'Tío', 'Tía', 'Abuelo', 'Abuela'].includes(user.adolecente.tutor.parentesco)) {
+          setShowOtherParentesco(true);
+          setOtherParentescoValue(user.adolecente.tutor.parentesco);
+        }
+
         setIsMinor(true);
         setCurrentTipoRegistro('adolescente');
       }
 
-      if (user?.psicologo) {
+      if (user.psicologo) {
         setPsicologoData({
           numero_de_titulo: user.psicologo.numero_de_titulo,
           nombre_universidad: user.psicologo.nombre_universidad,
@@ -125,9 +149,27 @@ export default function FormUserAdmin({
     }));
 
     if (name === 'fecha_nacimiento') {
-      console.log("valida fecha",name,value);
       validateAge(value);
     }
+  };
+
+  const handleSexoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    
+    if (value === 'Otro') {
+      setShowOtherSexo(true);
+      setUserData(prev => ({ ...prev, sexo: '' }));
+    } else {
+      setShowOtherSexo(false);
+      setOtherSexoValue('');
+      setUserData(prev => ({ ...prev, sexo: value }));
+    }
+  };
+
+  const handleOtherSexoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setOtherSexoValue(value);
+    setUserData(prev => ({ ...prev, sexo: value }));
   };
 
   const handleTutorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,6 +178,25 @@ export default function FormUserAdmin({
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleParentescoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    
+    if (value === 'Otro') {
+      setShowOtherParentesco(true);
+      setTutorData(prev => ({ ...prev, parentesco: '' }));
+    } else {
+      setShowOtherParentesco(false);
+      setOtherParentescoValue('');
+      setTutorData(prev => ({ ...prev, parentesco: value }));
+    }
+  };
+
+  const handleOtherParentescoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setOtherParentescoValue(value);
+    setTutorData(prev => ({ ...prev, parentesco: value }));
   };
 
   const handlePsicologoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,10 +223,8 @@ export default function FormUserAdmin({
     }
     
     const minor = age < 18;
-    console.log(minor,user?.tipo_usuario.nombre)
     setIsMinor(minor);
     setCurrentTipoRegistro(minor ? 'adolescente' : 'usuario');
-    
   };
 
   const validatePasswords = () => {
@@ -173,6 +232,34 @@ export default function FormUserAdmin({
       setErrors({ confirmPassword: 'Las contraseñas no coinciden' });
       return false;
     }
+    return true;
+  };
+
+  const validateSexo = () => {
+    if (!userData.sexo) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor seleccione su sexo' }));
+      return false;
+    }
+
+    if (showOtherSexo && !otherSexoValue) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor especifique su sexo' }));
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateParentesco = () => {
+    if (currentTipoRegistro === 'adolescente' && !tutorData.parentesco) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor seleccione el parentesco del tutor' }));
+      return false;
+    }
+
+    if (showOtherParentesco && !otherParentescoValue) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor especifique el parentesco del tutor' }));
+      return false;
+    }
+
     return true;
   };
 
@@ -187,8 +274,18 @@ export default function FormUserAdmin({
       return;
     }
     
+    if (!validateSexo()) {
+      setIsSubmitting(false);
+      return;
+    }
+
     if (currentTipoRegistro === 'adolescente') {
-      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula_tutor', 'nombre_tutor'];
+      if (!validateParentesco()) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula_tutor', 'nombre_tutor', 'sexo'];
       const missingFields = requiredTutorFields.filter(field => !tutorData[field as keyof typeof tutorData]);
       if (missingFields.length > 0) {
         setErrors({ submit: 'Por favor complete todos los datos del tutor' });
@@ -213,64 +310,91 @@ export default function FormUserAdmin({
       tipoRegistro: currentTipoRegistro,
       usuarioData: {
         ...userData,
+        sexo: showOtherSexo ? otherSexoValue : userData.sexo,
         ...(isEdit && !userData.password && { password: undefined }),
       },
-      ...(currentTipoRegistro === 'adolescente' && { tutorData }),
+      ...(currentTipoRegistro === 'adolescente' && { 
+        tutorData: {
+          ...tutorData,
+          parentesco: showOtherParentesco ? otherParentescoValue : tutorData.parentesco
+        } 
+      }),
       ...(currentTipoRegistro === 'psicologo' && { psicologoData })
     };
 
     try {
-        const endpoint = isEdit ? '/api/usuario' : '/api/usuario';
-        const method = isEdit ? 'PUT' : 'POST';
-        
-        const response = await fetch(endpoint, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestData)
+      const endpoint = isEdit ? '/api/usuario' : '/api/usuario';
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || `Error en ${isEdit ? 'actualización' : 'registro'}`);
+      }
+
+      setSuccessMessage(isEdit ? 'Usuario actualizado correctamente!' : 'Usuario registrado correctamente!');
+      
+      if((isEdit || user_stora == null)){
+        login(
+          data.user,
+          data.user.resetPasswordToken ?? "",
+          data.user.resetPasswordTokenExpiry
+            ? (typeof data.resetPasswordTokenExpiry === "string"
+                ? new Date(data.resetPasswordTokenExpiry)
+                : data.resetPasswordTokenExpiry)
+            : new Date()
+        );
+        storageManager.save<UsuarioInfo>("userData", data.user);
+      }
+      
+      if (!isEdit) {
+        setUserData({
+          email: '',
+          password: '',
+          nombre: '',
+          cedula: '',
+          fecha_nacimiento: '',
+          sexo: ''
         });
-
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || `Error en ${isEdit ? 'actualización' : 'registro'}`);
-        }
-
-        setSuccessMessage(isEdit ? 'Usuario actualizado correctamente!' : 'Usuario registrado correctamente!');
         
-        if (!isEdit) {
-          setUserData({
-            email: '',
-            password: '',
-            nombre: '',
-            cedula: '',
-            fecha_nacimiento: ''
-          });
-          
-          setTutorData({
-            cedula_tutor: '',
-            nombre_tutor: '',
-            profesion_tutor: '',
-            telefono_contacto: '',
-            correo_contacto: ''
-          });
-          
-          setPsicologoData({
-            numero_de_titulo: '',
-            nombre_universidad: '',
-            monto_consulta: 0,
-            telefono_trabajo: '',
-            redes_sociales: []
-          });
-          
-          setIsMinor(false);
-          setConfirmPassword('');
-          setCurrentTipoRegistro('usuario');
-          
-          if( typeof onToggleEditAndCreate === 'function'){
-            onToggleEditAndCreate(true)
-          }
+        setTutorData({
+          cedula_tutor: '',
+          nombre_tutor: '',
+          profesion_tutor: '',
+          telefono_contacto: '',
+          correo_contacto: '',
+          sexo: '',
+          parentesco: ''
+        });
+        
+        setPsicologoData({
+          numero_de_titulo: '',
+          nombre_universidad: '',
+          monto_consulta: 0,
+          telefono_trabajo: '',
+          redes_sociales: []
+        });
+        
+        setIsMinor(false);
+        setConfirmPassword('');
+        setShowOtherSexo(false);
+        setOtherSexoValue('');
+        setShowOtherParentesco(false);
+        setOtherParentescoValue('');
+
+        if(user_stora == null ) router.push('/');
+        
+        if( typeof onToggleEditAndCreate === 'function'){
+          onToggleEditAndCreate(true);
         }
+      }
     } catch (error: any) {
       console.error('Error:', error);
       setErrors({ submit: error.message || (isEdit ? 'Error al actualizar el usuario' : 'Error al registrar el usuario') });
@@ -284,9 +408,18 @@ export default function FormUserAdmin({
       onSubmit={handleSubmit}
       className="md:p-6 w-auto flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
     >
-            <h2 className="text-xl font-bold">
-              {isEdit ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
-            </h2>
+      <div>
+        <Image
+          src={svg}
+          width={180}
+          height={90}
+          alt="Logo"
+        />
+      </div>
+      <h2 className="text-xl font-bold">
+        {isEdit ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+      </h2>
+
       {successMessage && (
         <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
           {successMessage}
@@ -310,7 +443,6 @@ export default function FormUserAdmin({
                 value={currentTipoRegistro}
                 onChange={(e) => {
                   setCurrentTipoRegistro(e.target.value as TipoRegistro);
-                  // Si seleccionan adolescente, forzar isMinor a true
                   if (e.target.value === 'adolescente') {
                     setIsMinor(true);
                   } else if (e.target.value === 'usuario') {
@@ -350,6 +482,33 @@ export default function FormUserAdmin({
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
+          </div>
+
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="sexo" className="text-sm">Sexo:</label>
+            <select
+              name="sexo"
+              id="sexo"
+              value={showOtherSexo ? 'Otro' : userData.sexo}
+              onChange={handleSexoChange}
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              required
+            >
+              <option value="">Seleccione...</option>
+              <option value="Masculino">Masculino</option>
+              <option value="Femenino">Femenino</option>
+              <option value="Otro">Otro</option>
+            </select>
+            {showOtherSexo && (
+              <input
+                type="text"
+                placeholder="Especifique su sexo"
+                value={otherSexoValue}
+                onChange={handleOtherSexoChange}
+                className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 mt-2"
+                required
+              />
+            )}
           </div>
           
           {!isEdit && (
@@ -426,6 +585,7 @@ export default function FormUserAdmin({
               value={userData.cedula}
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              readOnly={isEdit}
             />
           </div>
           
@@ -436,15 +596,18 @@ export default function FormUserAdmin({
               type="date" 
               name="fecha_nacimiento" 
               id="fecha_nacimiento" 
-              value={formatDateForInput(userData.fecha_nacimiento)}
+              value={formatDateForInput(userData.fecha_nacimiento ?? undefined)}
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
+            {isMinor && !isEdit && (
+              <p className="text-yellow-600 text-xs mt-1">Se registrará como adolescente (requiere datos de tutor)</p>
+            )}
           </div>
         </div>
         
-        {/* Formulario del tutor - Mostrar si es adolescente o si estamos editando un adolescente */}
-        {( (isMinor || isEdit || currentTipoRegistro === 'adolescente'))&&(currentTipoRegistro!="usuario" && currentTipoRegistro!="psicologo" )&& (
+        {/* Formulario del tutor - Mostrar si es adolescente */}
+        {(isMinor || isEdit || currentTipoRegistro === 'adolescente') && (currentTipoRegistro !== "usuario" && currentTipoRegistro !== "psicologo") && (
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
               <h2 className="text-sm">Datos de tutor:</h2>
@@ -475,6 +638,54 @@ export default function FormUserAdmin({
                     onChange={handleTutorChange}
                     className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
                   />
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="sexo" className="text-sm">Sexo del tutor:</label>
+                  <select
+                    name="sexo"
+                    id="sexo_tutor"
+                    value={tutorData.sexo}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTutorData(prev => ({ ...prev, sexo: value }));
+                    }}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                    required
+                  >
+                    <option value="">Seleccione...</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Femenino">Femenino</option>
+                  </select>
+                </div>
+                <div className="w-full max-w-[190px]">
+                  <label htmlFor="parentesco" className="text-sm">Parentesco:</label>
+                  <select
+                    name="parentesco"
+                    id="parentesco"
+                    value={showOtherParentesco ? 'Otro' : tutorData.parentesco}
+                    onChange={handleParentescoChange}
+                    className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                    required
+                  >
+                    <option value="">Seleccione...</option>
+                    <option value="Padre">Padre</option>
+                    <option value="Madre">Madre</option>
+                    <option value="Tío">Tío</option>
+                    <option value="Tía">Tía</option>
+                    <option value="Abuelo">Abuelo</option>
+                    <option value="Abuela">Abuela</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                  {showOtherParentesco && (
+                    <input
+                      type="text"
+                      placeholder="Especifique el parentesco"
+                      value={otherParentescoValue}
+                      onChange={handleOtherParentescoChange}
+                      className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 mt-2"
+                      required
+                    />
+                  )}
                 </div>
                 <div className="w-full max-w-[190px]">
                   <label htmlFor="profesion_tutor" className="text-sm">Profesión del tutor:</label>
@@ -518,8 +729,8 @@ export default function FormUserAdmin({
           </div>
         )}
 
-        {/* Formulario del psicólogo - Mostrar si es psicólogo y es admin session o si estamos editando un psicólogo */}
-        {(currentTipoRegistro === 'psicologo' ||  isEdit) && (currentTipoRegistro!="usuario" && currentTipoRegistro!="adolescente")&& (
+        {/* Formulario del psicólogo */}
+        {(currentTipoRegistro === 'psicologo' || isEdit) && (currentTipoRegistro !== "usuario" && currentTipoRegistro !== "adolescente") && (
           <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
             <div>
               <h2 className="text-sm">Datos de psicólogo:</h2>

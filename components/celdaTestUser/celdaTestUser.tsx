@@ -1,18 +1,13 @@
 'use client'
 import React, { useState } from "react"
-import { TestStatus, FullTestData } from "./../../app/types/test"
+import { TestStatus, FullTestData, RespuestaData } from "./../../app/types/test"
 import { ModalFormularioTest } from "./../modalFormulrioTestProps/modalFormularioTestProps"
 import { ModalVerRespuestas } from "./../modalVerRepuestasProps/modalVerRespuestasProps"
 import Image from "next/image"
 import svgAzul from "./../../app/public/logos/fondo_azul_logo_celda.svg"
 import svgBlanco from "./../../app/public/logos/fondo_blanco_logo_celda.svg"
 
-interface RespuestaPayload {
-  id_pregunta: number;
-  id_opcion?: number | null;
-  texto_respuesta?: string | null;
-  valor_rango?: number | null;
-}
+
 
 interface CeldaTestProps extends FullTestData {
   onTestUpdated?: (nuevoEstado?: TestStatus) => Promise<void>;
@@ -22,8 +17,7 @@ export default function CeldaTest({
   id,
   psicologo,
   usuario,
-  estado = TestStatus.NoIniciado,
-  progreso = 0,
+  estado = TestStatus.NO_INICIADO,
   preguntas = [],
   respuestas = [],
   fecha_creacion = new Date().toISOString(),
@@ -35,13 +29,13 @@ export default function CeldaTest({
   const [showRespuestasModal, setShowRespuestasModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const bgColor = estado === TestStatus.Completado ? 'bg-white' : 'bg-[#6DC7E4]'
+  const bgColor = estado === TestStatus.COMPLETADO ? 'bg-white' : 'bg-[#6DC7E4]'
   const borderStyle = respuestas.length === 0 ? 'border-l-4 border-blue-500' : ''
 
   const nombrePsicologo = psicologo?.usuario?.nombre || "Psicólogo no asignado"
   const nombreUsuario = usuario?.nombre || "Usuario no asignado"
 
-  const handleSaveRespuestas = async (nuevasRespuestas: RespuestaPayload[]) => {
+  const handleSaveRespuestas = async (nuevasRespuestas: RespuestaData[]) => {
     if (!usuario?.id) {
       alert('Usuario no identificado')
       return
@@ -83,9 +77,9 @@ export default function CeldaTest({
       let nuevoEstado = estado
 
       if (nuevoProgreso >= 100) {
-        nuevoEstado = TestStatus.Completado
+        nuevoEstado = TestStatus.COMPLETADO
       } else if (nuevoProgreso > 0) {
-        nuevoEstado = TestStatus.EnProgreso
+        nuevoEstado = TestStatus.EN_PROGRESO
       }
 
       if(nuevoEstado){
@@ -112,7 +106,7 @@ export default function CeldaTest({
         <div className="relative">
           <Image
             className="absolute w-[200px] h-[200px] right-0 button-[10px]"
-            src={estado === TestStatus.Completado ? svgBlanco : svgAzul}
+            src={estado === TestStatus.COMPLETADO ? svgBlanco : svgAzul}
             width={180}
             height={90}
             alt="Logo"
@@ -130,14 +124,14 @@ export default function CeldaTest({
             </p>
           </div>
           <span className={`px-2 py-1 text-xs rounded-full ${
-            estado === TestStatus.Completado 
+            estado === TestStatus.COMPLETADO
               ? 'bg-green-100 text-green-800' 
-              : estado === TestStatus.EnProgreso 
+              : estado === TestStatus.EN_PROGRESO
                 ? 'bg-yellow-100 text-yellow-800' 
                 : 'bg-blue-100 text-blue-800'
           }`}>
-            {estado === TestStatus.Completado ? 'Completado' : 
-             estado === TestStatus.EnProgreso ? 'En progreso' : 'No iniciado'}
+            {estado === TestStatus.COMPLETADO ? 'Completado' : 
+             estado === TestStatus.EN_PROGRESO ? 'En progreso' : 'No iniciado'}
           </span>
         </div>
 
@@ -148,9 +142,6 @@ export default function CeldaTest({
           <p className="text-sm">
             <span className="font-semibold">Paciente:</span> {nombreUsuario}
           </p>
-          <p className="text-sm">
-            <span className="font-semibold">Progreso:</span> {progreso}% ({preguntas.length} preguntas)
-          </p>
         </div>
 
         {safeFechaUltimaRespuesta && (
@@ -160,7 +151,7 @@ export default function CeldaTest({
         )}
 
         <div className="flex justify-center mt-3 p-2">
-          {estado === TestStatus.Completado ? (
+          {estado === TestStatus.COMPLETADO ? (
             <button
               onClick={() => setShowRespuestasModal(true)}
               className="cursor-pointer p-2 px-10 text-black-700 border border-black text-sm rounded-md transition hover:bg-gray-100"
@@ -171,14 +162,14 @@ export default function CeldaTest({
             <button
               onClick={() => setShowFormModal(true)}
               className={`cursor-pointer p-2 px-10 text-sm rounded-md transition ${
-                estado === TestStatus.NoIniciado 
+                estado === TestStatus.NO_INICIADO
                   ? 'bg-white text-blue-700 border border-blue-500 hover:bg-blue-50' 
                   : 'bg-blue-500 text-white hover:bg-blue-600'
               }`}
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Guardando...' : 
-               estado === TestStatus.NoIniciado ? 'Comenzar test' : 'Continuar test'}
+               estado === TestStatus.NO_INICIADO ? 'Comenzar test' : 'Continuar test'}
             </button>
           )}
         </div>

@@ -5,10 +5,11 @@ import { TipoUsuario,Tutor,Psicologo } from "./compartidos";
 export interface UsuarioBase {
   id?: number;
   email: string;
-  password?: string; // Solo para creación/actualización
   nombre: string;
   cedula: string;
-  fecha_nacimiento: string | Date;
+  fecha_nacimiento: string | Date | null;
+  sexo?: string;
+  password?: string;
   id_tipo_usuario?: number;
 }
 

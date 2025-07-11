@@ -7,6 +7,11 @@ import { cookies } from 'next/headers';
 
 const prisma = new PrismaClient();
 
+// Valores sugeridos para sexo (permitimos cualquier texto)
+const SEXOS_SUGERIDOS = ['Masculino', 'Femenino', 'Otro'];
+// Valores permitidos para parentesco
+const PARENTESCOS_PERMITIDOS = ['Padre', 'Madre', 'Tutor legal', 'Otro'];
+
 export async function POST(request: Request) {
   try {
     const { 
@@ -16,7 +21,7 @@ export async function POST(request: Request) {
       psicologoData
     }: { 
       tipoRegistro: TipoRegistro,
-      usuarioData: UsuarioBase, 
+      usuarioData: UsuarioBase,
       tutorData?: TutorData,
       psicologoData?: PsicologoData
     } = await request.json();
@@ -48,6 +53,27 @@ export async function POST(request: Request) {
         { error: 'Datos del psicólogo son requeridos para este registro' },
         { status: 400 }
       );
+    }
+
+    // Validar formato del sexo (aceptamos cualquier texto pero sugerimos valores)
+    if (usuarioData.sexo && typeof usuarioData.sexo !== 'string') {
+      return NextResponse.json(
+        { error: 'El campo sexo debe ser un texto', sugeridos: SEXOS_SUGERIDOS },
+        { status: 400 }
+      );
+    }
+
+    // Validar parentesco si es adolescente
+    if (tipoRegistro === 'adolescente' && tutorData) {
+      if (tutorData.parentesco && !PARENTESCOS_PERMITIDOS.includes(tutorData.parentesco)) {
+        return NextResponse.json(
+          { 
+            error: `Parentesco no válido. Valores permitidos: ${PARENTESCOS_PERMITIDOS.join(', ')}`,
+            parentesco_recibido: tutorData.parentesco
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Verificar usuario existente
@@ -91,7 +117,7 @@ export async function POST(request: Request) {
 
     // Crear transacción
     const result = await prisma.$transaction(async (prisma) => {
-      // Crear usuario base
+      // Crear usuario base (aceptamos cualquier texto en sexo)
       const nuevoUsuario = await prisma.usuario.create({
         data: {
           email: usuarioData.email,
@@ -102,7 +128,8 @@ export async function POST(request: Request) {
           id_tipo_usuario: idTipoUsuario,
           password_iv: contraseñaEncriptada.iv,
           authToken,
-          authTokenExpiry
+          authTokenExpiry,
+          sexo: usuarioData.sexo// Aceptamos cualquier texto o undefined si no viene
         }
       });
 
@@ -114,7 +141,9 @@ export async function POST(request: Request) {
             nombre_tutor: tutorData.nombre_tutor || '',
             profesion_tutor: tutorData.profesion_tutor || '',
             telefono_contacto: tutorData.telefono_contacto || '',
-            correo_contacto: tutorData.correo_contacto || ''
+            correo_contacto: tutorData.correo_contacto || '',
+            sexo: tutorData.sexo , // Aceptamos cualquier texto
+            parentesco: tutorData.parentesco  // Solo valores permitidos o undefined
           }
         });
 
@@ -172,7 +201,7 @@ export async function POST(request: Request) {
       throw new Error('Usuario no encontrado después de creación');
     }
 
-    // Configurar cookies (igual que en login)
+    // Configurar cookies
     const cookieStore = await cookies();
     const cookieOptions = {
       httpOnly: true,
@@ -191,13 +220,14 @@ export async function POST(request: Request) {
       tipo: usuarioCompleto.id_tipo_usuario,
       nombre: usuarioCompleto.nombre,
       esAdolescente: !!usuarioCompleto.adolecente,
-      esPsicologo: !!usuarioCompleto.psicologo
+      esPsicologo: !!usuarioCompleto.psicologo,
+      sexo: usuarioCompleto.sexo // Incluimos el sexo en las cookies
     }), {
       ...cookieOptions,
       httpOnly: false
     });
 
-    // Preparar respuesta según el tipo de usuario (igual que en login)
+    // Preparar respuesta según el tipo de usuario
     const responseData: LoginResponse = {
       user: {
         id: usuarioCompleto.id,
@@ -206,6 +236,7 @@ export async function POST(request: Request) {
         cedula: usuarioCompleto.cedula,
         fecha_nacimiento: usuarioCompleto.fecha_nacimiento,
         id_tipo_usuario: usuarioCompleto.id_tipo_usuario,
+        sexo: usuarioCompleto.sexo, // Incluimos el sexo en la respuesta
         tipoUsuario: {
           ...usuarioCompleto.tipo_usuario,
           menu: Array.isArray(usuarioCompleto.tipo_usuario.menu)
@@ -223,7 +254,7 @@ export async function POST(request: Request) {
       }
     };
 
-    // Add adolescent-specific data if applicable (igual que en login)
+    // Add adolescent-specific data if applicable
     if (usuarioCompleto.adolecente) {
       responseData.user.esAdolescente = true;
       if (usuarioCompleto.adolecente.tutor) {
@@ -235,11 +266,13 @@ export async function POST(request: Request) {
           profesion_tutor: tutor.profesion_tutor ?? undefined,
           telefono_contacto: tutor.telefono_contacto ?? undefined,
           correo_contacto: tutor.correo_contacto ?? undefined,
+          sexo: tutor.sexo ?? undefined, // Incluimos el sexo del tutor
+          parentesco: tutor.parentesco ?? undefined
         };
       }
     }
 
-    // Add psychologist-specific data if applicable (igual que en login)
+    // Add psychologist-specific data if applicable
     if (usuarioCompleto.psicologo) {
       responseData.user.esPsicologo = true;
       responseData.user.psicologoInfo = {

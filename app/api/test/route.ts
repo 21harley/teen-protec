@@ -4,9 +4,15 @@ import { PrismaClient } from "./../../../app/generated/prisma";
 const prisma = new PrismaClient()
 
 enum TestStatus {
-  NoIniciado = 'no_iniciado',
-  EnProgreso = 'en_progreso',
-  Completado = 'completado'
+  NO_INICIADO = 'NO_INICIADO',
+  EN_PROGRESO = 'EN_PROGRESO',
+  COMPLETADO = 'COMPLETADO'
+}
+
+enum PesoPreguntaTipo {
+  SIN_VALOR = 'SIN_VALOR',
+  IGUAL_VALOR = 'IGUAL_VALOR',
+  BAREMO = 'BAREMO'
 }
 
 interface TestBase {
@@ -14,7 +20,9 @@ interface TestBase {
   id_usuario?: number;
   nombre?: string;
   estado?: TestStatus;
-  progreso?: number;
+  peso_preguntas?: PesoPreguntaTipo;
+  config_baremo?: any;
+  valor_total?: number;
   fecha_creacion?: Date | string;
   fecha_ultima_respuesta?: Date | string;
 }
@@ -25,6 +33,8 @@ interface PreguntaData {
   id_tipo: number;
   orden: number;
   obligatoria?: boolean;
+  peso?: number;
+  baremo_detalle?: any;
   placeholder?: string;
   min?: number;
   max?: number;
@@ -51,107 +61,23 @@ interface FullTestData extends TestBase {
   respuestas?: RespuestaData[];
 }
 
-
-// Helper mejorado para calcular progreso
-async function calcularProgreso(testId: number, usuarioId?: number, preguntas?: PreguntaData[], respuestas?: RespuestaData[]): Promise<number> {
-  if(!respuestas) return -1;
-  if(!preguntas) return -1;
-  try {
-    if (preguntas.length === 0) {
-      //console.log('[calcularProgreso] No hay preguntas para este test');
-      return 0;
-    }
-    
-    // Agrupar respuestas por pregunta usando id_pregunta
-    const respuestasPorPregunta: Record<number, RespuestaData[]> = {};
-    respuestas.forEach(r => {
-      if (!respuestasPorPregunta[r.id_pregunta]) {
-        respuestasPorPregunta[r.id_pregunta] = [];
-      }
-      respuestasPorPregunta[r.id_pregunta].push(r);
-    });
-
-    // Contar preguntas válidamente respondidas
-    let respondidas = 0;
-    
-    for (const pregunta of preguntas) {
-      if (typeof pregunta.id === 'undefined') {
-        console.warn(`[calcularProgreso] Pregunta sin id encontrada, se omite`);
-        continue;
-      }
-      const respuestasPreg = respuestasPorPregunta[pregunta.id] || [];
-      
-      // Verificar si está respondida adecuadamente según el tipo
-      let estaRespondida = false;
-      
-      switch (pregunta.id_tipo) {
-        case 1: // radio
-          estaRespondida = respuestasPreg.some(r => r.id_opcion !== null && r.id_opcion !== undefined);
-          break;
-        
-        case 2: // select (tratado igual que checkbox según los datos)
-          estaRespondida = respuestasPreg.some(r => r.id_opcion !== null && r.id_opcion !== undefined);
-          break;
-        
-        case 3: // text
-          estaRespondida = respuestasPreg.some(r => 
-            r.texto_respuesta && r.texto_respuesta.trim() !== ''
-          );
-          break;
-        
-        case 4: // select (según el orden de las preguntas)
-          estaRespondida = respuestasPreg.some(r => r.id_opcion !== null && r.id_opcion !== undefined);
-          break;
-        
-        case 5: // range
-          estaRespondida = respuestasPreg.some(r => r.valor_rango !== null && r.valor_rango !== undefined);
-          break;
-        
-        default:
-          estaRespondida = true;
-      }
-      
-      // Si es obligatoria y no está respondida, no cuenta
-      if (pregunta.obligatoria && !estaRespondida) {
-        //console.log(`[calcularProgreso] Pregunta obligatoria ${pregunta.id} no respondida - no cuenta`);
-        continue;
-      }
-      
-      if (estaRespondida) {
-        respondidas++;
-        //console.log(`[calcularProgreso] Pregunta ${pregunta.id} cuenta como respondida`);
-      }
-    }
-    
-    const progreso = Math.round((respondidas / preguntas.length) * 100);
-    return progreso;
-  } catch (error) {
-    //console.error('[calcularProgreso] Error al calcular progreso:', error);
-    return 0;
-  }
-}
-
-// Helper mejorado para verificar si todas las preguntas están respondidas
+// Helper para verificar si todas las preguntas están respondidas
 async function todasPreguntasRespondidas(
   testId: number | null | undefined,
   usuarioId: number | null | undefined,
   preguntas: PreguntaData[] | undefined,
   respuestas: RespuestaData[] | undefined
 ): Promise<boolean> {
-  // Verificar que todos los parámetros requeridos estén definidos
   if (!testId || !usuarioId || !preguntas || !respuestas) {
     return false;
   }
 
-  // Filtrar preguntas obligatorias
   const preguntasObligatorias = preguntas.filter(p => p.obligatoria);
 
   if (preguntasObligatorias.length === 0) {
-    console.log('[todasPreguntasRespondidas] No hay preguntas obligatorias - considerando como completado');
     return true;
   }
 
-  // Verificar que todas las preguntas obligatorias estén respondidas
   const todasObligatoriasRespondidas = preguntasObligatorias.every(pregunta => {
     const respuestasPreg = respuestas.filter(r => r.id_pregunta === pregunta.id);
     
@@ -173,27 +99,18 @@ async function todasPreguntasRespondidas(
         break;
     }
     
-    if (!tieneRespuesta) {
-      console.log(`[todasPreguntasRespondidas] Pregunta obligatoria ${pregunta.id} no tiene respuesta`);
-    }
-    
     return tieneRespuesta;
   });
 
-  //console.log(`[todasPreguntasRespondidas] Todas obligatorias respondidas: ${todasObligatoriasRespondidas}`);
   return todasObligatoriasRespondidas;
 }
-// Función auxiliar para determinar estado (sin cambios)
-function determinarEstado(progreso: number, todasRespondidas: boolean): TestStatus {
-  //console.log(`[determinarEstado] Progreso: ${progreso}, TodasRespondidas: ${todasRespondidas}`);
-  
-  if (progreso === 100 || todasRespondidas) {
-    return TestStatus.Completado;
+
+// Función auxiliar para determinar estado
+function determinarEstado(todasRespondidas: boolean): TestStatus {
+  if (todasRespondidas) {
+    return TestStatus.COMPLETADO;
   }
-  if (progreso === 0) {
-    return TestStatus.NoIniciado;
-  }
-  return TestStatus.EnProgreso;
+  return TestStatus.EN_PROGRESO;
 }
 
 export async function GET(request: Request) {
@@ -475,7 +392,9 @@ export async function POST(request: Request) {
       id_usuario,
       nombre,
       estado,
-      progreso,
+      peso_preguntas,
+      config_baremo,
+      valor_total,
       fecha_creacion,
       fecha_ultima_respuesta,
       preguntas,
@@ -490,10 +409,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validar progreso si se proporciona
-    if (progreso !== undefined && (progreso < 0 || progreso > 100)) {
+    // Validar peso_preguntas
+    if (peso_preguntas && !Object.values(PesoPreguntaTipo).includes(peso_preguntas)) {
       return NextResponse.json(
-        { error: 'El progreso debe estar entre 0 y 100' },
+        { error: 'Tipo de peso de pregunta no válido' },
         { status: 400 }
       );
     }
@@ -526,7 +445,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Verificar código de sesión único si se proporciona
+    // Verificar nombre único si se proporciona
     if (nombre) {
       const codigoExistente = await prisma.test.findFirst({
         where: { nombre }
@@ -534,7 +453,7 @@ export async function POST(request: Request) {
 
       if (codigoExistente) {
         return NextResponse.json(
-          { error: 'El código de sesión ya está en uso' },
+          { error: 'El nombre de test ya está en uso' },
           { status: 409 }
         );
       }
@@ -542,12 +461,8 @@ export async function POST(request: Request) {
 
     // Crear transacción para asegurar la integridad de los datos
     const result = await prisma.$transaction(async (prisma) => {
-      // Calcular progreso inicial si hay respuestas
-      const progresoInicial = respuestas && respuestas.length > 0 ? 
-        await calcularProgreso(0, id_usuario,preguntas,respuestas) : 0;
-      
       // Determinar estado inicial
-      const estadoInicial = estado || determinarEstado(progresoInicial, false);
+      const estadoInicial = estado || TestStatus.NO_INICIADO;
 
       // Crear nuevo test
       const nuevoTest = await prisma.test.create({
@@ -556,9 +471,11 @@ export async function POST(request: Request) {
           id_usuario,
           nombre,
           estado: estadoInicial,
-          progreso: progreso || progresoInicial,
+          peso_preguntas: peso_preguntas || PesoPreguntaTipo.SIN_VALOR,
+          config_baremo,
+          valor_total,
           fecha_creacion: fecha_creacion ? new Date(fecha_creacion) : new Date(),
-          fecha_ultima_respuesta: fecha_ultima_respuesta ? new Date(fecha_ultima_respuesta) : new Date()
+          fecha_ultima_respuesta: fecha_ultima_respuesta ? new Date(fecha_ultima_respuesta) : null
         }
       });
 
@@ -581,6 +498,8 @@ export async function POST(request: Request) {
               texto_pregunta: preguntaData.texto_pregunta,
               orden: preguntaData.orden,
               obligatoria: preguntaData.obligatoria || false,
+              peso: preguntaData.peso,
+              baremo_detalle: preguntaData.baremo_detalle,
               placeholder: preguntaData.placeholder,
               min: preguntaData.min,
               max: preguntaData.max,
@@ -621,16 +540,19 @@ export async function POST(request: Request) {
           });
         }
         
-        //console.log("Consulta POST");
-        // Actualizar progreso y estado después de agregar respuestas
-        const nuevoProgreso = await calcularProgreso(nuevoTest.id, id_usuario,preguntas,respuestas);
-        const completado = await todasPreguntasRespondidas(nuevoTest.id,id_usuario,preguntas,respuestas);
+        // Verificar si todas las preguntas están respondidas
+        const completado = await todasPreguntasRespondidas(
+          nuevoTest.id,
+          id_usuario,
+          preguntas,
+          respuestas
+        );
         
+        // Actualizar estado y fecha de última respuesta
         await prisma.test.update({
           where: { id: nuevoTest.id },
           data: {
-            progreso: nuevoProgreso,
-            estado: determinarEstado(nuevoProgreso, completado),
+            estado: determinarEstado(completado),
             fecha_ultima_respuesta: new Date()
           }
         });
@@ -681,7 +603,7 @@ export async function POST(request: Request) {
     // Manejo específico de errores de Prisma
     if (error.code === 'P2002') {
       return NextResponse.json(
-        { error: 'Conflicto de datos únicos (código de sesión ya existe)' },
+        { error: 'Conflicto de datos únicos (nombre de test ya existe)' },
         { status: 409 }
       );
     }
@@ -716,6 +638,9 @@ export async function PUT(request: Request) {
       id_usuario,
       nombre,
       estado,
+      peso_preguntas,
+      config_baremo,
+      valor_total,
       preguntas,
       respuestas
     }: FullTestData = await request.json();
@@ -779,6 +704,14 @@ export async function PUT(request: Request) {
       }
     }
 
+    // Validar peso_preguntas si se proporciona
+    if (peso_preguntas && !Object.values(PesoPreguntaTipo).includes(peso_preguntas)) {
+      return NextResponse.json(
+        { error: 'Tipo de peso de pregunta no válido' },
+        { status: 400 }
+      );
+    }
+
     // Usar transacción para operaciones atómicas
     const testActualizado = await prisma.$transaction(async (prisma) => {
       // Actualizar datos básicos del test
@@ -788,7 +721,10 @@ export async function PUT(request: Request) {
           id_psicologo: id_psicologo !== undefined ? id_psicologo : testExistente.id_psicologo,
           id_usuario: id_usuario !== undefined ? id_usuario : testExistente.id_usuario,
           nombre: nombre !== undefined ? nombre : testExistente.nombre,
-          estado: estado !== undefined ? estado : testExistente.estado
+          estado: estado !== undefined ? estado : testExistente.estado,
+          peso_preguntas: peso_preguntas !== undefined ? peso_preguntas : testExistente.peso_preguntas,
+          config_baremo: config_baremo !== undefined ? config_baremo : testExistente.config_baremo,
+          valor_total: valor_total !== undefined ? valor_total : testExistente.valor_total
         }
       });
 
@@ -834,6 +770,8 @@ export async function PUT(request: Request) {
               texto_pregunta: preguntaData.texto_pregunta,
               orden: preguntaData.orden,
               obligatoria: preguntaData.obligatoria || false,
+              peso: preguntaData.peso,
+              baremo_detalle: preguntaData.baremo_detalle,
               placeholder: preguntaData.placeholder,
               min: preguntaData.min,
               max: preguntaData.max,
@@ -858,80 +796,71 @@ export async function PUT(request: Request) {
         }
       }
 
-// Procesar respuestas si se proporcionan y hay un usuario asociado
-if (respuestas && id_usuario) {
-  // Eliminar respuestas existentes de este usuario
-  await prisma.respuesta.deleteMany({
-    where: { 
-      id_test: testId,
-      id_usuario: id_usuario
-    }
-  });
+      // Procesar respuestas si se proporcionan y hay un usuario asociado
+      if (respuestas && id_usuario) {
+        // Eliminar respuestas existentes de este usuario
+        await prisma.respuesta.deleteMany({
+          where: { 
+            id_test: testId,
+            id_usuario: id_usuario
+          }
+        });
 
-  // Crear nuevas respuestas
-  for (const respuestaData of respuestas) {
-    await prisma.respuesta.create({
-      data: {
-        id_test: testId,
-        id_pregunta: respuestaData.id_pregunta,
-        id_usuario: id_usuario,
-        id_opcion: respuestaData.id_opcion,
-        texto_respuesta: respuestaData.texto_respuesta,
-        valor_rango: respuestaData.valor_rango,
-        fecha: new Date()
+        // Crear nuevas respuestas
+        for (const respuestaData of respuestas) {
+          await prisma.respuesta.create({
+            data: {
+              id_test: testId,
+              id_pregunta: respuestaData.id_pregunta,
+              id_usuario: id_usuario,
+              id_opcion: respuestaData.id_opcion,
+              texto_respuesta: respuestaData.texto_respuesta,
+              valor_rango: respuestaData.valor_rango,
+              fecha: new Date()
+            }
+          });
+        }
+
+        // Obtener preguntas actuales si no se enviaron en la solicitud
+        let preguntasActuales = preguntas;
+        if (!preguntasActuales) {
+          const preguntasFromDB = await prisma.pregunta.findMany({
+            where: { id_test: testId },
+            include: { tipo: true }
+          });
+          
+          preguntasActuales = preguntasFromDB.map(p => ({
+            id: p.id,
+            texto_pregunta: p.texto_pregunta,
+            id_tipo: p.id_tipo,
+            orden: p.orden,
+            obligatoria: p.obligatoria,
+            peso: p.peso || undefined,
+            baremo_detalle: p.baremo_detalle || undefined,
+            placeholder: p.placeholder || undefined,
+            min: p.min || undefined,
+            max: p.max || undefined,
+            paso: p.paso || undefined
+          }));
+        }
+
+        // Verificar si todas las preguntas están respondidas
+        const completado = await todasPreguntasRespondidas(
+          testId,
+          id_usuario,
+          preguntasActuales,
+          respuestas
+        );
+        
+        // Actualizar estado y fecha de última respuesta
+        await prisma.test.update({
+          where: { id: testId },
+          data: {
+            estado: determinarEstado(completado),
+            fecha_ultima_respuesta: new Date()
+          }
+        });
       }
-    });
-  }
-
-  let preguntasParaCalculo = preguntas;
-  
-  // Si no se enviaron preguntas pero sí respuestas, obtener las preguntas de la base de datos
-  if (!preguntas && respuestas.length > 0) {
-    // Obtener IDs únicos de preguntas de las respuestas
-    const preguntaIds = [...new Set(respuestas.map(r => r.id_pregunta))];
-    
-    // Obtener las preguntas correspondientes
-    const preguntasFromDB = await prisma.pregunta.findMany({
-      where: {
-        id: { in: preguntaIds },
-        id_test: testId
-      },
-      include: {
-        tipo: true
-      }
-    });
-    
-    // Mapear a la estructura PreguntaData
-    preguntasParaCalculo = preguntasFromDB.map(p => ({
-      id:p.id,
-      texto_pregunta: p.texto_pregunta,
-      id_tipo: p.id_tipo,
-      orden: p.orden,
-      obligatoria: p.obligatoria,
-      placeholder: p.placeholder === null ? undefined : p.placeholder,
-      min: p.min === null ? undefined : p.min,
-      max: p.max === null ? undefined : p.max,
-      paso: p.paso === null ? undefined : p.paso,
-      // Nota: Aquí no incluimos opciones ya que no son necesarias para el cálculo
-    }));
-  }
-
-  //console.log(`[calcularProgreso] Consulta`);
-  //console.log(preguntasParaCalculo, respuestas);
-  
-  // Calcular progreso y estado
-  const nuevoProgreso = await calcularProgreso(testId, id_usuario, preguntasParaCalculo || [], respuestas);
-  const completado = await todasPreguntasRespondidas(testId, id_usuario, preguntasParaCalculo || [], respuestas);
-  
-  await prisma.test.update({
-    where: { id: testId },
-    data: {
-      progreso: nuevoProgreso,
-      estado: determinarEstado(nuevoProgreso, completado),
-      fecha_ultima_respuesta: new Date()
-    }
-  });
-}
 
       return test;
     });
@@ -994,6 +923,7 @@ if (respuestas && id_usuario) {
     await prisma.$disconnect();
   }
 }
+
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

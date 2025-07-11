@@ -7,7 +7,12 @@ export interface UsuarioBase {
   cedula: string;
   fecha_nacimiento: string | Date;
   id_tipo_usuario?: number;
-  id_psicologo?: number | null; // Nuevo campo para relación con psicólogo
+  id_psicologo?: number | null;
+  sexo?: string | null; // Nuevo campo
+  authToken?: string | null;
+  authTokenExpiry?: Date | null;
+  resetPasswordToken?: string | null;
+  resetPasswordTokenExpiry?: Date | null;
 }
 
 export interface TutorData {
@@ -16,6 +21,8 @@ export interface TutorData {
   profesion_tutor?: string;
   telefono_contacto?: string;
   correo_contacto?: string;
+  sexo?: string | null; // Nuevo campo
+  parentesco?: string | null; // Nuevo campo
 }
 
 export interface PsicologoData {
@@ -47,6 +54,7 @@ export interface LoginResponse {
     fecha_nacimiento: Date;
     id_tipo_usuario: number;
     id_psicologo?: number | null;
+    sexo?: string | null; // Nuevo campo
     tipoUsuario: { 
       id: number; 
       nombre: string;
@@ -65,6 +73,8 @@ export interface LoginResponse {
       profesion_tutor?: string;
       telefono_contacto?: string;
       correo_contacto?: string;
+      sexo?: string | null; // Nuevo campo
+      parentesco?: string | null; // Nuevo campo
     };
     esPsicologo?: boolean;
     psicologoInfo?: {
@@ -78,7 +88,7 @@ export interface LoginResponse {
         url_perfil: string;
       }>;
     };
-    psicologoPaciente?: { // Nombre actualizado para coincidir con el modelo
+    psicologoPaciente?: {
       id: number;
       nombre: string;
       email: string;
@@ -88,4 +98,63 @@ export interface LoginResponse {
       };
     };
   };
+}
+
+// Nuevos tipos para modelos adicionales
+export interface TestData {
+  id?: number;
+  nombre?: string;
+  estado?: 'NO_INICIADO' | 'EN_PROGRESO' | 'COMPLETADO';
+  peso_preguntas?: 'SIN_VALOR' | 'IGUAL_VALOR' | 'BAREMO';
+  config_baremo?: any;
+  valor_total?: number;
+  fecha_creacion?: Date;
+  fecha_ultima_respuesta?: Date;
+  id_psicologo?: number;
+  id_usuario?: number;
+}
+
+export interface PreguntaData {
+  id?: number;
+  id_test: number;
+  id_tipo: number;
+  texto_pregunta: string;
+  orden: number;
+  obligatoria?: boolean;
+  peso?: number;
+  baremo_detalle?: any;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  paso?: number;
+}
+
+export interface OpcionData {
+  id?: number;
+  id_pregunta: number;
+  texto: string;
+  valor: string;
+  orden: number;
+  es_otro?: boolean;
+}
+
+export interface RespuestaData {
+  id?: number;
+  id_test: number;
+  id_pregunta: number;
+  id_usuario: number;
+  id_opcion?: number;
+  texto_respuesta?: string;
+  valor_rango?: number;
+  fecha?: Date;
+}
+
+export interface AlarmaData {
+  id?: number;
+  id_usuario?: number;
+  id_tipo_alerta?: number;
+  mensaje: string;
+  fecha_creacion?: Date;
+  fecha_vista?: Date;
+  vista?: boolean;
 }

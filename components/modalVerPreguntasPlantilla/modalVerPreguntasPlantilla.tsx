@@ -1,6 +1,7 @@
 'use client'
 import React from 'react'
-import { PreguntaPlantilla, TipoPreguntaNombre, TestPlantilla } from "@/app/types/plantilla"
+import { PreguntaPlantilla, TestPlantilla } from "@/app/types/plantilla"
+import { TipoPreguntaNombre } from '@/app/types/test';
 import IconLogoTexto from "./../../app/public/logos/logo_texto.svg";
 import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
 import IconLogoEditar from "./../../app/public/logos/icon_editar.svg";
@@ -19,8 +20,8 @@ export function ModalVerPreguntasPlantilla({ plantilla, onClose, onEdit, onDelet
 
   const renderEjemploRespuesta = (pregunta: PreguntaPlantilla) => {
     switch (pregunta.tipo?.nombre) {
-      case TipoPreguntaNombre.Radio:
-      case TipoPreguntaNombre.Select:
+      case TipoPreguntaNombre.OPCION_UNICA:
+      case TipoPreguntaNombre.SELECT:
         return (
           <div className="text-sm text-gray-500 italic">
             {pregunta.opciones?.length ? 
@@ -29,7 +30,7 @@ export function ModalVerPreguntasPlantilla({ plantilla, onClose, onEdit, onDelet
           </div>
         )
       
-      case TipoPreguntaNombre.Checkbox:
+      case TipoPreguntaNombre.OPCION_MULTIPLE:
         return (
           <div className="text-sm text-gray-500 italic">
             {pregunta.opciones?.length ? 
@@ -38,14 +39,14 @@ export function ModalVerPreguntasPlantilla({ plantilla, onClose, onEdit, onDelet
           </div>
         )
       
-      case TipoPreguntaNombre.Text:
+      case TipoPreguntaNombre.RESPUESTA_CORTA:
         return (
           <div className="text-sm text-gray-500 italic">
             Campo de texto libre{pregunta.placeholder ? ` (${pregunta.placeholder})` : ''}
           </div>
         )
       
-      case TipoPreguntaNombre.Range:
+      case TipoPreguntaNombre.RANGO:
         return (
           <div className="text-sm text-gray-500 italic">
             Escala de {pregunta.min || 0} a {pregunta.max || 100}{pregunta.paso ? `, paso ${pregunta.paso}` : ''}

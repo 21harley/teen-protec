@@ -1,67 +1,62 @@
-// Enumerados
+/**
+ * Enumerados para el sistema de tests psicológicos
+ */
 export enum TestStatus {
-  NoIniciado = 'no_iniciado',
-  EnProgreso = 'en_progreso',
-  Completado = 'completado'
+  NO_INICIADO = 'NO_INICIADO',
+  EN_PROGRESO = 'EN_PROGRESO',
+  COMPLETADO = 'COMPLETADO'
 }
-const tiposPreguntaData = [
-  {
-    nombre: "radio",
-    descripcion: "Pregunta con opciones de selección única"
-  },
-  {
-    nombre: "checkbox",
-    descripcion: "Pregunta con opciones de selección múltiple"
-  },
-  {
-    nombre: "text",
-    descripcion: "Pregunta con respuesta de texto"
-  },
-  {
-    nombre: "select",
-    descripcion: "Pregunta con desplegable de opciones"
-  },
-  {
-    nombre: "range",
-    descripcion: "Pregunta con respuesta en rango numérico"
-  }
-];
+
+export enum PesoPreguntaTipo {
+  SIN_VALOR = 'SIN_VALOR',
+  IGUAL_VALOR = 'IGUAL_VALOR',
+  BAREMO = 'BAREMO'
+}
+
 export enum TipoPreguntaNombre {
+  OPCION_UNICA= 'radio',
   OPCION_MULTIPLE = 'checkbox',
-  OPCION_UNICA = 'radio',
   RESPUESTA_CORTA = 'text',
   SELECT = 'select',
   RANGO = 'range'
 }
 
-// Interfaces básicas
+/**
+ * Interfaces principales para Tests
+ */
 export interface TestBase {
   id?: number;
   id_psicologo?: number | null;
   id_usuario?: number | null;
   nombre?: string | null;
   estado?: TestStatus | null;
-  progreso?: number | null;
+  peso_preguntas?: PesoPreguntaTipo | null;
+  config_baremo?: any | null;
+  valor_total?: number | null;
   fecha_creacion?: Date | string | null;
   fecha_ultima_respuesta?: Date | string | null;
 }
 
 export interface PreguntaData {
-  id: number; // Cambiado a obligatorio para consistencia
+  id: number;
+  id_test?: number;
   texto_pregunta: string;
   id_tipo: number;
   orden: number;
   obligatoria?: boolean;
+  peso?: number | null;
+  baremo_detalle?: any | null;
   placeholder?: string | null;
   min?: number | null;
   max?: number | null;
   paso?: number | null;
   opciones?: OpcionData[];
-  tipo: TipoPregunta; // Cambiado a obligatorio
+  tipo?: TipoPregunta;
 }
 
 export interface OpcionData {
-  id: number; // Cambiado a obligatorio
+  id?: number;
+  id_pregunta?: number;
   texto: string;
   valor: string;
   orden: number;
@@ -70,12 +65,13 @@ export interface OpcionData {
 
 export interface RespuestaData {
   id?: number;
-  id_pregunta: number;
+  id_test?: number;
+  id_pregunta?: number;
+  id_usuario?: number;
   id_opcion?: number | null;
   texto_respuesta?: string | null;
   valor_rango?: number | null;
   fecha?: Date | string;
-  id_usuario?: number;
   pregunta?: PreguntaData;
   opcion?: OpcionData;
   usuario?: UsuarioData;
@@ -88,26 +84,41 @@ export interface FullTestData extends TestBase {
   usuario?: UsuarioData;
 }
 
-// Interfaces para relaciones
+/**
+ * Interfaces para relaciones de usuario
+ */
 export interface UsuarioData {
   id: number;
   nombre: string;
   email: string;
-  cedula?: string | null;
-  telefono?: string | null;
-  fecha_nacimiento?: Date | string | null;
-  genero?: string | null;
-  direccion?: string | null;
-  foto_perfil?: string | null;
+  cedula: string;
+  password?: string;
+  password_iv?: string;
+  fecha_nacimiento: Date | string;
+  sexo?: string | null;
+  id_tipo_usuario: number;
+  id_psicologo?: number | null;
+  authToken?: string | null;
+  authTokenExpiry?: Date | string | null;
+  resetPasswordToken?: string | null;
+  resetPasswordTokenExpiry?: Date | string | null;
+  tipo_usuario?: TipoUsuarioData;
+  adolecente?: AdolecenteData;
+  psicologo?: PsicologoData;
+}
+
+export interface TipoUsuarioData {
+  id: number;
+  nombre: string;
+  menu: any;
 }
 
 export interface PsicologoData {
   id_usuario: number;
-  especialidad?: string | null;
-  universidad?: string | null;
-  anio_graduacion?: number | null;
-  numero_colegiado?: string | null;
-  descripcion?: string | null;
+  numero_de_titulo?: string | null;
+  nombre_universidad?: string | null;
+  monto_consulta?: number | null;
+  telefono_trabajo?: string | null;
   usuario?: UsuarioData;
   redes_sociales?: RedSocialData[];
 }
@@ -115,17 +126,105 @@ export interface PsicologoData {
 export interface RedSocialData {
   id: number;
   id_psicologo: number;
-  plataforma: string;
-  enlace: string;
+  nombre_red: string;
+  url_perfil: string;
 }
 
+export interface TutorData {
+  id: number;
+  cedula_tutor: string;
+  nombre_tutor: string;
+  profesion_tutor?: string | null;
+  telefono_contacto?: string | null;
+  correo_contacto?: string | null;
+  sexo?: string | null;
+  parentesco?: string | null;
+}
+
+export interface AdolecenteData {
+  id_usuario: number;
+  id_tutor?: number | null;
+  tutor?: TutorData | null;
+  usuario: UsuarioData;
+}
+
+/**
+ * Interfaces para tipos de pregunta
+ */
 export interface TipoPregunta {
   id: number;
-  nombre: TipoPreguntaNombre; // Usando el enum
+  nombre: TipoPreguntaNombre;
   descripcion?: string | null;
+  tipo_respuesta: string;
 }
 
-// Interfaces para paginación y búsqueda
+/**
+ * Interfaces para plantillas de tests
+ */
+export interface TestPlantillaData {
+  id?: number;
+  id_psicologo: number;
+  nombre: string;
+  estado: TestStatus;
+  peso_preguntas: PesoPreguntaTipo;
+  config_baremo?: any;
+  valor_total?: number;
+  fecha_creacion?: Date | string;
+  preguntas?: PreguntaPlantillaData[];
+  psicologo?: PsicologoData;
+}
+
+export interface PreguntaPlantillaData {
+  id?: number;
+  id_test: number;
+  id_tipo: number;
+  texto_pregunta: string;
+  orden: number;
+  obligatoria?: boolean;
+  peso?: number;
+  baremo_detalle?: any;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  paso?: number;
+  tipo?: TipoPregunta;
+  opciones?: OpcionPlantillaData[];
+}
+
+export interface OpcionPlantillaData {
+  id?: number;
+  id_pregunta: number;
+  texto: string;
+  valor: string;
+  orden: number;
+  es_otro?: boolean;
+}
+
+/**
+ * Interfaces para alarmas/notificaciones
+ */
+export interface TipoAlertaData {
+  id: number;
+  nombre: string;
+  url_destino?: string | null;
+  id_tipo_usuario: number;
+}
+
+export interface AlarmaData {
+  id?: number;
+  id_usuario?: number | null;
+  id_tipo_alerta?: number | null;
+  mensaje: string;
+  fecha_creacion?: Date | string;
+  fecha_vista?: Date | string | null;
+  vista?: boolean;
+  usuario?: UsuarioData;
+  tipo_alerta?: TipoAlertaData;
+}
+
+/**
+ * Interfaces para paginación y búsqueda
+ */
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -143,50 +242,55 @@ export interface TestQueryParams {
   search?: string;
   fecha_inicio?: string;
   fecha_fin?: string;
-  es_psicologa?: boolean;
+  es_psicologa?: boolean | string;
   page?: number | string;
   pageSize?: number | string;
 }
 
-// Interfaces para request bodies
+export interface PreguntaQueryParams {
+  id_test?: number | string;
+  search?: string;
+}
+
+/**
+ * Interfaces para request bodies
+ */
 export interface CreateTestRequest extends Omit<FullTestData, 'id'> {}
 export interface UpdateTestRequest extends FullTestData {}
+export interface CreateTestFromTemplateRequest {
+  id_plantilla: number;
+  id_usuario: number;
+}
 
-// Interfaz Test completa y consistente
-export interface Test {
-  id?: number;
+/**
+ * Tipo para respuestas de la API
+ */
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  details?: any;
+}
+
+/**
+ * Tipo para formularios de tests
+ */
+export interface TestFormValues {
   nombre: string;
-  estado: TestStatus;
-  progreso: number;
-  fecha_creacion: string | Date;
-  fecha_ultima_respuesta: string | Date | null;
-  id_psicologo?: number | null;
   id_usuario?: number | null;
-  psicologo?: {
-    usuario: UsuarioData;
-    especialidad?: string | null;
-    universidad?: string | null;
-    anio_graduacion?: number | null;
-    numero_colegiado?: string | null;
-  } | null;
-  usuario?: UsuarioData | null;
-  preguntas?: Array<{
-    id: number;
+  preguntas: Array<{
     texto_pregunta: string;
     id_tipo: number;
     orden: number;
-    obligatoria?: boolean;
-    placeholder?: string | null;
-    min?: number | null;
-    max?: number | null;
-    paso?: number | null;
-    tipo: TipoPregunta;
+    obligatoria: boolean;
     opciones?: Array<{
-      id: number;
       texto: string;
       valor: string;
       orden: number;
-      es_otro?: boolean;
     }>;
+    placeholder?: string;
+    min?: number;
+    max?: number;
+    paso?: number;
   }>;
 }

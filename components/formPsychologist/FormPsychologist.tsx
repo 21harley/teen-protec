@@ -23,6 +23,7 @@ type UserData = {
   fullName: string;
   ci: string;
   birthDate: string;
+  sexo?: string;
 };
 
 type ProfessionalData = {
@@ -51,6 +52,7 @@ type FormPsychologistProps = {
     nombre: string;
     cedula: string;
     fecha_nacimiento: string;
+    sexo?: string;
     psicologo?: PsicologoData;
   };
   isEdit?: boolean;
@@ -65,8 +67,13 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
     confirmPassword: '',
     fullName: '',
     ci: '',
-    birthDate: ''
+    birthDate: '',
+    sexo: ''
   });
+
+  // Estado para controlar si se muestra el campo "Otro sexo"
+  const [showOtherSexo, setShowOtherSexo] = useState(false);
+  const [otherSexoValue, setOtherSexoValue] = useState('');
 
   // Estado para los datos profesionales del psicólogo
   const [professionalData, setProfessionalData] = useState<ProfessionalData>({
@@ -95,8 +102,15 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
         email: user.email,
         fullName: user.nombre,
         ci: user.cedula,
-        birthDate: user.fecha_nacimiento.split('T')[0] // Formatear fecha
+        birthDate: user.fecha_nacimiento.split('T')[0], // Formatear fecha
+        sexo: user.sexo || ''
       });
+
+      // Si el sexo no es Masculino ni Femenino, mostrar campo "Otro"
+      if (user.sexo && !['Masculino', 'Femenino'].includes(user.sexo)) {
+        setShowOtherSexo(true);
+        setOtherSexoValue(user.sexo);
+      }
 
       if (user.psicologo) {
         setProfessionalData({
@@ -131,6 +145,27 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
       ...prev,
       [name]: value
     }));
+  };
+
+  // Manejar cambios en el campo de sexo
+  const handleSexoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    
+    if (value === 'Otro') {
+      setShowOtherSexo(true);
+      setUserData(prev => ({ ...prev, sexo: '' }));
+    } else {
+      setShowOtherSexo(false);
+      setOtherSexoValue('');
+      setUserData(prev => ({ ...prev, sexo: value }));
+    }
+  };
+
+  // Manejar cambios en el campo "Otro sexo"
+  const handleOtherSexoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setOtherSexoValue(value);
+    setUserData(prev => ({ ...prev, sexo: value }));
   };
 
   // Manejar cambios en los inputs profesionales
@@ -196,10 +231,31 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
     }
 
     // Validar que el monto de consulta sea un número válido
-    if (isNaN(parseFloat(professionalData.consultationFee)) || parseFloat(professionalData.consultationFee) < 0) {
+    if (isNaN(parseFloat(professionalData.consultationFee))) {
       setErrors(prev => ({
         ...prev,
         professionalFields: 'El monto de consulta debe ser un número válido'
+      }));
+      return false;
+    }
+
+    return true;
+  };
+
+  // Validar campo de sexo
+  const validateSexo = () => {
+    if (!userData.sexo) {
+      setErrors(prev => ({
+        ...prev,
+        submit: 'Por favor seleccione su sexo'
+      }));
+      return false;
+    }
+
+    if (showOtherSexo && !otherSexoValue) {
+      setErrors(prev => ({
+        ...prev,
+        submit: 'Por favor especifique su sexo'
       }));
       return false;
     }
@@ -225,6 +281,12 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
       setIsLoading(false);
       return;
     }
+
+    // Validar campo de sexo
+    if (!validateSexo()) {
+      setIsLoading(false);
+      return;
+    }
     
     try {
       // Preparar datos para enviar al servidor
@@ -236,7 +298,8 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
           ...(!isEdit && { password: userData.password }), // Solo incluir password si no es edición
           nombre: userData.fullName,
           cedula: userData.ci,
-          fecha_nacimiento: userData.birthDate
+          fecha_nacimiento: userData.birthDate,
+          sexo: showOtherSexo ? otherSexoValue : userData.sexo
         },
         psicologoData: {
           numero_de_titulo: professionalData.licenseNumber,
@@ -273,7 +336,6 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
         }
 
         const result = await response.json();
-        //console.log(`${isEdit ? 'Actualización' : 'Registro'} exitoso:`, result);
         
         // Mostrar mensaje de éxito
         setSuccessMessage(`${isEdit ? 'Perfil actualizado' : 'Registro completado'} correctamente!`);
@@ -286,7 +348,8 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
             confirmPassword: '',
             fullName: '',
             ci: '',
-            birthDate: ''
+            birthDate: '',
+            sexo: ''
           });
           
           setProfessionalData({
@@ -297,6 +360,8 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
           });
           
           setSocialNetworks([]);
+          setShowOtherSexo(false);
+          setOtherSexoValue('');
         }
       }
     } catch (error: any) {
@@ -434,6 +499,33 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
               onChange={handleUserChange}
               className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
+          </div>
+
+          <div>
+            <label htmlFor="sexo" className="text-sm">Sexo:</label>
+            <select
+              name="sexo"
+              id="sexo"
+              value={showOtherSexo ? 'Otro' : userData.sexo}
+              onChange={handleSexoChange}
+              className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              required
+            >
+              <option value="">Seleccione...</option>
+              <option value="Masculino">Masculino</option>
+              <option value="Femenino">Femenino</option>
+              <option value="Otro">Otro</option>
+            </select>
+            {showOtherSexo && (
+              <input
+                type="text"
+                placeholder="Especifique su sexo"
+                value={otherSexoValue}
+                onChange={handleOtherSexoChange}
+                className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 mt-2"
+                required
+              />
+            )}
           </div>
           
           <div>

@@ -4,15 +4,24 @@ import { PrismaClient } from "./../../../app/generated/prisma";
 const prisma = new PrismaClient()
 
 enum TestStatus {
-  NoIniciado = 'no_iniciado',
-  EnProgreso = 'en_progreso',
-  Completado = 'completado'
+  NoIniciado = 'NO_INICIADO',
+  EnProgreso = 'EN_PROGRESO',
+  Completado = 'COMPLETADO'
+}
+
+enum PesoPreguntaTipo {
+  SIN_VALOR = 'SIN_VALOR',
+  IGUAL_VALOR = 'IGUAL_VALOR',
+  BAREMO = 'BAREMO'
 }
 
 interface TestPlantillaBase {
   id_psicologo?: number;
   nombre?: string;
   estado?: TestStatus;
+  peso_preguntas?: PesoPreguntaTipo;
+  config_baremo?: any;
+  valor_total?: number;
   fecha_creacion?: Date | string;
 }
 
@@ -21,6 +30,8 @@ interface PreguntaPlantillaData {
   id_tipo: number;
   orden: number;
   obligatoria?: boolean;
+  peso?: number;
+  baremo_detalle?: any;
   placeholder?: string;
   min?: number;
   max?: number;
@@ -57,6 +68,7 @@ export async function GET(request: Request) {
     const search = searchParams.get('search');
     const fecha_inicio = searchParams.get('fecha_inicio');
     const fecha_fin = searchParams.get('fecha_fin');
+    const peso_preguntas = searchParams.get('peso_preguntas') as PesoPreguntaTipo | null;
 
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
@@ -90,6 +102,7 @@ export async function GET(request: Request) {
 
     if (id_psicologo) whereClause.id_psicologo = parseInt(id_psicologo);
     if (estado) whereClause.estado = estado;
+    if (peso_preguntas) whereClause.peso_preguntas = peso_preguntas;
 
     if (fecha_inicio || fecha_fin) {
       whereClause.fecha_creacion = {};
@@ -97,7 +110,7 @@ export async function GET(request: Request) {
       if (fecha_fin) whereClause.fecha_creacion.lte = new Date(fecha_fin);
     }
 
-    // Búsqueda textual y por nombre (ignorando mayúsculas, usando contains sin mode)
+    // Búsqueda textual y por nombre
     if (search || nombre) {
       const loweredSearch = search?.toLowerCase();
       const loweredNombre = nombre?.toLowerCase();
@@ -176,14 +189,15 @@ export async function GET(request: Request) {
   }
 }
 
-
-
 export async function POST(request: Request) {
   try {
     const { 
       id_psicologo,
       nombre,
       estado,
+      peso_preguntas,
+      config_baremo,
+      valor_total,
       fecha_creacion,
       preguntas
     }: FullTestPlantillaData = await request.json();
@@ -230,6 +244,9 @@ export async function POST(request: Request) {
           id_psicologo,
           nombre: nombre ?? '',
           estado: estado || TestStatus.NoIniciado,
+          peso_preguntas: peso_preguntas || PesoPreguntaTipo.SIN_VALOR,
+          config_baremo: config_baremo || null,
+          valor_total: valor_total || null,
           fecha_creacion: fecha_creacion ? new Date(fecha_creacion) : new Date()
         }
       });
@@ -253,6 +270,8 @@ export async function POST(request: Request) {
               texto_pregunta: preguntaData.texto_pregunta,
               orden: preguntaData.orden,
               obligatoria: preguntaData.obligatoria || false,
+              peso: preguntaData.peso || null,
+              baremo_detalle: preguntaData.baremo_detalle || null,
               placeholder: preguntaData.placeholder,
               min: preguntaData.min,
               max: preguntaData.max,
@@ -347,6 +366,9 @@ export async function PUT(request: Request) {
       id_psicologo,
       nombre,
       estado,
+      peso_preguntas,
+      config_baremo,
+      valor_total,
       preguntas
     }: FullTestPlantillaData = await request.json();
 
@@ -408,7 +430,10 @@ export async function PUT(request: Request) {
         data: {
           id_psicologo: id_psicologo !== undefined ? id_psicologo : plantillaExistente.id_psicologo,
           nombre: nombre !== undefined ? nombre : plantillaExistente.nombre,
-          estado: estado !== undefined ? estado : plantillaExistente.estado
+          estado: estado !== undefined ? estado : plantillaExistente.estado,
+          peso_preguntas: peso_preguntas !== undefined ? peso_preguntas : plantillaExistente.peso_preguntas,
+          config_baremo: config_baremo !== undefined ? config_baremo : plantillaExistente.config_baremo,
+          valor_total: valor_total !== undefined ? valor_total : plantillaExistente.valor_total
         }
       });
 
@@ -445,6 +470,8 @@ export async function PUT(request: Request) {
               texto_pregunta: preguntaData.texto_pregunta,
               orden: preguntaData.orden,
               obligatoria: preguntaData.obligatoria || false,
+              peso: preguntaData.peso || null,
+              baremo_detalle: preguntaData.baremo_detalle || null,
               placeholder: preguntaData.placeholder,
               min: preguntaData.min,
               max: preguntaData.max,

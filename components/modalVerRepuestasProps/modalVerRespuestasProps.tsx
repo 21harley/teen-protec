@@ -23,7 +23,7 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
     if (respuestasPregunta.length === 0) {
       return <div className="text-sm text-gray-500 italic">Sin respuesta</div>
     }
-
+    if(!pregunta.tipo) return false
     switch (pregunta.tipo.nombre) {
       case TipoPreguntaNombre.OPCION_MULTIPLE:
         // Mostrar todas las opciones seleccionadas para checkboxes
@@ -77,7 +77,7 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-start">

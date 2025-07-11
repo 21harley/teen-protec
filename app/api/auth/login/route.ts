@@ -32,7 +32,8 @@ export async function POST(request: Request) {
           include: {
             redes_sociales: true
           }
-        }
+        },
+        psicologoPacientes: true // Incluir información del psicólogo asignado si es paciente
       }
     });
 
@@ -87,7 +88,9 @@ export async function POST(request: Request) {
       tipo: usuario.id_tipo_usuario,
       nombre: usuario.nombre,
       esAdolescente: !!usuario.adolecente,
-      esPsicologo: !!usuario.psicologo
+      esPsicologo: !!usuario.psicologo,
+      sexo: usuario.sexo || null, // Nuevo campo en cookies
+      id_psicologo: usuario.id_psicologo || null // Nuevo campo en cookies
     }), {
       ...cookieOptions,
       httpOnly: false
@@ -102,6 +105,8 @@ export async function POST(request: Request) {
         cedula: usuario.cedula,
         fecha_nacimiento: usuario.fecha_nacimiento,
         id_tipo_usuario: usuario.id_tipo_usuario,
+        sexo: usuario.sexo || undefined, // Nuevo campo en respuesta
+        id_psicologo: usuario.id_psicologo || undefined, // Nuevo campo en respuesta
         tipoUsuario: {
           ...usuario.tipo_usuario,
           menu: Array.isArray(usuario.tipo_usuario.menu)
@@ -131,6 +136,8 @@ export async function POST(request: Request) {
           profesion_tutor: tutor.profesion_tutor ?? undefined,
           telefono_contacto: tutor.telefono_contacto ?? undefined,
           correo_contacto: tutor.correo_contacto ?? undefined,
+          sexo: tutor.sexo ?? undefined, // Nuevo campo
+          parentesco: tutor.parentesco ?? undefined // Nuevo campo
         };
       }
     }
@@ -144,6 +151,28 @@ export async function POST(request: Request) {
         monto_consulta: usuario.psicologo.monto_consulta ?? 0,
         telefono_trabajo: usuario.psicologo.telefono_trabajo ?? "",
         redes_sociales: usuario.psicologo.redes_sociales
+      };
+    }
+
+    // Add psychologist data if user is a patient
+    if (usuario.psicologoPacientes) {
+      let psicologoInfo;
+      if (usuario.psicologoPacientes.id_psicologo) {
+        const psicologo = await prisma.psicologo.findUnique({
+          where: { id_usuario: usuario.psicologoPacientes.id_psicologo }
+        });
+        if (psicologo) {
+          psicologoInfo = {
+            numero_de_titulo: psicologo.numero_de_titulo ?? undefined,
+            nombre_universidad: psicologo.nombre_universidad ?? undefined
+          };
+        }
+      }
+      responseData.user.psicologoPaciente = {
+        id: usuario.psicologoPacientes.id,
+        nombre: usuario.psicologoPacientes.nombre,
+        email: usuario.psicologoPacientes.email,
+        psicologo: psicologoInfo
       };
     }
 

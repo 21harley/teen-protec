@@ -85,23 +85,28 @@ const tipoAlertaData = [
 const tiposPreguntaData = [
   {
     nombre: "radio",
-    descripcion: "Pregunta con opciones de selección única"
+    descripcion: "Pregunta con opciones de selección única",
+    tipo_respuesta: "opcion"
   },
   {
     nombre: "checkbox",
-    descripcion: "Pregunta con opciones de selección múltiple"
+    descripcion: "Pregunta con opciones de selección múltiple",
+    tipo_respuesta: "opcion_multiple"
   },
   {
     nombre: "text",
-    descripcion: "Pregunta con respuesta de texto"
+    descripcion: "Pregunta con respuesta de texto",
+    tipo_respuesta: "texto"
   },
   {
     nombre: "select",
-    descripcion: "Pregunta con desplegable de opciones"
+    descripcion: "Pregunta con desplegable de opciones",
+    tipo_respuesta: "opcion"
   },
   {
     nombre: "range",
-    descripcion: "Pregunta con respuesta en rango numérico"
+    descripcion: "Pregunta con respuesta en rango numérico",
+    tipo_respuesta: "numero"
   }
 ];
 
@@ -187,7 +192,9 @@ const dataUsuarios = [
             nombre_tutor: "Juan López",
             profesion_tutor: "Ingeniero",
             telefono_contacto: "+111222333",
-            correo_contacto: "juan.lopez@example.com"
+            correo_contacto: "juan.lopez@example.com",
+            sexo: "Masculino",
+            parentesco: "Padre"
           }
         }
       }
@@ -212,7 +219,9 @@ const dataUsuarios = [
             nombre_tutor: "Marta Ramírez",
             profesion_tutor: "Médico",
             telefono_contacto: "+444555666",
-            correo_contacto: "marta.ramirez@example.com"
+            correo_contacto: "marta.ramirez@example.com",
+            sexo: "Femenino",
+            parentesco: "Madre"
           }
         }
       }
@@ -237,7 +246,9 @@ const dataUsuarios = [
             nombre_tutor: "Luisa Sánchez",
             profesion_tutor: "Abogado",
             telefono_contacto: "+777888999",
-            correo_contacto: "luisa.sanchez@example.com"
+            correo_contacto: "luisa.sanchez@example.com",
+            sexo: "Femenino",
+            parentesco: "Madre"
           }
         }
       }
@@ -262,8 +273,11 @@ async function main() {
   // Eliminar datos existentes en el orden correcto para evitar violaciones de FK
   await prisma.respuesta.deleteMany({});
   await prisma.opcion.deleteMany({});
+  await prisma.opcionPlantilla.deleteMany({});
   await prisma.pregunta.deleteMany({});
+  await prisma.preguntaPlantilla.deleteMany({});
   await prisma.test.deleteMany({});
+  await prisma.testPlantilla.deleteMany({});
   await prisma.redSocialPsicologo.deleteMany({});
   await prisma.psicologo.deleteMany({});
   await prisma.adolecente.deleteMany({});
@@ -307,7 +321,8 @@ async function main() {
     await prisma.tipoPregunta.create({
       data: {
         nombre: tipoPregunta.nombre,
-        descripcion: tipoPregunta.descripcion
+        descripcion: tipoPregunta.descripcion,
+        tipo_respuesta: tipoPregunta.tipo_respuesta
       }
     });
   }
@@ -390,6 +405,7 @@ async function main() {
       id_tipo: 1, // radio
       orden: 1,
       obligatoria: true,
+      peso: 1.0,
       opciones: [
         { texto: "Muy bien", valor: "muy_bien", orden: 1 },
         { texto: "Bien", valor: "bien", orden: 2 },
@@ -403,6 +419,7 @@ async function main() {
       id_tipo: 2, // checkbox
       orden: 2,
       obligatoria: false,
+      peso: 0.8,
       opciones: [
         { texto: "Alegría", valor: "alegria", orden: 1 },
         { texto: "Tristeza", valor: "tristeza", orden: 2 },
@@ -416,6 +433,7 @@ async function main() {
       id_tipo: 3, // text
       orden: 3,
       obligatoria: false,
+      peso: 0.5,
       placeholder: "Escribe aquí tu respuesta..."
     },
     {
@@ -423,6 +441,7 @@ async function main() {
       id_tipo: 5, // range
       orden: 4,
       obligatoria: true,
+      peso: 1.2,
       min: 1,
       max: 10,
       paso: 1
@@ -432,6 +451,7 @@ async function main() {
       id_tipo: 4, // select
       orden: 5,
       obligatoria: true,
+      peso: 1.0,
       opciones: [
         { texto: "Nunca", valor: "nunca", orden: 1 },
         { texto: "Rara vez", valor: "rara_vez", orden: 2 },
@@ -443,125 +463,159 @@ async function main() {
   ];
 
   // Función para crear tests con preguntas y opciones
-  async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, estado: 'no_iniciado' | 'en_progreso' | 'completado', progreso: number) {
-    const codigoSesion = `TEST-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    
-    let estadoReal = estado;
-    let progresoReal = progreso;
-    
+  async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, estado: 'NO_INICIADO' | 'EN_PROGRESO' | 'COMPLETADO', pesoPreguntas: 'SIN_VALOR' | 'IGUAL_VALOR' | 'BAREMO') {
     const test = await prisma.test.create({
-        data: {
-            id_psicologo: idPsicologo,
-            id_usuario: idUsuario,
-            nombre: codigoSesion,
-            estado: estadoReal,
-            progreso: progresoReal,
-            fecha_creacion: new Date(),
-            fecha_ultima_respuesta: estado !== 'no_iniciado' ? new Date() : null,
-            preguntas: {
-                create: preguntasTest.map(pregunta => ({
-                    texto_pregunta: pregunta.texto_pregunta,
-                    id_tipo: pregunta.id_tipo,
-                    orden: pregunta.orden,
-                    obligatoria: pregunta.obligatoria,
-                    placeholder: pregunta.placeholder,
-                    min: pregunta.min,
-                    max: pregunta.max,
-                    paso: pregunta.paso,
-                    opciones: pregunta.opciones ? {
-                        create: pregunta.opciones.map(opcion => ({
-                            texto: opcion.texto,
-                            valor: opcion.valor,
-                            orden: opcion.orden,
-                            es_otro: false
-                        }))
-                    } : undefined
-                }))
-            }
-        },
-        include: {
-            preguntas: {
-                include: {
-                    opciones: true
-                }
-            }
+      data: {
+        nombre: `Test de evaluación psicológica - ${new Date().toLocaleDateString()}`,
+        estado: estado,
+        peso_preguntas: pesoPreguntas,
+        config_baremo: pesoPreguntas === 'BAREMO' ? {
+          niveles: [
+            { min: 0, max: 10, resultado: "Bajo riesgo" },
+            { min: 11, max: 20, resultado: "Riesgo moderado" },
+            { min: 21, max: 30, resultado: "Alto riesgo" }
+          ]
+        } : null,
+        valor_total: pesoPreguntas !== 'SIN_VALOR' ? 5.0 : null,
+        id_psicologo: idPsicologo,
+        id_usuario: idUsuario,
+        preguntas: {
+          create: preguntasTest.map(pregunta => ({
+            texto_pregunta: pregunta.texto_pregunta,
+            id_tipo: pregunta.id_tipo,
+            orden: pregunta.orden,
+            obligatoria: pregunta.obligatoria,
+            peso: pesoPreguntas !== 'SIN_VALOR' ? pregunta.peso : null,
+            baremo_detalle: pesoPreguntas === 'BAREMO' ? {
+              valor: pregunta.peso,
+              descripcion: "Peso según baremo"
+            } : null,
+            placeholder: pregunta.placeholder,
+            min: pregunta.min,
+            max: pregunta.max,
+            paso: pregunta.paso,
+            opciones: pregunta.opciones ? {
+              create: pregunta.opciones.map(opcion => ({
+                texto: opcion.texto,
+                valor: opcion.valor,
+                orden: opcion.orden,
+                es_otro: false
+              }))
+            } : undefined
+          }))
         }
+      },
+      include: {
+        preguntas: {
+          include: {
+            opciones: true
+          }
+        }
+      }
     });
 
-    if (estado !== 'no_iniciado') {
-        let preguntasRespondidas = 0;
-        let todasObligatoriasRespondidas = true;
-        
-        for (const pregunta of test.preguntas) {
-            let respondida = false;
-            
-            if (pregunta.opciones.length > 0) {
-                const opcionSeleccionada = pregunta.opciones[Math.floor(Math.random() * pregunta.opciones.length)];
-                
-                await prisma.respuesta.create({
-                    data: {
-                        id_test: test.id,
-                        id_pregunta: pregunta.id,
-                        id_usuario: idUsuario,
-                        id_opcion: opcionSeleccionada.id,
-                        texto_respuesta: pregunta.id_tipo === 2 ? "Otra información" : null,
-                        valor_rango: pregunta.id_tipo === 5 ? Math.floor(Math.random() * 10) + 1 : null
-                    }
-                });
-                respondida = true;
-            } else if (pregunta.id_tipo === 3) {
-                await prisma.respuesta.create({
-                    data: {
-                        id_test: test.id,
-                        id_pregunta: pregunta.id,
-                        id_usuario: idUsuario,
-                        texto_respuesta: "Esta es una respuesta de ejemplo para la pregunta de texto."
-                    }
-                });
-                respondida = true;
-            }
-            
-            if (respondida) {
-                preguntasRespondidas++;
-            } else if (pregunta.obligatoria) {
-                todasObligatoriasRespondidas = false;
-            }
-        }
-        
-        progresoReal = Math.round((preguntasRespondidas / test.preguntas.length) * 100);
-        
-        if (estado === 'completado' && !todasObligatoriasRespondidas) {
-            estadoReal = 'en_progreso';
-            if (progresoReal === 100) {
-                progresoReal = 99;
-            }
-        } else if (todasObligatoriasRespondidas && preguntasRespondidas === test.preguntas.length) {
-            estadoReal = 'completado';
-            progresoReal = 100;
-        } else {
-            estadoReal = 'en_progreso';
-        }
-        
-        await prisma.test.update({
-            where: { id: test.id },
+    if (estado !== 'NO_INICIADO') {
+      const fechaUltimaRespuesta = new Date();
+      
+      for (const pregunta of test.preguntas) {
+        if (pregunta.opciones.length > 0) {
+          const opcionSeleccionada = pregunta.opciones[Math.floor(Math.random() * pregunta.opciones.length)];
+          
+          await prisma.respuesta.create({
             data: {
-                estado: estadoReal,
-                progreso: progresoReal
+              id_test: test.id,
+              id_pregunta: pregunta.id,
+              id_usuario: idUsuario,
+              id_opcion: opcionSeleccionada.id,
+              texto_respuesta: pregunta.id_tipo === 2 ? "Otra información" : null,
+              valor_rango: pregunta.id_tipo === 5 ? Math.floor(Math.random() * 10) + 1 : null,
+              fecha: fechaUltimaRespuesta
             }
-        });
+          });
+        } else if (pregunta.id_tipo === 3) {
+          await prisma.respuesta.create({
+            data: {
+              id_test: test.id,
+              id_pregunta: pregunta.id,
+              id_usuario: idUsuario,
+              texto_respuesta: "Esta es una respuesta de ejemplo para la pregunta de texto.",
+              fecha: fechaUltimaRespuesta
+            }
+          });
+        }
+      }
+
+      await prisma.test.update({
+        where: { id: test.id },
+        data: {
+          fecha_ultima_respuesta: fechaUltimaRespuesta
+        }
+      });
     }
 
     return test;
   }
 
+  // Función para crear plantillas de tests
+  async function crearPlantillaTest(idPsicologo: number) {
+    const plantilla = await prisma.testPlantilla.create({
+      data: {
+        nombre: "Plantilla de evaluación estándar",
+        estado: "COMPLETADO",
+        peso_preguntas: "IGUAL_VALOR",
+        config_baremo: {
+          niveles: [
+            { min: 0, max: 10, resultado: "Bajo riesgo" },
+            { min: 11, max: 20, resultado: "Riesgo moderado" },
+            { min: 21, max: 30, resultado: "Alto riesgo" }
+          ]
+        },
+        valor_total: 5.0,
+        id_psicologo: idPsicologo,
+        preguntas: {
+          create: preguntasTest.map(pregunta => ({
+            texto_pregunta: pregunta.texto_pregunta,
+            id_tipo: pregunta.id_tipo,
+            orden: pregunta.orden,
+            obligatoria: pregunta.obligatoria,
+            peso: pregunta.peso,
+            baremo_detalle: {
+              valor: pregunta.peso,
+              descripcion: "Peso según baremo"
+            },
+            placeholder: pregunta.placeholder,
+            min: pregunta.min,
+            max: pregunta.max,
+            paso: pregunta.paso,
+            opciones: pregunta.opciones ? {
+              create: pregunta.opciones.map(opcion => ({
+                texto: opcion.texto,
+                valor: opcion.valor,
+                orden: opcion.orden,
+                es_otro: false
+              }))
+            } : undefined
+          }))
+        }
+      }
+    });
+
+    return plantilla;
+  }
+
   // Crear tests para diferentes usuarios
   console.log("📝 Creando tests de ejemplo...");
   
-  await crearTestCompleto(2, 4, 'completado', 100); // Test completado para adolescente 1
-  await crearTestCompleto(3, 5, 'en_progreso', 50); // Test en progreso para adolescente 2
-  await crearTestCompleto(2, 6, 'no_iniciado', 0);  // Test no iniciado para adolescente 3
-  await crearTestCompleto(3, 7, 'completado', 100);  // Test completado para usuario adulto
-  await crearTestCompleto(null, 1, 'en_progreso', 75); // Test en progreso para admin
+  await crearTestCompleto(2, 4, 'COMPLETADO', 'IGUAL_VALOR'); // Test completado para adolescente 1
+  await crearTestCompleto(3, 5, 'EN_PROGRESO', 'BAREMO'); // Test en progreso para adolescente 2
+  await crearTestCompleto(2, 6, 'NO_INICIADO', 'SIN_VALOR'); // Test no iniciado para adolescente 3
+  await crearTestCompleto(3, 7, 'COMPLETADO', 'BAREMO'); // Test completado para usuario adulto
+  await crearTestCompleto(null, 1, 'EN_PROGRESO', 'IGUAL_VALOR'); // Test en progreso para admin
+
+  // Crear plantillas de tests para psicólogos
+  console.log("📋 Creando plantillas de tests...");
+  await crearPlantillaTest(2); // Plantilla para psicólogo 1
+  await crearPlantillaTest(3); // Plantilla para psicólogo 2
 
   console.log("✅ Seed completado exitosamente!");
 }

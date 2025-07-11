@@ -1,20 +1,4 @@
 -- CreateTable
-CREATE TABLE "TipoUsuario" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "nombre" TEXT NOT NULL,
-    "menu" JSONB NOT NULL
-);
-
--- CreateTable
-CREATE TABLE "TipoAlerta" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "nombre" TEXT NOT NULL,
-    "url_destino" TEXT,
-    "id_tipo_usuario" INTEGER NOT NULL,
-    CONSTRAINT "TipoAlerta_id_tipo_usuario_fkey" FOREIGN KEY ("id_tipo_usuario") REFERENCES "TipoUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
 CREATE TABLE "Usuario" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "nombre" TEXT NOT NULL,
@@ -23,6 +7,7 @@ CREATE TABLE "Usuario" (
     "password" TEXT NOT NULL,
     "password_iv" TEXT NOT NULL,
     "fecha_nacimiento" DATETIME NOT NULL,
+    "sexo" TEXT,
     "id_tipo_usuario" INTEGER NOT NULL,
     "id_psicologo" INTEGER,
     "authToken" TEXT,
@@ -30,7 +15,7 @@ CREATE TABLE "Usuario" (
     "resetPasswordToken" TEXT,
     "resetPasswordTokenExpiry" DATETIME,
     CONSTRAINT "Usuario_id_tipo_usuario_fkey" FOREIGN KEY ("id_tipo_usuario") REFERENCES "TipoUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "Usuario_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Psicologo" ("id_usuario") ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT "Usuario_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Usuario" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -40,7 +25,98 @@ CREATE TABLE "Tutor" (
     "nombre_tutor" TEXT NOT NULL,
     "profesion_tutor" TEXT,
     "telefono_contacto" TEXT,
-    "correo_contacto" TEXT
+    "correo_contacto" TEXT,
+    "sexo" TEXT,
+    "parentesco" TEXT
+);
+
+-- CreateTable
+CREATE TABLE "Test" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "nombre" TEXT,
+    "estado" TEXT NOT NULL DEFAULT 'NO_INICIADO',
+    "peso_preguntas" TEXT NOT NULL DEFAULT 'SIN_VALOR',
+    "config_baremo" JSONB,
+    "valor_total" REAL,
+    "fecha_creacion" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "fecha_ultima_respuesta" DATETIME,
+    "id_psicologo" INTEGER,
+    "id_usuario" INTEGER,
+    CONSTRAINT "Test_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Psicologo" ("id_usuario") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Test_id_usuario_fkey" FOREIGN KEY ("id_usuario") REFERENCES "Usuario" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Pregunta" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id_test" INTEGER NOT NULL,
+    "id_tipo" INTEGER NOT NULL,
+    "texto_pregunta" TEXT NOT NULL,
+    "orden" INTEGER NOT NULL,
+    "obligatoria" BOOLEAN NOT NULL DEFAULT false,
+    "peso" REAL,
+    "baremo_detalle" JSONB,
+    "placeholder" TEXT,
+    "min" INTEGER,
+    "max" INTEGER,
+    "paso" INTEGER,
+    CONSTRAINT "Pregunta_id_test_fkey" FOREIGN KEY ("id_test") REFERENCES "Test" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "Pregunta_id_tipo_fkey" FOREIGN KEY ("id_tipo") REFERENCES "TipoPregunta" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "TestPlantilla" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id_psicologo" INTEGER NOT NULL,
+    "nombre" TEXT NOT NULL,
+    "estado" TEXT NOT NULL DEFAULT 'NO_INICIADO',
+    "peso_preguntas" TEXT NOT NULL DEFAULT 'SIN_VALOR',
+    "config_baremo" JSONB,
+    "valor_total" REAL,
+    "fecha_creacion" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "TestPlantilla_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Psicologo" ("id_usuario") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "PreguntaPlantilla" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id_test" INTEGER NOT NULL,
+    "id_tipo" INTEGER NOT NULL,
+    "texto_pregunta" TEXT NOT NULL,
+    "orden" INTEGER NOT NULL,
+    "obligatoria" BOOLEAN NOT NULL DEFAULT false,
+    "peso" REAL,
+    "baremo_detalle" JSONB,
+    "placeholder" TEXT,
+    "min" INTEGER,
+    "max" INTEGER,
+    "paso" INTEGER,
+    CONSTRAINT "PreguntaPlantilla_id_test_fkey" FOREIGN KEY ("id_test") REFERENCES "TestPlantilla" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "PreguntaPlantilla_id_tipo_fkey" FOREIGN KEY ("id_tipo") REFERENCES "TipoPregunta" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "TipoUsuario" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "nombre" TEXT NOT NULL,
+    "menu" JSONB NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "TipoPregunta" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "nombre" TEXT NOT NULL,
+    "descripcion" TEXT,
+    "tipo_respuesta" TEXT NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "TipoAlerta" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "nombre" TEXT NOT NULL,
+    "url_destino" TEXT,
+    "id_tipo_usuario" INTEGER NOT NULL,
+    CONSTRAINT "TipoAlerta_id_tipo_usuario_fkey" FOREIGN KEY ("id_tipo_usuario") REFERENCES "TipoUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -72,43 +148,6 @@ CREATE TABLE "Psicologo" (
     "monto_consulta" REAL,
     "telefono_trabajo" TEXT,
     CONSTRAINT "Psicologo_id_usuario_fkey" FOREIGN KEY ("id_usuario") REFERENCES "Usuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "Test" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "id_psicologo" INTEGER,
-    "id_usuario" INTEGER,
-    "nombre" TEXT,
-    "estado" TEXT NOT NULL DEFAULT 'no_iniciado',
-    "progreso" INTEGER NOT NULL DEFAULT 0,
-    "fecha_creacion" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "fecha_ultima_respuesta" DATETIME,
-    CONSTRAINT "Test_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Psicologo" ("id_usuario") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "Test_id_usuario_fkey" FOREIGN KEY ("id_usuario") REFERENCES "Usuario" ("id") ON DELETE SET NULL ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "TipoPregunta" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "nombre" TEXT NOT NULL,
-    "descripcion" TEXT NOT NULL
-);
-
--- CreateTable
-CREATE TABLE "Pregunta" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "id_test" INTEGER NOT NULL,
-    "id_tipo" INTEGER NOT NULL,
-    "texto_pregunta" TEXT NOT NULL,
-    "orden" INTEGER NOT NULL,
-    "obligatoria" BOOLEAN NOT NULL DEFAULT false,
-    "placeholder" TEXT,
-    "min" INTEGER,
-    "max" INTEGER,
-    "paso" INTEGER,
-    CONSTRAINT "Pregunta_id_test_fkey" FOREIGN KEY ("id_test") REFERENCES "Test" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "Pregunta_id_tipo_fkey" FOREIGN KEY ("id_tipo") REFERENCES "TipoPregunta" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -148,32 +187,6 @@ CREATE TABLE "RedSocialPsicologo" (
 );
 
 -- CreateTable
-CREATE TABLE "TestPlantilla" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "id_psicologo" INTEGER NOT NULL,
-    "nombre" TEXT NOT NULL,
-    "estado" TEXT NOT NULL DEFAULT 'no_iniciado',
-    "fecha_creacion" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "TestPlantilla_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Psicologo" ("id_usuario") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "PreguntaPlantilla" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "id_test" INTEGER NOT NULL,
-    "id_tipo" INTEGER NOT NULL,
-    "texto_pregunta" TEXT NOT NULL,
-    "orden" INTEGER NOT NULL,
-    "obligatoria" BOOLEAN NOT NULL DEFAULT false,
-    "placeholder" TEXT,
-    "min" INTEGER,
-    "max" INTEGER,
-    "paso" INTEGER,
-    CONSTRAINT "PreguntaPlantilla_id_test_fkey" FOREIGN KEY ("id_test") REFERENCES "TestPlantilla" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "PreguntaPlantilla_id_tipo_fkey" FOREIGN KEY ("id_tipo") REFERENCES "TipoPregunta" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
 CREATE TABLE "OpcionPlantilla" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "id_pregunta" INTEGER NOT NULL,
@@ -183,12 +196,6 @@ CREATE TABLE "OpcionPlantilla" (
     "es_otro" BOOLEAN NOT NULL DEFAULT false,
     CONSTRAINT "OpcionPlantilla_id_pregunta_fkey" FOREIGN KEY ("id_pregunta") REFERENCES "PreguntaPlantilla" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
-
--- CreateIndex
-CREATE UNIQUE INDEX "TipoUsuario_nombre_key" ON "TipoUsuario"("nombre");
-
--- CreateIndex
-CREATE UNIQUE INDEX "TipoAlerta_nombre_key" ON "TipoAlerta"("nombre");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Usuario_email_key" ON "Usuario"("email");
@@ -215,6 +222,30 @@ CREATE UNIQUE INDEX "Tutor_cedula_tutor_key" ON "Tutor"("cedula_tutor");
 CREATE INDEX "Tutor_cedula_tutor_idx" ON "Tutor"("cedula_tutor");
 
 -- CreateIndex
+CREATE INDEX "Test_id_psicologo_idx" ON "Test"("id_psicologo");
+
+-- CreateIndex
+CREATE INDEX "Test_id_usuario_idx" ON "Test"("id_usuario");
+
+-- CreateIndex
+CREATE INDEX "Pregunta_id_test_idx" ON "Pregunta"("id_test");
+
+-- CreateIndex
+CREATE INDEX "TestPlantilla_id_psicologo_idx" ON "TestPlantilla"("id_psicologo");
+
+-- CreateIndex
+CREATE INDEX "PreguntaPlantilla_id_test_idx" ON "PreguntaPlantilla"("id_test");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TipoUsuario_nombre_key" ON "TipoUsuario"("nombre");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TipoPregunta_nombre_key" ON "TipoPregunta"("nombre");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TipoAlerta_nombre_key" ON "TipoAlerta"("nombre");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Adolecente_id_usuario_key" ON "Adolecente"("id_usuario");
 
 -- CreateIndex
@@ -233,30 +264,6 @@ CREATE UNIQUE INDEX "Psicologo_id_usuario_key" ON "Psicologo"("id_usuario");
 CREATE INDEX "Psicologo_numero_de_titulo_idx" ON "Psicologo"("numero_de_titulo");
 
 -- CreateIndex
-CREATE INDEX "Test_id_psicologo_idx" ON "Test"("id_psicologo");
-
--- CreateIndex
-CREATE INDEX "Test_id_usuario_idx" ON "Test"("id_usuario");
-
--- CreateIndex
-CREATE INDEX "Test_nombre_idx" ON "Test"("nombre");
-
--- CreateIndex
-CREATE INDEX "Test_fecha_creacion_idx" ON "Test"("fecha_creacion");
-
--- CreateIndex
-CREATE INDEX "Test_estado_idx" ON "Test"("estado");
-
--- CreateIndex
-CREATE UNIQUE INDEX "TipoPregunta_nombre_key" ON "TipoPregunta"("nombre");
-
--- CreateIndex
-CREATE INDEX "Pregunta_id_test_idx" ON "Pregunta"("id_test");
-
--- CreateIndex
-CREATE INDEX "Pregunta_id_tipo_idx" ON "Pregunta"("id_tipo");
-
--- CreateIndex
 CREATE INDEX "Opcion_id_pregunta_idx" ON "Opcion"("id_pregunta");
 
 -- CreateIndex
@@ -270,15 +277,6 @@ CREATE INDEX "Respuesta_fecha_idx" ON "Respuesta"("fecha");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "RedSocialPsicologo_id_psicologo_nombre_red_key" ON "RedSocialPsicologo"("id_psicologo", "nombre_red");
-
--- CreateIndex
-CREATE INDEX "TestPlantilla_id_psicologo_idx" ON "TestPlantilla"("id_psicologo");
-
--- CreateIndex
-CREATE INDEX "TestPlantilla_nombre_idx" ON "TestPlantilla"("nombre");
-
--- CreateIndex
-CREATE INDEX "PreguntaPlantilla_id_test_idx" ON "PreguntaPlantilla"("id_test");
 
 -- CreateIndex
 CREATE INDEX "OpcionPlantilla_id_pregunta_idx" ON "OpcionPlantilla"("id_pregunta");

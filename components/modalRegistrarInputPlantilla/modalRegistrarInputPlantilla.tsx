@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { TipoPreguntaNombre, PreguntaPlantillaBase, OpcionPlantillaBase } from './../../app/types/plantilla/index';
+import {  PreguntaPlantillaBase, OpcionPlantillaBase } from './../../app/types/plantilla/index';
+import { TipoPreguntaNombre } from '@/app/types/test';
 import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
 import Image from "next/image";
 
@@ -19,7 +20,7 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
   isEditing = false 
 }) => {
   // Estados para los datos de la pregunta
-  const [questionType, setQuestionType] = useState<TipoPreguntaNombre>(TipoPreguntaNombre.Text);
+  const [questionType, setQuestionType] = useState<TipoPreguntaNombre>(TipoPreguntaNombre.RESPUESTA_CORTA);
   const [questionText, setQuestionText] = useState('');
   const [isRequired, setIsRequired] = useState(false);
   const [placeholder, setPlaceholder] = useState('');
@@ -31,11 +32,11 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
   const [order, setOrder] = useState(1);
 
   const tipoPreguntaMap: Record<TipoPreguntaNombre, number> = {
-    [TipoPreguntaNombre.Radio]: 1,
-    [TipoPreguntaNombre.Checkbox]: 2,
-    [TipoPreguntaNombre.Text]: 3,
-    [TipoPreguntaNombre.Select]: 4,
-    [TipoPreguntaNombre.Range]: 5
+    [TipoPreguntaNombre.OPCION_UNICA]: 1,
+    [TipoPreguntaNombre.OPCION_MULTIPLE]: 2,
+    [TipoPreguntaNombre.RESPUESTA_CORTA]: 3,
+    [TipoPreguntaNombre.SELECT]: 4,
+    [TipoPreguntaNombre.RANGO]: 5
   };
 
   // Efecto para inicializar con datos existentes si se proporcionan
@@ -43,7 +44,7 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
     if (initialData) {
       const tipoNombre = Object.entries(tipoPreguntaMap).find(
         ([_, id]) => id === initialData.id_tipo
-      )?.[0] as TipoPreguntaNombre || TipoPreguntaNombre.Text;
+      )?.[0] as TipoPreguntaNombre || TipoPreguntaNombre.RESPUESTA_CORTA;
       
       setQuestionType(tipoNombre);
       setQuestionText(initialData.texto_pregunta);
@@ -60,7 +61,7 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
   }, [initialData, isOpen]);
 
   const resetForm = () => {
-    setQuestionType(TipoPreguntaNombre.Text);
+    setQuestionType(TipoPreguntaNombre.RESPUESTA_CORTA);
     setQuestionText('');
     setIsRequired(false);
     setPlaceholder('');
@@ -103,15 +104,15 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
       return;
     }
 
-    if ((questionType === TipoPreguntaNombre.Radio || 
-         questionType === TipoPreguntaNombre.Checkbox || 
-         questionType === TipoPreguntaNombre.Select) && 
+    if ((questionType === TipoPreguntaNombre.OPCION_UNICA || 
+         questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
+         questionType === TipoPreguntaNombre.SELECT) && 
         options.length === 0) {
       alert('Por favor agregue al menos una opción para este tipo de pregunta');
       return;
     }
 
-    if (questionType === TipoPreguntaNombre.Range) {
+    if (questionType === TipoPreguntaNombre.RANGO) {
       if (minValue === undefined || maxValue === undefined) {
         alert('Por favor especifique los valores mínimo y máximo para el rango');
         return;
@@ -131,9 +132,9 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
       min: minValue,
       max: maxValue,
       paso: stepValue,
-      opciones: (questionType === TipoPreguntaNombre.Radio || 
-                questionType === TipoPreguntaNombre.Checkbox || 
-                questionType === TipoPreguntaNombre.Select) ? options : undefined
+      opciones: (questionType === TipoPreguntaNombre.OPCION_UNICA || 
+                questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
+                questionType === TipoPreguntaNombre.SELECT) ? options : undefined
     };
 
     onSave(questionData);
@@ -164,11 +165,11 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
             onChange={(e) => setQuestionType(e.target.value as TipoPreguntaNombre)}
             className="w-full p-2 border border-gray-300 rounded"
           >
-            <option value={TipoPreguntaNombre.Text}>Texto</option>
-            <option value={TipoPreguntaNombre.Radio}>Opción única (radio)</option>
-            <option value={TipoPreguntaNombre.Checkbox}>Opción múltiple (checkbox)</option>
-            <option value={TipoPreguntaNombre.Select}>Selección (dropdown)</option>
-            <option value={TipoPreguntaNombre.Range}>Rango</option>
+            <option value={TipoPreguntaNombre.RESPUESTA_CORTA}>Texto</option>
+            <option value={TipoPreguntaNombre.OPCION_UNICA}>Opción única (radio)</option>
+            <option value={TipoPreguntaNombre.OPCION_MULTIPLE}>Opción múltiple (checkbox)</option>
+            <option value={TipoPreguntaNombre.SELECT}>Selección (dropdown)</option>
+            <option value={TipoPreguntaNombre.RANGO}>Rango</option>
           </select>
         </div>
         
@@ -216,7 +217,7 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
         </div>
         
         {/* Placeholder (solo para texto) */}
-        {questionType === TipoPreguntaNombre.Text && (
+        {questionType === TipoPreguntaNombre.RESPUESTA_CORTA&& (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Placeholder (texto de ejemplo)
@@ -232,9 +233,9 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
         )}
         
         {/* Opciones para radio, checkbox y select */}
-        {(questionType === TipoPreguntaNombre.Radio || 
-          questionType === TipoPreguntaNombre.Checkbox || 
-          questionType === TipoPreguntaNombre.Select) && (
+        {(questionType === TipoPreguntaNombre.OPCION_UNICA || 
+          questionType === TipoPreguntaNombre.OPCION_MULTIPLE || 
+          questionType === TipoPreguntaNombre.SELECT) && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Opciones de respuesta *
@@ -285,7 +286,7 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
         )}
         
         {/* Configuración de rango */}
-        {questionType === TipoPreguntaNombre.Range && (
+        {questionType === TipoPreguntaNombre.RANGO && (
           <div className="mb-4 space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
