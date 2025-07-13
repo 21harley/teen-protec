@@ -71,6 +71,7 @@ interface LoginResponse {
     nombre: string;
     cedula: string;
     fecha_nacimiento: Date;
+    sexo?: string;
     id_tipo_usuario: number;
     id_psicologo?: number;
     tipoUsuario: TipoUsuarioResponse;
@@ -566,6 +567,7 @@ export async function POST(request: Request) {
         nombre: usuarioCompleto.nombre,
         cedula: usuarioCompleto.cedula,
         fecha_nacimiento: usuarioCompleto.fecha_nacimiento,
+        sexo: usuarioCompleto.sexo ?? undefined,
         id_tipo_usuario: usuarioCompleto.id_tipo_usuario,
         id_psicologo: usuarioCompleto.id_psicologo || undefined,
         tipoUsuario: {

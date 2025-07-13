@@ -93,7 +93,7 @@ export default function ModalPaciente({
   };
 
   const handleViewTest = (test: TestAsignado) => {
-    if (test.estado === TestStatus.Completado) {
+    if (test.estado === TestStatus.COMPLETADO) {
       setSelectedTest(test);
       setShowTestModal(true);
     }
@@ -175,9 +175,9 @@ export default function ModalPaciente({
 
   const getTestColor = (estado: TestStatus) => {
     switch (estado) {
-      case TestStatus.Completado:
+      case TestStatus.COMPLETADO:
         return 'bg-[#6DC7E4]';
-      case TestStatus.EnProgreso:
+      case TestStatus.EN_PROGRESO:
         return 'bg-yellow-100';
       default:
         return 'bg-white';
@@ -223,7 +223,7 @@ export default function ModalPaciente({
           {/* Datos del paciente */}
           <div className="space-y-4">
             <div className="space-y-2 p-2 bg-gray-50 rounded-lg m-0">
-              <p><span className="font-medium">Nombre Completo:</span> {paciente.nombre}</p>
+              <p><span className="font-medium">Nombre y Apellido:</span> {paciente.nombre}</p>
               <p><span className="font-medium">Email:</span> {paciente.email}</p>
               <p><span className="font-medium">Cédula:</span> {paciente.cedula || 'No especificado'}</p>
               <p>
@@ -245,7 +245,7 @@ export default function ModalPaciente({
                   <hr className='w-full max-h-[600px] h-[0.5px] bg-black'/>
                 </div>
                 <div className="space-y-1 border border-black rounded-2xl p-2">
-                  <p><span className="font-medium">Nombre Completo:</span> {paciente.adolecente.tutor?.nombre_tutor || 'No especificado'}</p>
+                  <p><span className="font-medium">Nombre y Apellido:</span> {paciente.adolecente.tutor?.nombre_tutor || 'No especificado'}</p>
                   <p><span className="font-medium">Cédula:</span> {paciente.adolecente.tutor?.cedula_tutor || 'No especificado'}</p>
                   <p><span className="font-medium">Profesión:</span> {paciente.adolecente.tutor?.profesion_tutor || 'No especificado'}</p>
                   <p><span className="font-medium">Teléfono:</span> {paciente.adolecente.tutor?.telefono_contacto || 'No especificado'}</p>
@@ -280,9 +280,9 @@ export default function ModalPaciente({
                           <p className="font-medium">{test.nombre || "Test sin nombre"}</p>
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-600">
-                              {test.estado === TestStatus.Completado 
+                              {test.estado === TestStatus.COMPLETADO
                                 ? 'Completado' 
-                                : test.estado === TestStatus.EnProgreso 
+                                : test.estado === TestStatus.EN_PROGRESO 
                                   ? 'En progreso' 
                                   : 'No iniciado'}
                             </span>
@@ -300,7 +300,7 @@ export default function ModalPaciente({
                         </div>
                         
                         <div className="flex gap-2">
-                          {test.estado === TestStatus.Completado && (
+                          {test.estado === TestStatus.COMPLETADO && (
                             <button
                               onClick={() => handleViewTest(test)}
                               className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"

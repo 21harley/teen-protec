@@ -5,14 +5,14 @@ export enum TestStatus {
   Completado = 'COMPLETADO'
 }
 
-export enum PesoPreguntaTipo {
-  SinValor = 'SIN_VALOR',
-  IgualValor = 'IGUAL_VALOR',
-  Baremo = 'BAREMO'
+export enum PesoPreguntaTipoPlantilla {
+  SIN_VALOR = 'SIN_VALOR',
+  IGUAL_VALOR = 'IGUAL_VALOR',
+  BAREMO = 'BAREMO'
 }
 
 // Tipos base
-export interface TipoPregunta {
+export interface TipoPreguntaPlantilla {
   id: number;
   nombre: string;
   descripcion?: string;
@@ -51,7 +51,7 @@ export interface PreguntaPlantillaBase {
 export interface PreguntaPlantilla extends PreguntaPlantillaBase {
   id: number;
   id_test: number;
-  tipo?: TipoPregunta;
+  tipo?: TipoPreguntaPlantilla;
   opciones?: OpcionPlantilla[];
 }
 
@@ -86,7 +86,7 @@ export interface Psicologo {
 export interface TestPlantillaBase {
   nombre: string;
   estado: TestStatus;
-  peso_preguntas: PesoPreguntaTipo;
+  peso_preguntas: PesoPreguntaTipoPlantilla;
   config_baremo?: any;
   valor_total?: number;
   id_psicologo?: number;
@@ -120,7 +120,7 @@ export interface FilterTestPlantillaParams {
   nombre?: string;
   id_psicologo?: string;
   estado?: TestStatus;
-  peso_preguntas?: PesoPreguntaTipo;
+  peso_preguntas?: PesoPreguntaTipoPlantilla;
   search?: string;
   fecha_inicio?: string;
   fecha_fin?: string;
@@ -139,7 +139,7 @@ export interface PlantillaDetailResponse {
   id: number;
   nombre: string;
   estado: TestStatus;
-  peso_preguntas: PesoPreguntaTipo;
+  peso_preguntas: PesoPreguntaTipoPlantilla;
   config_baremo?: any;
   valor_total?: number;
   fecha_creacion: string;
@@ -165,7 +165,9 @@ export interface PlantillaDetailResponse {
     min?: number;
     max?: number;
     paso?: number;
-    tipo: TipoPregunta;
+    tipo: TipoPreguntaPlantilla;
     opciones?: OpcionPlantilla[];
   }[];
 }
+
+

@@ -3,126 +3,102 @@ import Image from "next/image"
 import svg from "./../../app/public/logos/logo_texto.svg"
 import Link from "next/link"
 import React, { useState, useEffect } from "react"
+import { PsicologoData } from "./../../app/types/user/dataDB"
+import { UsuarioInfo } from "./../../app/types/user"
+import useUserStore from "./../../app/store/store"
+import { StorageManager } from "@/app/lib/storageManager"
+import { useRouter } from "next/navigation"
 
 type Errors = {
   confirmPassword?: string;
-  professionalFields?: string;
   submit?: string;
 };
 
-type SocialNetwork = {
-  name: string;
-  url: string;
-};
-
-type UserData = {
-  id?: number;
-  email: string;
-  password?: string;
-  confirmPassword?: string;
-  fullName: string;
-  ci: string;
-  birthDate: string;
-  sexo?: string;
-};
-
-type ProfessionalData = {
-  licenseNumber: string;
-  university: string;
-  consultationFee: string;
-  workPhone: string;
-};
-
-type PsicologoData = {
-  id_usuario?: number;
-  numero_de_titulo: string;
-  nombre_universidad: string;
-  monto_consulta: number;
-  telefono_trabajo?: string;
-  redes_sociales?: {
-    nombre_red: string;
-    url_perfil: string;
-  }[];
-};
-
 type FormPsychologistProps = {
-  user?: {
-    id: number;
-    email: string;
-    nombre: string;
-    cedula: string;
-    fecha_nacimiento: string;
-    sexo?: string;
-    psicologo?: PsicologoData;
-  };
+  user?: UsuarioInfo;
   isEdit?: boolean;
-  onSubmit?: (data: any) => Promise<void>;
+  onSubmit?: (data: any) => void;
+  endEditandCreate?: boolean;
+  onToggleEditAndCreate?: (newValue: boolean) => void; 
 };
 
-export default function FormPsychologist({ user, isEdit = false, onSubmit }: FormPsychologistProps) {
-  // Estado para los datos del usuario
-  const [userData, setUserData] = useState<UserData>({
+function formatDateForInput(date: string | Date | undefined): string {
+  if (!date) return '';
+  
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return dateObj.toISOString().split('T')[0];
+}
+
+export default function FormPsychologist({ 
+  user, 
+  isEdit = false, 
+  onToggleEditAndCreate
+}: FormPsychologistProps) {
+  const { login } = useUserStore()
+  const storageManager = new StorageManager("local");
+  const user_stora = storageManager.load<UsuarioInfo>("userData");
+  const router = useRouter()
+  
+  const [userData, setUserData] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
-    fullName: '',
-    ci: '',
-    birthDate: '',
+    nombre: '',
+    cedula: '',
+    fecha_nacimiento: '',
     sexo: ''
   });
 
-  // Estado para controlar si se muestra el campo "Otro sexo"
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [psicologoData, setPsicologoData] = useState<PsicologoData>({
+    numero_de_titulo: '',
+    nombre_universidad: '',
+    monto_consulta: 0,
+    telefono_trabajo: '',
+    redes_sociales: []
+  });
+
+  const [socialNetworks, setSocialNetworks] = useState<{name: string, url: string}[]>([]);
+  const [newSocialNetwork, setNewSocialNetwork] = useState({name: '', url: ''});
+
+  const [errors, setErrors] = useState<Errors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [showOtherSexo, setShowOtherSexo] = useState(false);
   const [otherSexoValue, setOtherSexoValue] = useState('');
 
-  // Estado para los datos profesionales del psicólogo
-  const [professionalData, setProfessionalData] = useState<ProfessionalData>({
-    licenseNumber: '',
-    university: '',
-    consultationFee: '',
-    workPhone: ''
-  });
-
-  // Estado para las redes sociales
-  const [socialNetworks, setSocialNetworks] = useState<SocialNetwork[]>([]);
-  const [newSocialNetwork, setNewSocialNetwork] = useState<SocialNetwork>({
-    name: '',
-    url: ''
-  });
-
-  const [errors, setErrors] = useState<Errors>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-
-  // Cargar datos del usuario si estamos en modo edición
   useEffect(() => {
-    if (isEdit && user) {
+    if (user && isEdit) {
       setUserData({
-        id: user.id,
         email: user.email,
-        fullName: user.nombre,
-        ci: user.cedula,
-        birthDate: user.fecha_nacimiento.split('T')[0], // Formatear fecha
+        password: '',
+        nombre: user.nombre,
+        cedula: user.cedula,
+        fecha_nacimiento: formatDateForInput(user.fecha_nacimiento ?? undefined),
         sexo: user.sexo || ''
       });
 
-      // Si el sexo no es Masculino ni Femenino, mostrar campo "Otro"
+      // Configurar campo de sexo "Otro" si es necesario
       if (user.sexo && !['Masculino', 'Femenino'].includes(user.sexo)) {
         setShowOtherSexo(true);
         setOtherSexoValue(user.sexo);
       }
 
-      if (user.psicologo) {
-        setProfessionalData({
-          licenseNumber: user.psicologo.numero_de_titulo,
-          university: user.psicologo.nombre_universidad,
-          consultationFee: user.psicologo.monto_consulta.toString(),
-          workPhone: user.psicologo.telefono_trabajo || ''
+      if (user.psicologoInfo) {
+        setPsicologoData({
+          numero_de_titulo: user.psicologoInfo.numero_de_titulo,
+          nombre_universidad: user.psicologoInfo.nombre_universidad,
+          monto_consulta: user.psicologoInfo.monto_consulta,
+          telefono_trabajo: user.psicologoInfo.telefono_trabajo,
+          redes_sociales: user.psicologoInfo.redes_sociales || []
         });
 
-        if (user.psicologo.redes_sociales) {
+        if (user.psicologoInfo.redes_sociales) {
           setSocialNetworks(
-            user.psicologo.redes_sociales.map(red => ({
+            user.psicologoInfo.redes_sociales.map(red => ({
               name: red.nombre_red,
               url: red.url_perfil
             }))
@@ -130,24 +106,20 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
         }
       }
     }
-  }, [isEdit, user]);
+  }, [user, isEdit]);
 
-  // Manejar cambios en los inputs del usuario
   const handleUserChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (errors.confirmPassword || errors.submit) {
-      setErrors(prev => ({
-        confirmPassword: name === 'confirmPassword' ? prev.confirmPassword : undefined,
-        professionalFields: prev.professionalFields
-      }));
+      setErrors({});
     }
+    
     setUserData(prev => ({
       ...prev,
       [name]: value
     }));
   };
 
-  // Manejar cambios en el campo de sexo
   const handleSexoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     
@@ -161,29 +133,20 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
     }
   };
 
-  // Manejar cambios en el campo "Otro sexo"
   const handleOtherSexoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setOtherSexoValue(value);
     setUserData(prev => ({ ...prev, sexo: value }));
   };
 
-  // Manejar cambios en los inputs profesionales
-  const handleProfessionalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePsicologoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    if (errors.professionalFields || errors.submit) {
-      setErrors(prev => ({
-        confirmPassword: prev.confirmPassword,
-        professionalFields: name === 'consultationFee' || name === 'licenseNumber' || name === 'university' ? undefined : prev.professionalFields
-      }));
-    }
-    setProfessionalData(prev => ({
+    setPsicologoData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'monto_consulta' ? Number(value) : value
     }));
   };
 
-  // Manejar cambios en los inputs de redes sociales
   const handleSocialNetworkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewSocialNetwork(prev => ({
@@ -192,7 +155,6 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
     }));
   };
 
-  // Agregar una nueva red social
   const addSocialNetwork = () => {
     if (newSocialNetwork.name && newSocialNetwork.url) {
       setSocialNetworks(prev => [...prev, newSocialNetwork]);
@@ -200,185 +162,156 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
     }
   };
 
-  // Eliminar una red social
   const removeSocialNetwork = (index: number) => {
     setSocialNetworks(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Validar contraseñas coincidan (solo para registro)
   const validatePasswords = () => {
-    if (!isEdit && userData.password !== userData.confirmPassword) {
-      setErrors(prev => ({
-        ...prev,
-        confirmPassword: 'Las contraseñas no coinciden'
-      }));
+    if ((!isEdit || userData.password) && userData.password !== confirmPassword) {
+      setErrors({ confirmPassword: 'Las contraseñas no coinciden' });
       return false;
     }
     return true;
   };
 
-  // Validar campos profesionales
-  const validateProfessionalFields = () => {
-    const requiredFields = ['licenseNumber', 'university', 'consultationFee'];
-    const missingFields = requiredFields.filter(field => !professionalData[field as keyof ProfessionalData]);
-    
-    if (missingFields.length > 0) {
-      setErrors(prev => ({
-        ...prev,
-        professionalFields: 'Complete todos los campos profesionales requeridos'
-      }));
-      return false;
-    }
-
-    // Validar que el monto de consulta sea un número válido
-    if (isNaN(parseFloat(professionalData.consultationFee))) {
-      setErrors(prev => ({
-        ...prev,
-        professionalFields: 'El monto de consulta debe ser un número válido'
-      }));
-      return false;
-    }
-
-    return true;
-  };
-
-  // Validar campo de sexo
   const validateSexo = () => {
     if (!userData.sexo) {
-      setErrors(prev => ({
-        ...prev,
-        submit: 'Por favor seleccione su sexo'
-      }));
+      setErrors(prev => ({ ...prev, submit: 'Por favor seleccione su sexo' }));
       return false;
     }
 
     if (showOtherSexo && !otherSexoValue) {
-      setErrors(prev => ({
-        ...prev,
-        submit: 'Por favor especifique su sexo'
-      }));
+      setErrors(prev => ({ ...prev, submit: 'Por favor especifique su sexo' }));
       return false;
     }
 
     return true;
   };
 
-  // Manejar el envío del formulario
+  const validateProfessionalFields = () => {
+    const requiredFields = ['numero_de_titulo', 'nombre_universidad', 'monto_consulta'];
+    const missingFields = requiredFields.filter(field => !psicologoData[field as keyof typeof psicologoData]);
+    
+    if (missingFields.length > 0) {
+      setErrors({ submit: 'Por favor complete todos los datos profesionales requeridos' });
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
     setErrors({});
     setSuccessMessage('');
     
-    // Validar contraseñas (solo para registro)
-    if (!isEdit && !validatePasswords()) {
-      setIsLoading(false);
+    if ((!isEdit || userData.password) && !validatePasswords()) {
+      setIsSubmitting(false);
       return;
     }
     
-    // Validar campos profesionales
-    if (!validateProfessionalFields()) {
-      setIsLoading(false);
-      return;
-    }
-
-    // Validar campo de sexo
     if (!validateSexo()) {
-      setIsLoading(false);
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!validateProfessionalFields()) {
+      setIsSubmitting(false);
       return;
     }
     
+    const requestData = {
+      ...(isEdit && user?.id && { id: user.id }),
+      tipoRegistro: 'psicologo',
+      usuarioData: {
+        ...userData,
+        sexo: showOtherSexo ? otherSexoValue : userData.sexo,
+        ...(isEdit && !userData.password && { password: undefined }),
+      },
+      psicologoData: {
+        ...psicologoData,
+        redes_sociales: socialNetworks.map(network => ({
+          nombre_red: network.name,
+          url_perfil: network.url
+        }))
+      }
+    };
+  
     try {
-      // Preparar datos para enviar al servidor
-      const requestData = {
-        ...(isEdit && user?.id && { id: user.id }),
-        tipoRegistro: 'psicologo',
-        usuarioData: {
-          email: userData.email,
-          ...(!isEdit && { password: userData.password }), // Solo incluir password si no es edición
-          nombre: userData.fullName,
-          cedula: userData.ci,
-          fecha_nacimiento: userData.birthDate,
-          sexo: showOtherSexo ? otherSexoValue : userData.sexo
+      const endpoint = isEdit ? '/api/usuario' : '/api/usuario';
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
         },
-        psicologoData: {
-          numero_de_titulo: professionalData.licenseNumber,
-          nombre_universidad: professionalData.university,
-          monto_consulta: parseFloat(professionalData.consultationFee),
-          telefono_trabajo: professionalData.workPhone || undefined,
-          redes_sociales: socialNetworks.map(network => ({
-            nombre_red: network.name,
-            url_perfil: network.url
-          }))
-        }
-      };
+        body: JSON.stringify(requestData)
+      });
 
-      if (onSubmit) {
-        // Si hay una función onSubmit personalizada, usarla
-        await onSubmit(requestData);
-        setSuccessMessage('Perfil actualizado correctamente!');
-      } else {
-        // Enviar datos al servidor
-        const endpoint = '/api/usuario';
-        const method = isEdit ? 'PUT' : 'POST';
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || `Error en ${isEdit ? 'actualización' : 'registro'}`);
+      }
 
-        const response = await fetch(endpoint, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestData)
+      setSuccessMessage(isEdit ? 'Perfil actualizado correctamente!' : 'Psicólogo registrado correctamente!');
+      
+      if((isEdit || user_stora == null)){
+        login(
+          data.user,
+          data.user.resetPasswordToken ?? "",
+          data.user.resetPasswordTokenExpiry
+            ? (typeof data.resetPasswordTokenExpiry === "string"
+                ? new Date(data.resetPasswordTokenExpiry)
+                : data.resetPasswordTokenExpiry)
+            : new Date()
+        );
+        storageManager.save<UsuarioInfo>("userData", data.user);
+      }
+      
+      if (!isEdit) {
+        setUserData({
+          email: '',
+          password: '',
+          nombre: '',
+          cedula: '',
+          fecha_nacimiento: '',
+          sexo: ''
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Error en la ${isEdit ? 'actualización' : 'registro'}`);
-        }
-
-        const result = await response.json();
         
-        // Mostrar mensaje de éxito
-        setSuccessMessage(`${isEdit ? 'Perfil actualizado' : 'Registro completado'} correctamente!`);
+        setPsicologoData({
+          numero_de_titulo: '',
+          nombre_universidad: '',
+          monto_consulta: 0,
+          telefono_trabajo: '',
+          redes_sociales: []
+        });
+        
+        setSocialNetworks([]);
+        setConfirmPassword('');
+        setShowOtherSexo(false);
+        setOtherSexoValue('');
+        setNewSocialNetwork({name: '', url: ''});
 
-        if (!isEdit) {
-          // Resetear formulario solo para registro
-          setUserData({
-            email: '',
-            password: '',
-            confirmPassword: '',
-            fullName: '',
-            ci: '',
-            birthDate: '',
-            sexo: ''
-          });
-          
-          setProfessionalData({
-            licenseNumber: '',
-            university: '',
-            consultationFee: '',
-            workPhone: ''
-          });
-          
-          setSocialNetworks([]);
-          setShowOtherSexo(false);
-          setOtherSexoValue('');
+        if(user_stora == null ) router.push('/');
+        
+        if( typeof onToggleEditAndCreate === 'function'){
+          onToggleEditAndCreate(true);
         }
       }
     } catch (error: any) {
-      console.error(`Error en el ${isEdit ? 'actualización' : 'registro'}:`, error);
-      setErrors(prev => ({
-        ...prev,
-        submit: error.message || `Error en el ${isEdit ? 'actualización' : 'registro'}`
-      }));
+      console.error('Error:', error);
+      setErrors({ submit: error.message || (isEdit ? 'Error al actualizar el perfil' : 'Error al registrar el psicólogo') });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <form 
+    <form
       onSubmit={handleSubmit}
-      className="p-8 max-w-[800px] w-full flex flex-col items-center justify-between _color_seven rounded-[10px]"
+      className="md:p-6 w-auto flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
     >
       <div>
         <Image
@@ -388,11 +321,6 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
           alt="Logo"
         />
       </div>
-      
-      <h1 className="text-xl font-semibold my-4">
-        {isEdit ? 'Editar Perfil de Psicólogo' : 'Registro de Psicólogo'}
-      </h1>
-
       {successMessage && (
         <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
           {successMessage}
@@ -404,13 +332,10 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
           {errors.submit}
         </div>
       )}
-      
-      <div className="flex flex-col md:flex-row justify-around p-5 gap-5 w-full">
-        {/* Datos personales */}
-        <div className="w-full max-w-[350px] space-y-4">
-          <h2 className="text-lg font-medium">Datos Personales</h2>
-          
-          <div>
+
+      <div className="flex flex-col justify-center md:flex-row md:justify-around p-5 gap-2 md:gap-2 w-full max-w-[400px] md:max-w-[800px]">
+        <div className="grid place-items-center w-[240px] m-auto">
+          <div className="w-full max-w-[190px]">
             <label htmlFor="email" className="text-sm">Correo electrónico:</label>
             <input 
               required 
@@ -419,96 +344,32 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
               id="email" 
               value={userData.email}
               onChange={handleUserChange}
-              className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-              disabled={isEdit} // Email no se puede editar normalmente
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              disabled={isEdit}
             />
           </div>
           
-          {!isEdit && (
-            <>
-              <div>
-                <label htmlFor="password" className="text-sm">Contraseña:</label>
-                <input 
-                  required 
-                  type="password" 
-                  name="password" 
-                  id="password" 
-                  value={userData.password}
-                  onChange={handleUserChange}
-                  className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="confirmPassword" className="text-sm">Confirmar contraseña:</label>
-                <input 
-                  required 
-                  type="password" 
-                  name="confirmPassword" 
-                  id="confirmPassword" 
-                  value={userData.confirmPassword}
-                  onChange={handleUserChange}
-                  className={`w-full border ${errors.confirmPassword ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
-                />
-                {errors.confirmPassword && (
-                  <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
-                )}
-              </div>
-            </>
-          )}
-
-          {isEdit && (
-            <>
-              <div>
-                <label htmlFor="password" className="text-sm">Nueva contraseña (opcional):</label>
-                <input 
-                  type="password" 
-                  name="password" 
-                  id="password" 
-                  value={userData.password}
-                  onChange={handleUserChange}
-                  className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="confirmPassword" className="text-sm">Confirmar nueva contraseña:</label>
-                <input 
-                  type="password" 
-                  name="confirmPassword" 
-                  id="confirmPassword" 
-                  value={userData.confirmPassword}
-                  onChange={handleUserChange}
-                  className={`w-full border ${errors.confirmPassword ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
-                />
-                {errors.confirmPassword && (
-                  <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
-                )}
-              </div>
-            </>
-          )}
-          
-          <div>
-            <label htmlFor="fullName" className="text-sm">Nombre completo:</label>
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="nombre" className="text-sm">Nombre y Apellido:</label>
             <input 
               required 
               type="text" 
-              name="fullName" 
-              id="fullName" 
-              value={userData.fullName}
+              name="nombre" 
+              id="nombre" 
+              value={userData.nombre}
               onChange={handleUserChange}
-              className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
           </div>
 
-          <div>
+          <div className="w-full max-w-[190px]">
             <label htmlFor="sexo" className="text-sm">Sexo:</label>
             <select
               name="sexo"
               id="sexo"
               value={showOtherSexo ? 'Otro' : userData.sexo}
               onChange={handleSexoChange}
-              className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
               required
             >
               <option value="">Seleccione...</option>
@@ -522,170 +383,240 @@ export default function FormPsychologist({ user, isEdit = false, onSubmit }: For
                 placeholder="Especifique su sexo"
                 value={otherSexoValue}
                 onChange={handleOtherSexoChange}
-                className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 mt-2"
+                className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 mt-2"
                 required
               />
             )}
           </div>
           
-          <div>
-            <label htmlFor="ci" className="text-sm">Cédula:</label>
+          {!isEdit && (
+            <>
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="password" className="text-sm">Contraseña:</label>
+                <input 
+                  required
+                  type="password" 
+                  name="password" 
+                  id="password" 
+                  value={userData.password}
+                  onChange={handleUserChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+              
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="confirmPassword" className="text-sm">Repetir contraseña:</label>
+                <input 
+                  required
+                  type="password" 
+                  name="confirmPassword" 
+                  id="confirmPassword" 
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`max-w-[300px] w-full border ${errors.confirmPassword ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {isEdit && (
+            <>
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="password" className="text-sm">Nueva contraseña (opcional):</label>
+                <input 
+                  type="password" 
+                  name="password" 
+                  id="password" 
+                  value={userData.password}
+                  onChange={handleUserChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+              
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="confirmPassword" className="text-sm">Confirmar nueva contraseña:</label>
+                <input 
+                  type="password" 
+                  name="confirmPassword" 
+                  id="confirmPassword" 
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`max-w-[300px] w-full border ${errors.confirmPassword ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
+                )}
+              </div>
+            </>
+          )}
+          
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="cedula" className="text-sm">Cédula:</label>
             <input 
               required 
               type="text" 
-              name="ci" 
-              id="ci" 
-              value={userData.ci}
+              name="cedula" 
+              id="cedula" 
+              value={userData.cedula}
               onChange={handleUserChange}
-              className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-              disabled={isEdit} // Cédula no se puede editar normalmente
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              readOnly={isEdit}
             />
           </div>
           
-          <div>
-            <label htmlFor="birthDate" className="text-sm">Fecha de nacimiento:</label>
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="fecha_nacimiento" className="text-sm">Fecha de nacimiento:</label>
             <input 
               required 
               type="date" 
-              name="birthDate" 
-              id="birthDate" 
-              value={userData.birthDate}
+              name="fecha_nacimiento" 
+              id="fecha_nacimiento" 
+              value={formatDateForInput(userData.fecha_nacimiento ?? undefined)}
               onChange={handleUserChange}
-              className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
           </div>
         </div>
         
-        {/* Datos profesionales */}
-        <div className="w-full max-w-[350px] space-y-4">
-          <h2 className="text-lg font-medium">Datos Profesionales</h2>
-          
+        {/* Datos profesionales del psicólogo */}
+        <div className="w-[240px] h-auto flex flex-col gap-2 m-auto">
           <div>
-            <label htmlFor="licenseNumber" className="text-sm">Número de título profesional:</label>
-            <input 
-              required 
-              type="text" 
-              name="licenseNumber" 
-              id="licenseNumber" 
-              value={professionalData.licenseNumber}
-              onChange={handleProfessionalChange}
-              className={`w-full border ${errors.professionalFields ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
-            />
+            <h2 className="text-sm">Datos profesionales:</h2>
+            <hr className="my-1" />
           </div>
-          
-          <div>
-            <label htmlFor="university" className="text-sm">Universidad donde obtuvo el título:</label>
-            <input 
-              required 
-              type="text" 
-              name="university" 
-              id="university" 
-              value={professionalData.university}
-              onChange={handleProfessionalChange}
-              className={`w-full border ${errors.professionalFields ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="consultationFee" className="text-sm">Monto de consulta (USD):</label>
-            <input 
-              required 
-              type="number" 
-              name="consultationFee" 
-              id="consultationFee" 
-              value={professionalData.consultationFee}
-              onChange={handleProfessionalChange}
-              min="0"
-              step="0.01"
-              className={`w-full border ${errors.professionalFields ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="workPhone" className="text-sm">Teléfono de trabajo (opcional):</label>
-            <input 
-              type="tel" 
-              name="workPhone" 
-              id="workPhone" 
-              value={professionalData.workPhone}
-              onChange={handleProfessionalChange}
-              className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-            />
-          </div>
-          
-          <div className="mt-4">
-            <h3 className="text-sm font-medium">Redes Sociales Profesionales (opcional)</h3>
-            
-            <div className="flex gap-2 mt-2">
-              <input
-                type="text"
-                name="name"
-                placeholder="Nombre (ej: LinkedIn)"
-                value={newSocialNetwork.name}
-                onChange={handleSocialNetworkChange}
-                className="flex-1 border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-              />
-              <input
-                type="url"
-                name="url"
-                placeholder="URL del perfil"
-                value={newSocialNetwork.url}
-                onChange={handleSocialNetworkChange}
-                className="flex-1 border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-              />
-              <button
-                type="button"
-                onClick={addSocialNetwork}
-                className="bg-blue-300 text-white rounded px-3 h-8 hover:bg-blue-400"
-              >
-                +
-              </button>
-            </div>
-            
-            {socialNetworks.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {socialNetworks.map((network, index) => (
-                  <div key={index} className="flex items-center justify-between bg-gray-100 p-1 rounded">
-                    <span className="text-sm">
-                      {network.name}: <a href={network.url} target="_blank" rel="noopener noreferrer" className="text-blue-500">{network.url}</a>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeSocialNetwork(index)}
-                      className="text-red-500 text-sm"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+          <div className="w-full h-[90%] border border-[#8f8f8f] rounded-[0.4rem] p-4 pt-0.5">
+            <div className="w-full h-full grid place-items-center"> 
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="numero_de_titulo" className="text-sm">Número de título:</label>
+                <input 
+                  required
+                  type="text" 
+                  name="numero_de_titulo" 
+                  id="numero_de_titulo" 
+                  value={psicologoData.numero_de_titulo}
+                  onChange={handlePsicologoChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
               </div>
-            )}
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="nombre_universidad" className="text-sm">Universidad:</label>
+                <input 
+                  required
+                  type="text" 
+                  name="nombre_universidad" 
+                  id="nombre_universidad" 
+                  value={psicologoData.nombre_universidad}
+                  onChange={handlePsicologoChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="monto_consulta" className="text-sm">Monto de consulta ($):</label>
+                <input 
+                  required
+                  type="number" 
+                  name="monto_consulta" 
+                  id="monto_consulta" 
+                  value={psicologoData.monto_consulta}
+                  onChange={handlePsicologoChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+              <div className="w-full max-w-[190px]">
+                <label htmlFor="telefono_trabajo" className="text-sm">Teléfono de trabajo:</label>
+                <input 
+                  type="tel" 
+                  name="telefono_trabajo" 
+                  id="telefono_trabajo" 
+                  value={psicologoData.telefono_trabajo || ''}
+                  onChange={handlePsicologoChange}
+                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Redes sociales */}
+        <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
+          <div>
+            <h2 className="text-sm">Redes sociales:</h2>
+            <hr className="my-1" />
+          </div>
+          <div className="w-full h-[90%] border border-[#8f8f8f] rounded-[0.4rem] p-4 pt-0.5">
+            <div className="w-full h-full grid place-items-center"> 
+              <div className="w-full max-w-[190px]">
+                <label className="text-sm">Agregar red social:</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Nombre (ej: LinkedIn)"
+                    value={newSocialNetwork.name}
+                    onChange={handleSocialNetworkChange}
+                    className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                  />
+                </div>
+                <input
+                  type="url"
+                  name="url"
+                  placeholder="URL del perfil"
+                  value={newSocialNetwork.url}
+                  onChange={handleSocialNetworkChange}
+                  className="w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 mt-2"
+                />
+                <button
+                  type="button"
+                  onClick={addSocialNetwork}
+                  className="bg-blue-300 text-white rounded px-3 h-8 mt-2 hover:bg-blue-400"
+                >
+                  Agregar
+                </button>
+              </div>
+
+              {socialNetworks.length > 0 && (
+                <div className="w-full max-w-[190px] mt-2">
+                  <label className="text-sm">Redes agregadas:</label>
+                  <div className="space-y-1 mt-1">
+                    {socialNetworks.map((network, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-100 p-1 rounded text-xs">
+                        <span>
+                          {network.name}: <a href={network.url} target="_blank" rel="noopener noreferrer" className="text-blue-500">link</a>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeSocialNetwork(index)}
+                          className="text-red-500"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {errors.professionalFields && (
-        <p className="text-red-500 text-sm mb-4">{errors.professionalFields}</p>
-      )}
-
-      <div className="w-full max-w-[350px] flex justify-center mt-2 mb-5"> 
+      <div className="w-full max-w-[190px] flex justify-center mt-2 mb-5"> 
         <button
           type="submit"
-          disabled={isLoading}
-          className={`bg-blue-600 cursor-pointer text-white text-center rounded transition w-full h-10 hover:bg-blue-700 ${isLoading ? 'opacity-50' : ''}`}
+          disabled={isSubmitting}
+          className="bg-blue-300 cursor-pointer text-stone-50 text-center rounded transition max-w-[180px] w-full h-8 hover:bg-blue-800 disabled:bg-gray-400"
         >
-          {isLoading ? (
-            'Procesando...'
-          ) : isEdit ? (
-            'Actualizar Perfil'
-          ) : (
-            'Registrar como Psicólogo'
-          )}
+          {isSubmitting 
+            ? (isEdit ? 'Actualizando...' : 'Registrando...') 
+            : (isEdit ? 'Actualizar' : 'Registrar')}
         </button>
       </div>
       
       {!isEdit && (
-        <div className="text-center">
+        <div>
           <label htmlFor="" className="text-[10px]">
             ¿Ya tiene una cuenta?  
             <Link

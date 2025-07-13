@@ -56,9 +56,11 @@ export default function FormPacientes({
   });
 
   const [showOtherSexo, setShowOtherSexo] = useState(false);
-  const [showOtherParentesco, setShowOtherParentesco] = useState(false);
   const [otherSexoValue, setOtherSexoValue] = useState('');
+  const [showOtherParentesco, setShowOtherParentesco] = useState(false);
   const [otherParentescoValue, setOtherParentescoValue] = useState('');
+  const [showOtherSexoTutor, setShowOtherSexoTutor] = useState(false);
+  const [otherSexoTutorValue, setOtherSexoTutorValue] = useState('');
 
   const [psicologoData, setPsicologoData] = useState({
     numero_de_titulo: user.psicologo?.numero_de_titulo || '',
@@ -74,16 +76,23 @@ export default function FormPacientes({
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
-    // Si el sexo del usuario no está en las opciones básicas, mostrar campo "Otro"
+    // Configurar campos "Otro" para sexo del usuario
     if (userData.sexo && !['Masculino', 'Femenino'].includes(userData.sexo)) {
       setShowOtherSexo(true);
       setOtherSexoValue(userData.sexo);
     }
     
-    // Si el parentesco del tutor no está en las opciones básicas, mostrar campo "Otro"
-    if (tutorData.parentesco && !['Padre', 'Madre', 'Tío', 'Tía', 'Abuelo', 'Abuela'].includes(tutorData.parentesco)) {
-      setShowOtherParentesco(true);
-      setOtherParentescoValue(tutorData.parentesco);
+    // Configurar campos "Otro" para tutor
+    if (user.adolecente?.tutor) {
+      if (user.adolecente.tutor.sexo && !['Masculino', 'Femenino'].includes(user.adolecente.tutor.sexo)) {
+        setShowOtherSexoTutor(true);
+        setOtherSexoTutorValue(user.adolecente.tutor.sexo);
+      }
+      
+      if (user.adolecente.tutor.parentesco && !['Padre', 'Madre', 'Tío', 'Tía', 'Abuelo', 'Abuela'].includes(user.adolecente.tutor.parentesco)) {
+        setShowOtherParentesco(true);
+        setOtherParentescoValue(user.adolecente.tutor.parentesco);
+      }
     }
   }, []);
 
@@ -126,6 +135,25 @@ export default function FormPacientes({
     setUserData(prev => ({ ...prev, sexo: value }));
   };
 
+  const handleSexoTutorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    
+    if (value === 'Otro') {
+      setShowOtherSexoTutor(true);
+      setTutorData(prev => ({ ...prev, sexo: '' }));
+    } else {
+      setShowOtherSexoTutor(false);
+      setOtherSexoTutorValue('');
+      setTutorData(prev => ({ ...prev, sexo: value }));
+    }
+  };
+
+  const handleOtherSexoTutorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setOtherSexoTutorValue(value);
+    setTutorData(prev => ({ ...prev, sexo: value }));
+  };
+
   const handleParentescoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     
@@ -161,6 +189,20 @@ export default function FormPacientes({
     return true;
   };
 
+  const validateSexoTutor = () => {
+    if (user.esAdolescente && !tutorData.sexo) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor seleccione el sexo del tutor' }));
+      return false;
+    }
+
+    if (showOtherSexoTutor && !otherSexoTutorValue) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor especifique el sexo del tutor' }));
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -172,14 +214,18 @@ export default function FormPacientes({
       return;
     }
     
-    // Validar campo "Otro" para sexo si está visible
+    // Validar campos "Otro"
     if (showOtherSexo && !otherSexoValue) {
       setErrors({ submit: 'Por favor especifique el sexo' });
       setIsSubmitting(false);
       return;
     }
     
-    // Validar campo "Otro" para parentesco si está visible
+    if (!validateSexoTutor()) {
+      setIsSubmitting(false);
+      return;
+    }
+    
     if (showOtherParentesco && !otherParentescoValue) {
       setErrors({ submit: 'Por favor especifique el parentesco' });
       setIsSubmitting(false);
@@ -187,7 +233,7 @@ export default function FormPacientes({
     }
     
     if (user.esAdolescente) {
-      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula_tutor', 'nombre_tutor', 'sexo', 'parentesco'];
+      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula_tutor', 'nombre_tutor'];
       const missingFields = requiredTutorFields.filter(field => !tutorData[field as keyof typeof tutorData]);
       
       if (missingFields.length > 0) {
@@ -212,12 +258,14 @@ export default function FormPacientes({
       id: user.id,
       usuarioData: {
         ...userData,
+        sexo: showOtherSexo ? otherSexoValue : userData.sexo,
         ...(!userData.password && { password: undefined }),
       },
       ...(user.esAdolescente && { 
         tutorData: {
           ...tutorData,
-          ...(showOtherParentesco && { parentesco: otherParentescoValue })
+          sexo: showOtherSexoTutor ? otherSexoTutorValue : tutorData.sexo,
+          parentesco: showOtherParentesco ? otherParentescoValue : tutorData.parentesco
         } 
       }),
       ...(user.esPsicologo && { psicologoData })
@@ -271,7 +319,7 @@ export default function FormPacientes({
           </div>
           
           <div className="w-full max-w-[190px]">
-            <label htmlFor="nombre" className="text-sm">Nombre completo:</label>
+            <label htmlFor="nombre" className="text-sm">Nombre y Apellido:</label>
             <input 
               required 
               type="text" 
@@ -291,6 +339,7 @@ export default function FormPacientes({
               value={showOtherSexo ? 'Otro' : userData.sexo}
               onChange={handleSexoChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              required
             >
               <option value="">Seleccione...</option>
               <option value="Masculino">Masculino</option>
@@ -350,11 +399,22 @@ export default function FormPacientes({
             />
           </div>
           
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="fecha_nacimiento" className="text-sm">Fecha de nacimiento:</label>
+            <input 
+              type="date" 
+              name="fecha_nacimiento" 
+              id="fecha_nacimiento" 
+              value={formatDateForInput(userData.fecha_nacimiento)}
+              onChange={handleUserChange}
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+            />
+          </div>
         </div>
         
         {/* Formulario del tutor - Mostrar si es adolescente */}
         {user.esAdolescente && (
-          <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
+          <div className="w-[240px] h-auto flex flex-col gap-2 m-auto">
             <div>
               <h2 className="text-sm">Datos de tutor:</h2>
               <hr className="my-1" />
@@ -374,7 +434,7 @@ export default function FormPacientes({
                   />
                 </div>
                 <div className="w-full max-w-[190px]">
-                  <label htmlFor="nombre_tutor" className="text-sm">Nombre completo del tutor:</label>
+                  <label htmlFor="nombre_tutor" className="text-sm">Nombre y Apellido, del tutor:</label>
                   <input 
                     required
                     type="text" 
@@ -390,30 +450,22 @@ export default function FormPacientes({
                   <select
                     name="sexo"
                     id="sexo_tutor"
-                    value={showOtherParentesco ? 'Otro' : tutorData.sexo}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === 'Otro') {
-                        setShowOtherSexo(true);
-                        setTutorData(prev => ({ ...prev, sexo: '' }));
-                      } else {
-                        setShowOtherSexo(false);
-                        setTutorData(prev => ({ ...prev, sexo: value }));
-                      }
-                    }}
+                    value={showOtherSexoTutor ? 'Otro' : tutorData.sexo}
+                    onChange={handleSexoTutorChange}
                     className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                    required
                   >
                     <option value="">Seleccione...</option>
                     <option value="Masculino">Masculino</option>
                     <option value="Femenino">Femenino</option>
                     <option value="Otro">Otro</option>
                   </select>
-                  {showOtherSexo && (
+                  {showOtherSexoTutor && (
                     <input
                       type="text"
-                      placeholder="Especifique el sexo"
-                      value={tutorData.sexo}
-                      onChange={(e) => setTutorData(prev => ({ ...prev, sexo: e.target.value }))}
+                      placeholder="Especifique el sexo del tutor"
+                      value={otherSexoTutorValue}
+                      onChange={handleOtherSexoTutorChange}
                       className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 mt-2"
                       required
                     />
@@ -427,6 +479,7 @@ export default function FormPacientes({
                     value={showOtherParentesco ? 'Otro' : tutorData.parentesco}
                     onChange={handleParentescoChange}
                     className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                    required
                   >
                     <option value="">Seleccione...</option>
                     <option value="Padre">Padre</option>
@@ -492,7 +545,7 @@ export default function FormPacientes({
 
         {/* Formulario del psicólogo - Mostrar si es psicólogo */}
         {user.esPsicologo && (
-          <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
+          <div className="w-[240px] h-auto flex flex-col gap-2 m-auto">
             <div>
               <h2 className="text-sm">Datos de psicólogo:</h2>
               <hr className="my-1" />

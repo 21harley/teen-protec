@@ -287,3 +287,150 @@ model OpcionPlantilla {
   // Índices
   @@index([id_pregunta])
 }
+
+// ====================== ESQUEMA DE REGISTROS/INDICADORES (AISLADO) ======================
+
+enum Sexo {
+  MASCULINO
+  FEMENINO
+  OTRO
+}
+
+enum EstadoTestRegistro {
+  NO_INICIADO
+  EN_PROGRESO
+  COMPLETADO
+  CANCELADO
+}
+
+// Registro snapshot de usuarios (datos desnormalizados para reporting)
+model RegistroUsuario {
+  id               Int       @id @default(autoincrement())
+  usuario_id       Int       // ID referencia al usuario real, sin FK
+  fecha_registro   DateTime  @default(now())
+  sexo             Sexo?
+  edad             Int?
+  tipo_usuario     String
+  psicologo_id     Int?      // ID referencia al psicólogo asignado
+  
+  // Relaciones solo dentro del esquema de registros
+  trazabilidades   RegistroTrazabilidad[]
+  metricas         RegistroMetricaUsuario[]
+  sesiones         RegistroSesion[]
+  
+  @@index([usuario_id])
+  @@index([fecha_registro])
+  @@index([psicologo_id])
+}
+
+// Registro snapshot de tests (datos desnormalizados)
+model RegistroTest {
+  id               Int                 @id @default(autoincrement())
+  test_id          Int                 // ID referencia al test real
+  usuario_id       Int
+  psicologo_id     Int?
+  fecha_creacion   DateTime
+  fecha_completado DateTime?
+  estado           EstadoTestRegistro
+  nombre_test      String?
+  valor_total      Float?
+  
+  // Relaciones solo dentro del esquema de registros
+  metricas         RegistroMetricaTest[]
+  
+  @@index([test_id])
+  @@index([usuario_id])
+  @@index([psicologo_id])
+  @@index([fecha_creacion])
+}
+
+// Trazabilidad de atención (sin FK a tablas principales)
+model RegistroTrazabilidad {
+  id               Int       @id @default(autoincrement())
+  registro_usuario_id Int
+  psicologo_id     Int       // ID referencia
+  fecha_inicio     DateTime
+  fecha_fin        DateTime?
+  secuencia       Int       // 1 = primer psicólogo, 2 = segundo, etc.
+  
+  // Relación solo dentro del esquema de registros
+  usuario          RegistroUsuario @relation(fields: [registro_usuario_id], references: [id])
+  
+  @@index([registro_usuario_id])
+  @@index([psicologo_id])
+}
+
+// Métricas por usuario
+model RegistroMetricaUsuario {
+  id               Int       @id @default(autoincrement())
+  registro_usuario_id Int
+  fecha            DateTime  @default(now())
+  tests_asignados  Int
+  tests_completados Int
+  tests_pendientes Int
+  sesiones_totales Int
+  
+  usuario          RegistroUsuario @relation(fields: [registro_usuario_id], references: [id])
+  
+  @@index([registro_usuario_id])
+  @@index([fecha])
+}
+
+// Métricas por test
+model RegistroMetricaTest {
+  id               Int       @id @default(autoincrement())
+  registro_test_id Int
+  fecha            DateTime  @default(now())
+  tiempo_respuesta Int?      // En minutos
+  preguntas_contestadas Int
+  preguntas_totales Int
+  
+  test             RegistroTest @relation(fields: [registro_test_id], references: [id])
+  
+  @@index([registro_test_id])
+}
+
+// Registro de sesiones (sin FK a tablas principales)
+model RegistroSesion {
+  id               Int       @id @default(autoincrement())
+  registro_usuario_id Int
+  psicologo_id     Int
+  fecha            DateTime
+  duracion        Int?      // En minutos
+  tests_revisados  String?   // IDs de tests separados por comas
+  
+  usuario          RegistroUsuario @relation(fields: [registro_usuario_id], references: [id])
+  
+  @@index([registro_usuario_id])
+  @@index([psicologo_id])
+}
+
+// Reportes generados
+model RegistroReporte {
+  id               Int       @id @default(autoincrement())
+  tipo             String    // "general", "psicologo", "paciente"
+  parametros       Json      // Filtros usados
+  fecha_generacion DateTime  @default(now())
+  generado_por_id  Int?      // ID del usuario que generó el reporte
+  formato          String    // "pdf", "csv", etc.
+  ruta_almacenamiento String?
+  
+  @@index([fecha_generacion])
+  @@index([generado_por_id])
+}
+
+// Problemas/mejoras
+model RegistroProblema {
+  id               Int       @id @default(autoincrement())
+  reportado_por_id Int       // ID del usuario
+  descripcion      String
+  categoria        String
+  prioridad        Int       @default(3)
+  fecha            DateTime  @default(now())
+  estado           String    @default("pendiente")
+  
+  @@index([reportado_por_id])
+  @@index([estado])
+  @@index([fecha])
+}
+

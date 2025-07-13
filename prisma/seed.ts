@@ -122,7 +122,11 @@ const dataUsuarios = [
     cedula: "111111111",
     fecha_nacimiento: new Date("1980-05-15"),
     id_tipo_usuario: 1,
-    authTokenExpiry: null
+    sexo: "Masculino",
+    authToken: null,
+    authTokenExpiry: null,
+    resetPasswordToken: null,
+    resetPasswordTokenExpiry: null
   },
   // Psicólogo 1
   {
@@ -133,7 +137,11 @@ const dataUsuarios = [
     cedula: "222222222",
     fecha_nacimiento: new Date("1985-08-20"),
     id_tipo_usuario: 2,
+    sexo: "Femenino",
+    authToken: null,
     authTokenExpiry: null,
+    resetPasswordToken: null,
+    resetPasswordTokenExpiry: null,
     psicologo: {
       create: {
         numero_de_titulo: "PSI-12345",
@@ -158,7 +166,11 @@ const dataUsuarios = [
     cedula: "333333333",
     fecha_nacimiento: new Date("1979-03-10"),
     id_tipo_usuario: 2,
+    sexo: "Masculino",
+    authToken: null,
     authTokenExpiry: null,
+    resetPasswordToken: null,
+    resetPasswordTokenExpiry: null,
     psicologo: {
       create: {
         numero_de_titulo: "PSI-67890",
@@ -183,7 +195,11 @@ const dataUsuarios = [
     fecha_nacimiento: new Date("2008-07-22"),
     id_tipo_usuario: 3,
     id_psicologo: 2, // Asignado al Psicólogo 1 (Dra. María González)
+    sexo: "Femenino",
+    authToken: null,
     authTokenExpiry: null,
+    resetPasswordToken: null,
+    resetPasswordTokenExpiry: null,
     adolecente: {
       create: {
         tutor: {
@@ -210,7 +226,11 @@ const dataUsuarios = [
     fecha_nacimiento: new Date("2007-11-05"),
     id_tipo_usuario: 3,
     id_psicologo: 3, // Asignado al Psicólogo 2 (Dr. Carlos Méndez)
+    sexo: "Masculino",
+    authToken: null,
     authTokenExpiry: null,
+    resetPasswordToken: null,
+    resetPasswordTokenExpiry: null,
     adolecente: {
       create: {
         tutor: {
@@ -237,7 +257,11 @@ const dataUsuarios = [
     fecha_nacimiento: new Date("2009-02-15"),
     id_tipo_usuario: 3,
     id_psicologo: 2, // Asignado al Psicólogo 1 (Dra. María González)
+    sexo: "Masculino",
+    authToken: null,
     authTokenExpiry: null,
+    resetPasswordToken: null,
+    resetPasswordTokenExpiry: null,
     adolecente: {
       create: {
         tutor: {
@@ -264,7 +288,75 @@ const dataUsuarios = [
     fecha_nacimiento: new Date("1995-04-30"),
     id_tipo_usuario: 4,
     id_psicologo: 3, // Asignado al Psicólogo 2 (Dr. Carlos Méndez)
-    authTokenExpiry: null
+    sexo: "Femenino",
+    authToken: null,
+    authTokenExpiry: null,
+    resetPasswordToken: null,
+    resetPasswordTokenExpiry: null
+  }
+];
+
+// Datos de preguntas y opciones para tests
+const preguntasTest = [
+  {
+    texto_pregunta: "¿Cómo te has sentido durante la última semana?",
+    id_tipo: 1, // radio
+    orden: 1,
+    obligatoria: true,
+    peso: 1.0,
+    opciones: [
+      { texto: "Muy bien", valor: "muy_bien", orden: 1 },
+      { texto: "Bien", valor: "bien", orden: 2 },
+      { texto: "Regular", valor: "regular", orden: 3 },
+      { texto: "Mal", valor: "mal", orden: 4 },
+      { texto: "Muy mal", valor: "muy_mal", orden: 5 }
+    ]
+  },
+  {
+    texto_pregunta: "¿Qué emociones has experimentado recientemente? (Selecciona todas las que apliquen)",
+    id_tipo: 2, // checkbox
+    orden: 2,
+    obligatoria: false,
+    peso: 0.8,
+    opciones: [
+      { texto: "Alegría", valor: "alegria", orden: 1 },
+      { texto: "Tristeza", valor: "tristeza", orden: 2 },
+      { texto: "Enojo", valor: "enojo", orden: 3 },
+      { texto: "Miedo", valor: "miedo", orden: 4 },
+      { texto: "Ansiedad", valor: "ansiedad", orden: 5 }
+    ]
+  },
+  {
+    texto_pregunta: "Describe cómo ha sido tu día hoy",
+    id_tipo: 3, // text
+    orden: 3,
+    obligatoria: false,
+    peso: 0.5,
+    placeholder: "Escribe aquí tu respuesta..."
+  },
+  {
+    texto_pregunta: "¿Cómo calificarías tu nivel de estrés actual?",
+    id_tipo: 5, // range
+    orden: 4,
+    obligatoria: true,
+    peso: 1.2,
+    min: 1,
+    max: 10,
+    paso: 1
+  },
+  {
+    texto_pregunta: "¿Con qué frecuencia te sientes abrumado/a?",
+    id_tipo: 4, // select
+    orden: 5,
+    obligatoria: true,
+    peso: 1.0,
+    opciones: [
+      { texto: "Nunca", valor: "nunca", orden: 1 },
+      { texto: "Rara vez", valor: "rara_vez", orden: 2 },
+      { texto: "A veces", valor: "a_veces", orden: 3 },
+      { texto: "Frecuentemente", valor: "frecuentemente", orden: 4 },
+      { texto: "Siempre", valor: "siempre", orden: 5 }
+    ]
   }
 ];
 
@@ -308,9 +400,7 @@ async function main() {
       data: {
         nombre: tipoAlerta.nombre,
         url_destino: tipoAlerta.url_destino,
-        tipo_usuario: {
-          connect: { id: tipoAlerta.id_tipo_usuario }
-        }
+        id_tipo_usuario: tipoAlerta.id_tipo_usuario
       }
     });
   }
@@ -335,7 +425,37 @@ async function main() {
     });
   }
 
-  // 5. Crear alarmas de prueba según los flujos descritos
+  // 5. Actualizar relaciones psicólogo-paciente
+  console.log("👨‍⚕️ Actualizando relaciones psicólogo-paciente...");
+  await prisma.usuario.update({
+    where: { id: 4 }, // Adolescente 1
+    data: {
+      psicologoPacientes: { connect: { id: 2 } } // Psicólogo 1
+    }
+  });
+
+  await prisma.usuario.update({
+    where: { id: 5 }, // Adolescente 2
+    data: {
+      psicologoPacientes: { connect: { id: 3 } } // Psicólogo 2
+    }
+  });
+
+  await prisma.usuario.update({
+    where: { id: 6 }, // Adolescente 3
+    data: {
+      psicologoPacientes: { connect: { id: 2 } } // Psicólogo 1
+    }
+  });
+
+  await prisma.usuario.update({
+    where: { id: 7 }, // Usuario básico
+    data: {
+      psicologoPacientes: { connect: { id: 3 } } // Psicólogo 2
+    }
+  });
+
+  // 6. Crear alarmas de prueba según los flujos descritos
   console.log("🚨 Creando alarmas de prueba...");
   await prisma.alarma.createMany({
     data: [
@@ -398,70 +518,6 @@ async function main() {
     ]
   });
 
-  // Datos de preguntas y opciones para tests
-  const preguntasTest = [
-    {
-      texto_pregunta: "¿Cómo te has sentido durante la última semana?",
-      id_tipo: 1, // radio
-      orden: 1,
-      obligatoria: true,
-      peso: 1.0,
-      opciones: [
-        { texto: "Muy bien", valor: "muy_bien", orden: 1 },
-        { texto: "Bien", valor: "bien", orden: 2 },
-        { texto: "Regular", valor: "regular", orden: 3 },
-        { texto: "Mal", valor: "mal", orden: 4 },
-        { texto: "Muy mal", valor: "muy_mal", orden: 5 }
-      ]
-    },
-    {
-      texto_pregunta: "¿Qué emociones has experimentado recientemente? (Selecciona todas las que apliquen)",
-      id_tipo: 2, // checkbox
-      orden: 2,
-      obligatoria: false,
-      peso: 0.8,
-      opciones: [
-        { texto: "Alegría", valor: "alegria", orden: 1 },
-        { texto: "Tristeza", valor: "tristeza", orden: 2 },
-        { texto: "Enojo", valor: "enojo", orden: 3 },
-        { texto: "Miedo", valor: "miedo", orden: 4 },
-        { texto: "Ansiedad", valor: "ansiedad", orden: 5 }
-      ]
-    },
-    {
-      texto_pregunta: "Describe cómo ha sido tu día hoy",
-      id_tipo: 3, // text
-      orden: 3,
-      obligatoria: false,
-      peso: 0.5,
-      placeholder: "Escribe aquí tu respuesta..."
-    },
-    {
-      texto_pregunta: "¿Cómo calificarías tu nivel de estrés actual?",
-      id_tipo: 5, // range
-      orden: 4,
-      obligatoria: true,
-      peso: 1.2,
-      min: 1,
-      max: 10,
-      paso: 1
-    },
-    {
-      texto_pregunta: "¿Con qué frecuencia te sientes abrumado/a?",
-      id_tipo: 4, // select
-      orden: 5,
-      obligatoria: true,
-      peso: 1.0,
-      opciones: [
-        { texto: "Nunca", valor: "nunca", orden: 1 },
-        { texto: "Rara vez", valor: "rara_vez", orden: 2 },
-        { texto: "A veces", valor: "a_veces", orden: 3 },
-        { texto: "Frecuentemente", valor: "frecuentemente", orden: 4 },
-        { texto: "Siempre", valor: "siempre", orden: 5 }
-      ]
-    }
-  ];
-
   // Función para crear tests con preguntas y opciones
   async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, estado: 'NO_INICIADO' | 'EN_PROGRESO' | 'COMPLETADO', pesoPreguntas: 'SIN_VALOR' | 'IGUAL_VALOR' | 'BAREMO') {
     const test = await prisma.test.create({
@@ -475,7 +531,7 @@ async function main() {
             { min: 11, max: 20, resultado: "Riesgo moderado" },
             { min: 21, max: 30, resultado: "Alto riesgo" }
           ]
-        } : null,
+        } : undefined,
         valor_total: pesoPreguntas !== 'SIN_VALOR' ? 5.0 : null,
         id_psicologo: idPsicologo,
         id_usuario: idUsuario,

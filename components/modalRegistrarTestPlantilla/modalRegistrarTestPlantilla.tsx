@@ -4,7 +4,8 @@ import {
   TestPlantilla, 
   TestPlantillaInput, 
   TestStatus,
-  TipoPregunta
+  TipoPreguntaPlantilla,
+  PesoPreguntaTipoPlantilla
 } from './../../app/types/plantilla/index';
 import ModalRegistrarInput from './../modalRegistrarInput/modalRegistrarInput';
 import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
@@ -28,7 +29,7 @@ const PESO_PREGUNTA_DISPLAY: Record<PesoPreguntaTipo, string> = {
 };
 
 // Definición de tipos de pregunta disponibles
-const TIPOS_PREGUNTA_DISPONIBLES: TipoPregunta[] = [
+const TIPOS_PREGUNTA_DISPONIBLES: TipoPreguntaPlantilla[] = [
   { id: 1, nombre: TipoPreguntaNombre.OPCION_UNICA, descripcion: 'Opción única', tipo_respuesta: 'radio' },
   { id: 2, nombre: TipoPreguntaNombre.OPCION_MULTIPLE, descripcion: 'Selección múltiple', tipo_respuesta: 'checkbox' },
   { id: 3, nombre: TipoPreguntaNombre.RESPUESTA_CORTA, descripcion: 'Texto corto', tipo_respuesta: 'text' },
@@ -61,7 +62,8 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
   const isTextAmin = isAdmin ? "Plantilla" : "Test";
   const [nombrePlantilla, setNombrePlantilla] = useState('');
   const [preguntas, setPreguntas] = useState<PreguntaData[]>([]);
-  const [pesoPreguntas, setPesoPreguntas] = useState<PesoPreguntaTipo>(PesoPreguntaTipo.SIN_VALOR);
+  const [pesoPreguntas, setPesoPreguntas] = useState<PesoPreguntaTipoPlantilla>(PesoPreguntaTipoPlantilla.SIN_VALOR);
+  const [valorPreguntaIgual, setValorPreguntaIgual] = useState<number | null>(null);
   const [isModalRegistrarInputOpen, setIsModalRegistrarInputOpen] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<PreguntaData | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(null);
@@ -77,6 +79,12 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
         setNombrePlantilla(plantillaToEdit.nombre);
         setPreguntas(convertPreguntasToPreguntaData(plantillaToEdit.preguntas || []));
         setPesoPreguntas(plantillaToEdit.peso_preguntas || PesoPreguntaTipo.SIN_VALOR);
+        
+        // Cargar valor_pregunta_igual si existe
+        if (plantillaToEdit.peso_preguntas === PesoPreguntaTipoPlantilla.IGUAL_VALOR && plantillaToEdit.preguntas?.length) {
+          setValorPreguntaIgual(plantillaToEdit.preguntas[0].peso || null);
+        }
+        
         setSelectedPsychologist(plantillaToEdit.id_psicologo || null);
         setIsEditingPlantilla(true);
       } else {
@@ -93,7 +101,7 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
   const convertPreguntasToPreguntaData = (preguntas: PreguntaPlantillaBase[]): PreguntaData[] => {
     return preguntas.map(pregunta => ({
       ...pregunta,
-      id: pregunta.id || 0, // Asignar un valor por defecto si es undefined
+      id: pregunta.id || 0,
       id_tipo: pregunta.id_tipo,
       texto_pregunta: pregunta.texto_pregunta,
       orden: pregunta.orden,
@@ -129,7 +137,8 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
   const resetForm = () => {
     setNombrePlantilla('');
     setPreguntas([]);
-    setPesoPreguntas(PesoPreguntaTipo.SIN_VALOR);
+    setPesoPreguntas(PesoPreguntaTipoPlantilla.SIN_VALOR);
+    setValorPreguntaIgual(null);
     setSelectedPsychologist(null);
     setIsEditingPlantilla(false);
     setCurrentQuestion(null);
@@ -207,6 +216,12 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
       return;
     }
 
+    // Validación específica para valor igual
+    if (pesoPreguntas === PesoPreguntaTipoPlantilla.IGUAL_VALOR && valorPreguntaIgual === null) {
+      alert('Debe especificar el valor para las preguntas');
+      return;
+    }
+
     // Convertir PreguntaData a PreguntaPlantillaBase para el envío
     const preguntasParaEnvio = preguntas.map(pregunta => ({
       id: pregunta.id,
@@ -218,18 +233,25 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
       min: pregunta.min,
       max: pregunta.max,
       paso: pregunta.paso,
-      peso: pregunta.peso !== null && pregunta.peso !== undefined ? pregunta.peso : undefined,
-      baremo_detalle: pregunta.baremo_detalle,
+      // Aplicar valor igual si corresponde y asegurar que peso nunca sea null
+      peso: (() => {
+        const pesoValue = pesoPreguntas === PesoPreguntaTipoPlantilla.IGUAL_VALOR ? valorPreguntaIgual : pregunta.peso;
+        return pesoValue === null ? undefined : pesoValue;
+      })(),
+      baremo_detalle: pesoPreguntas === PesoPreguntaTipoPlantilla.BAREMO ? pregunta.baremo_detalle : undefined,
       opciones: pregunta.opciones
     }));
 
-    const plantillaData: any = {
+    const plantillaData: TestPlantillaInput = {
       nombre: nombrePlantilla,
       peso_preguntas: pesoPreguntas,
       preguntas: preguntasParaEnvio,
       estado: isEditingPlantilla && plantillaToEdit 
         ? plantillaToEdit.estado 
         : TestStatus.NoIniciado,
+      ...(pesoPreguntas === PesoPreguntaTipoPlantilla.IGUAL_VALOR && {
+        valor_pregunta_igual: valorPreguntaIgual
+      }),
       ...(isAdmin && selectedPsychologist !== null && {
         id_psicologo: selectedPsychologist
       })
@@ -241,7 +263,7 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
 
   const getTipoPreguntaNombre = (idTipo: number): string => {
     const tipo = TIPOS_PREGUNTA_DISPONIBLES.find(t => t.id === idTipo);
-    return tipo ? TIPO_PREGUNTA_DISPLAY[tipo.nombre] : 'Desconocido';
+    return tipo ? TIPO_PREGUNTA_DISPLAY[tipo.nombre as TipoPreguntaNombre] : 'Desconocido';
   };
 
   if (!isOpen) return null;
@@ -311,7 +333,14 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
                 </label>
                 <select
                   value={pesoPreguntas}
-                  onChange={(e) => setPesoPreguntas(e.target.value as PesoPreguntaTipo)}
+                  onChange={(e) => {
+                    const newTipo = e.target.value as PesoPreguntaTipoPlantilla;
+                    setPesoPreguntas(newTipo);
+                    // Resetear valor_pregunta_igual si cambia el tipo
+                    if (newTipo !== PesoPreguntaTipoPlantilla.IGUAL_VALOR) {
+                      setValorPreguntaIgual(null);
+                    }
+                  }}
                   className="w-full p-2 border border-gray-300 rounded"
                 >
                   {Object.values(PesoPreguntaTipo).map((tipo) => (
@@ -320,9 +349,29 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
                     </option>
                   ))}
                 </select>
-                {pesoPreguntas === PesoPreguntaTipo.BAREMO && (
+                
+                {/* Mostrar campo para valor igual si corresponde */}
+                {pesoPreguntas === PesoPreguntaTipoPlantilla.IGUAL_VALOR && (
+                  <div className="mt-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Valor para cada pregunta *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={valorPreguntaIgual || ''}
+                      onChange={(e) => setValorPreguntaIgual(parseFloat(e.target.value) || null)}
+                      className="w-full p-2 border border-gray-300 rounded"
+                      placeholder="Ingrese el valor para cada pregunta"
+                    />
+                  </div>
+                )}
+                
+                {pesoPreguntas === PesoPreguntaTipoPlantilla.BAREMO && (
                   <div className="mt-2 text-sm text-gray-600">
-                    <p>Para el tipo Baremo, ingrese la fórmula en el campo correspondiente cuando agregue/edite preguntas.</p>
+                    <p>Para el tipo Baremo, deberá especificar el valor de cada opción al agregar/editar preguntas.</p>
+                    <p>Para preguntas de texto corto, se asignará un valor único.</p>
                   </div>
                 )}
               </div>
@@ -359,14 +408,14 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
                                       Placeholder: {pregunta.placeholder}
                                     </div>
                                   )}
-                                  {pregunta.peso && (
+                                  {(pesoPreguntas === PesoPreguntaTipoPlantilla.IGUAL_VALOR || pregunta.peso) && (
                                     <div className="text-sm text-gray-600 mt-1">
-                                      Peso: {pregunta.peso}
+                                      Peso: {pesoPreguntas === PesoPreguntaTipoPlantilla.IGUAL_VALOR ? valorPreguntaIgual : pregunta.peso}
                                     </div>
                                   )}
-                                  {pregunta.baremo_detalle && pesoPreguntas === PesoPreguntaTipo.BAREMO && (
+                                  {pesoPreguntas === PesoPreguntaTipoPlantilla.BAREMO && pregunta.baremo_detalle && (
                                     <div className="text-sm text-gray-600 mt-1 truncate">
-                                      Fórmula: {pregunta.baremo_detalle}
+                                      Baremo: {JSON.stringify(pregunta.baremo_detalle)}
                                     </div>
                                   )}
                                 </div>
@@ -449,9 +498,13 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={preguntas.length === 0 || !nombrePlantilla.trim() || (isAdmin && !selectedPsychologist)}
+                disabled={preguntas.length === 0 || !nombrePlantilla.trim() || 
+                  (isAdmin && !selectedPsychologist) ||
+                  (pesoPreguntas === PesoPreguntaTipoPlantilla.IGUAL_VALOR && valorPreguntaIgual === null)}
                 className={`w-full max-w-[180px] m-auto cursor-pointer p-2 px-10 text-white text-sm rounded-md transition flex justify-center ${
-                  preguntas.length === 0 || !nombrePlantilla.trim() || (isAdmin && !selectedPsychologist)
+                  preguntas.length === 0 || !nombrePlantilla.trim() || 
+                  (isAdmin && !selectedPsychologist) ||
+                  (pesoPreguntas === PesoPreguntaTipoPlantilla.IGUAL_VALOR && valorPreguntaIgual === null)
                     ? 'bg-gray-400 cursor-not-allowed' 
                     : 'bg-[#6DC7E4] hover:bg-blue-600' 
                 }`}
@@ -471,6 +524,7 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
         initialData={currentQuestion}
         isEditing={currentQuestionIndex !== null}
         pesoPreguntaTipo={pesoPreguntas}
+        valorPreguntaIgual={valorPreguntaIgual}
         tiposPregunta={TIPOS_PREGUNTA_DISPONIBLES}
       />
     </>

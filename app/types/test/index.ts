@@ -38,7 +38,7 @@ export interface TestBase {
 }
 
 export interface PreguntaData {
-  id: number;
+  id?: number;
   id_test?: number;
   texto_pregunta: string;
   id_tipo: number;
@@ -61,6 +61,8 @@ export interface OpcionData {
   valor: string;
   orden: number;
   es_otro?: boolean;
+  valor_baremo?: number; 
+  es_correcta?: boolean; 
 }
 
 export interface RespuestaData {

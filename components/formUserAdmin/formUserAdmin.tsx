@@ -81,8 +81,14 @@ export default function FormUserAdmin({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [currentTipoRegistro, setCurrentTipoRegistro] = useState<TipoRegistro>(tipoRegistro);
+  
+  // User sexo fields
   const [showOtherSexo, setShowOtherSexo] = useState(false);
   const [otherSexoValue, setOtherSexoValue] = useState('');
+  
+  // Tutor fields
+  const [showOtherSexoTutor, setShowOtherSexoTutor] = useState(false);
+  const [otherSexoTutorValue, setOtherSexoTutorValue] = useState('');
   const [showOtherParentesco, setShowOtherParentesco] = useState(false);
   const [otherParentescoValue, setOtherParentescoValue] = useState('');
 
@@ -97,7 +103,7 @@ export default function FormUserAdmin({
         sexo: user.sexo || ''
       });
 
-      // Configurar campo de sexo "Otro" si es necesario
+      // Handle user sexo "other" case
       if (user.sexo && !['Masculino', 'Femenino'].includes(user.sexo)) {
         setShowOtherSexo(true);
         setOtherSexoValue(user.sexo);
@@ -114,10 +120,16 @@ export default function FormUserAdmin({
           parentesco: user.adolecente.tutor.parentesco || ''
         });
 
-        // Configurar campo de parentesco "Otro" si es necesario
+        // Handle tutor parentesco "other" case
         if (user.adolecente.tutor.parentesco && !['Padre', 'Madre', 'Tío', 'Tía', 'Abuelo', 'Abuela'].includes(user.adolecente.tutor.parentesco)) {
           setShowOtherParentesco(true);
           setOtherParentescoValue(user.adolecente.tutor.parentesco);
+        }
+
+        // Handle tutor sexo "other" case
+        if (user.adolecente.tutor.sexo && !['Masculino', 'Femenino'].includes(user.adolecente.tutor.sexo)) {
+          setShowOtherSexoTutor(true);
+          setOtherSexoTutorValue(user.adolecente.tutor.sexo);
         }
 
         setIsMinor(true);
@@ -178,6 +190,25 @@ export default function FormUserAdmin({
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleSexoTutorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    
+    if (value === 'Otro') {
+      setShowOtherSexoTutor(true);
+      setTutorData(prev => ({ ...prev, sexo: '' }));
+    } else {
+      setShowOtherSexoTutor(false);
+      setOtherSexoTutorValue('');
+      setTutorData(prev => ({ ...prev, sexo: value }));
+    }
+  };
+
+  const handleOtherSexoTutorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setOtherSexoTutorValue(value);
+    setTutorData(prev => ({ ...prev, sexo: value }));
   };
 
   const handleParentescoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -249,6 +280,20 @@ export default function FormUserAdmin({
     return true;
   };
 
+  const validateSexoTutor = () => {
+    if (currentTipoRegistro === 'adolescente' && !tutorData.sexo) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor seleccione el sexo del tutor' }));
+      return false;
+    }
+
+    if (showOtherSexoTutor && !otherSexoTutorValue) {
+      setErrors(prev => ({ ...prev, submit: 'Por favor especifique el sexo del tutor' }));
+      return false;
+    }
+
+    return true;
+  };
+
   const validateParentesco = () => {
     if (currentTipoRegistro === 'adolescente' && !tutorData.parentesco) {
       setErrors(prev => ({ ...prev, submit: 'Por favor seleccione el parentesco del tutor' }));
@@ -280,12 +325,17 @@ export default function FormUserAdmin({
     }
 
     if (currentTipoRegistro === 'adolescente') {
+      if (!validateSexoTutor()) {
+        setIsSubmitting(false);
+        return;
+      }
+
       if (!validateParentesco()) {
         setIsSubmitting(false);
         return;
       }
 
-      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula_tutor', 'nombre_tutor', 'sexo'];
+      const requiredTutorFields = ['profesion_tutor', 'telefono_contacto', 'correo_contacto', 'cedula_tutor', 'nombre_tutor'];
       const missingFields = requiredTutorFields.filter(field => !tutorData[field as keyof typeof tutorData]);
       if (missingFields.length > 0) {
         setErrors({ submit: 'Por favor complete todos los datos del tutor' });
@@ -316,6 +366,7 @@ export default function FormUserAdmin({
       ...(currentTipoRegistro === 'adolescente' && { 
         tutorData: {
           ...tutorData,
+          sexo: showOtherSexoTutor ? otherSexoTutorValue : tutorData.sexo,
           parentesco: showOtherParentesco ? otherParentescoValue : tutorData.parentesco
         } 
       }),
@@ -388,6 +439,8 @@ export default function FormUserAdmin({
         setOtherSexoValue('');
         setShowOtherParentesco(false);
         setOtherParentescoValue('');
+        setShowOtherSexoTutor(false);
+        setOtherSexoTutorValue('');
 
         if(user_stora == null ) router.push('/');
         
@@ -472,7 +525,7 @@ export default function FormUserAdmin({
           </div>
           
           <div className="w-full max-w-[190px]">
-            <label htmlFor="nombre" className="text-sm">Nombre completo:</label>
+            <label htmlFor="nombre" className="text-sm">Nombre y Apellido:</label>
             <input 
               required 
               type="text" 
@@ -608,7 +661,7 @@ export default function FormUserAdmin({
         
         {/* Formulario del tutor - Mostrar si es adolescente */}
         {(isMinor || isEdit || currentTipoRegistro === 'adolescente') && (currentTipoRegistro !== "usuario" && currentTipoRegistro !== "psicologo") && (
-          <div className="w-[240px] h-[336px] flex flex-col gap-2 m-auto">
+          <div className="w-[240px] h-auto flex flex-col gap-2 m-auto">
             <div>
               <h2 className="text-sm">Datos de tutor:</h2>
               <hr className="my-1" />
@@ -628,7 +681,7 @@ export default function FormUserAdmin({
                   />
                 </div>
                 <div className="w-full max-w-[190px]">
-                  <label htmlFor="nombre_tutor" className="text-sm">Nombre completo del tutor:</label>
+                  <label htmlFor="nombre_tutor" className="text-sm">Nombre y Apellido, del tutor:</label>
                   <input 
                     required
                     type="text" 
@@ -644,18 +697,26 @@ export default function FormUserAdmin({
                   <select
                     name="sexo"
                     id="sexo_tutor"
-                    value={tutorData.sexo}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setTutorData(prev => ({ ...prev, sexo: value }));
-                    }}
+                    value={showOtherSexoTutor ? 'Otro' : tutorData.sexo}
+                    onChange={handleSexoTutorChange}
                     className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
                     required
                   >
                     <option value="">Seleccione...</option>
                     <option value="Masculino">Masculino</option>
                     <option value="Femenino">Femenino</option>
+                    <option value="Otro">Otro</option>
                   </select>
+                  {showOtherSexoTutor && (
+                    <input
+                      type="text"
+                      placeholder="Especifique el sexo del tutor"
+                      value={otherSexoTutorValue}
+                      onChange={handleOtherSexoTutorChange}
+                      className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 mt-2"
+                      required
+                    />
+                  )}
                 </div>
                 <div className="w-full max-w-[190px]">
                   <label htmlFor="parentesco" className="text-sm">Parentesco:</label>
