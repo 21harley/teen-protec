@@ -174,9 +174,9 @@ model TipoAlerta {
   id              Int       @id @default(autoincrement())
   nombre          String    @unique
   url_destino     String?
-  id_tipo_usuario Int
+  id_tipo_usuario Int? 
   alarmas         Alarma[]
-  tipo_usuario    TipoUsuario @relation(fields: [id_tipo_usuario], references: [id])
+  tipo_usuario    TipoUsuario? @relation(fields: [id_tipo_usuario], references: [id])
 }
 
 model Adolecente {
@@ -194,7 +194,8 @@ model Alarma {
   fecha_creacion DateTime  @default(now())
   fecha_vista    DateTime?
   vista          Boolean   @default(false)
-  
+  correo_enviado Boolean   @default(false)
+
   // Relaciones
   usuario        Usuario?  @relation("usuario", fields: [id_usuario], references: [id])
   tipo_alerta    TipoAlerta? @relation(fields: [id_tipo_alerta], references: [id])

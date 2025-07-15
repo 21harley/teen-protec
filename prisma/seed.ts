@@ -79,6 +79,15 @@ const tipoAlertaData = [
     nombre: "Alerta de sistema", 
     url_destino: "/alertas",
     id_tipo_usuario: 1 // Administrador
+  },
+  //sin id es de uso general
+  { 
+    nombre: "Bienvenido!.", 
+    url_destino: "/",
+  },
+  { 
+    nombre: "Recuperación de contraseña.", 
+    url_destino: "/",
   }
 ];
 

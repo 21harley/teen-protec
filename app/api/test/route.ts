@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from "./../../../app/generated/prisma";
+import { create_alarma_email,create_alarma } from '@/app/lib/alertas';
 
 const prisma = new PrismaClient()
 
@@ -860,6 +861,39 @@ export async function PUT(request: Request) {
             fecha_ultima_respuesta: new Date()
           }
         });
+
+        if(determinarEstado(completado) == "COMPLETADO" && !id_psicologo && !id_usuario){
+              const usuarioExistente = await prisma.usuario.findUnique({
+                where: { id: id_usuario }
+              });
+               const psicologoExistente = await prisma.usuario.findUnique({
+                 where: { id: id_psicologo }
+               });
+               if(psicologoExistente?.email){
+               const result_email = await  create_alarma_email({
+                  id_usuario: psicologoExistente?.id,
+                  id_tipo_alerta: 2,
+                  mensaje: "Test completado",
+                  vista: false,
+                  correo_enviado: true,
+                  emailParams: {
+                    to: psicologoExistente?.email,
+                    subject: "Tienes una nueva alerta",
+                    template: "test_completado",
+                    props: {
+                      name: psicologoExistente.nombre,
+                      user_name:usuarioExistente?.nombre,
+                      alertMessage: `El paciente ${usuarioExistente?.nombre}, completo el test.`
+                    }
+                  }
+                });
+                
+                if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
+               }else{
+                console.log("No se envio correo, el usuario no tiene.");
+               }
+        }
+
       }
 
       return test;

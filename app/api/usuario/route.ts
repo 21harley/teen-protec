@@ -3,6 +3,7 @@ import { PrismaClient } from "./../../../app/generated/prisma";
 import { encriptar, EncryptedData, generarTokenExpiry } from "@/app/lib/crytoManager";
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
+import { create_alarma_email,create_alarma } from '@/app/lib/alertas';
 
 const prisma = new PrismaClient();
 
@@ -630,9 +631,28 @@ export async function POST(request: Request) {
         })) || []
       };
     }
+    
+  const result_email = await  create_alarma_email({
+  id_usuario: usuarioCompleto.id,
+  id_tipo_alerta: 8,
+  mensaje: "Registro completado con exito",
+  vista: false,
+  correo_enviado: true,
+  emailParams: {
+    to: usuarioCompleto.email,
+    subject: "Tienes una nueva alerta",
+    template: "welcome",
+    props: {
+      name: usuarioCompleto.nombre,
+      alertMessage: "¡Bienvenido al PsicoTest!"
+    }
+  }
+});
 
-    return NextResponse.json(responseData, { status: 201 });
+  if (!result_email.emailSent) console.error('Error creando usuario',result_email); 
 
+  return NextResponse.json(responseData, { status: 201 });
+ 
   } catch (error: any) {
     console.error('Error creando usuario:', error);
     
@@ -855,6 +875,18 @@ export async function PUT(request: Request) {
           url_perfil: red.url_perfil
         })) || []
       };
+    }
+
+    const result_email = await  create_alarma({
+      id_usuario: responseData.user.id,
+      id_tipo_alerta: null,
+      mensaje: "Atualizacion completado con exito",
+      vista: false,
+      correo_enviado: false,
+    });
+    
+    if(!result_email){
+      console.error("Error al crear la alerta.");
     }
 
     return NextResponse.json(responseData, { status: 200 });

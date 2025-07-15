@@ -115,8 +115,8 @@ CREATE TABLE "TipoAlerta" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "nombre" TEXT NOT NULL,
     "url_destino" TEXT,
-    "id_tipo_usuario" INTEGER NOT NULL,
-    CONSTRAINT "TipoAlerta_id_tipo_usuario_fkey" FOREIGN KEY ("id_tipo_usuario") REFERENCES "TipoUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    "id_tipo_usuario" INTEGER,
+    CONSTRAINT "TipoAlerta_id_tipo_usuario_fkey" FOREIGN KEY ("id_tipo_usuario") REFERENCES "TipoUsuario" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -136,6 +136,7 @@ CREATE TABLE "Alarma" (
     "fecha_creacion" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "fecha_vista" DATETIME,
     "vista" BOOLEAN NOT NULL DEFAULT false,
+    "correo_enviado" BOOLEAN NOT NULL DEFAULT false,
     CONSTRAINT "Alarma_id_usuario_fkey" FOREIGN KEY ("id_usuario") REFERENCES "Usuario" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Alarma_id_tipo_alerta_fkey" FOREIGN KEY ("id_tipo_alerta") REFERENCES "TipoAlerta" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );

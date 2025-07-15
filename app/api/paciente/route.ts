@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from "../../../app/generated/prisma";
 import { calcularProgreso } from '../../../app/api/helpers/testHelpers'
 import { cookies } from 'next/headers';
+import { create_alarma_email,create_alarma } from '@/app/lib/alertas';
 
 const prisma = new PrismaClient();
 
@@ -276,6 +277,26 @@ export async function POST(request: Request) {
           }
         }
       });
+      
+      const result_email = await  create_alarma_email({
+        id_usuario: usuarioActualizado.id ,
+        id_tipo_alerta: 1,
+        mensaje: "Test asignado",
+        vista: false,
+        correo_enviado: true,
+        emailParams: {
+          to: usuarioActualizado.email,
+          subject: "Tienes una nueva alerta",
+          template: "test_asignado",
+          props: {
+            name: usuarioActualizado.nombre,
+            psicologo_name:usuarioAutenticado.nombre,
+            alertMessage: `El psicolog,${usuarioAutenticado.nombre} te atendera protamente.`
+          }
+        }
+      });
+      
+      if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
 
       return NextResponse.json(
         { 
@@ -562,6 +583,14 @@ export async function DELETE(request: Request) {
         tipo_usuario: true
       }
     });
+    const psicologo = await prisma.usuario.findUnique({
+      where: { 
+        id: parseInt(id_psicologo),
+      },
+      include: {
+        tipo_usuario: true
+      }
+    });
 
     if (!paciente) {
       return NextResponse.json(
@@ -583,6 +612,16 @@ export async function DELETE(request: Request) {
       where: { id: parseInt(id_paciente) },
       data: { id_psicologo: null }
     });
+
+      const result_email = await  create_alarma({
+        id_usuario: paciente.id ,
+        id_tipo_alerta: null,
+        mensaje: `El psicologo ${psicologo?.nombre}, le a dado de alta respecto a sus servicios.`,
+        vista: false,
+        correo_enviado: true,
+      });
+      
+    if (!result_email) console.error('Error al enviar email, test.',result_email); 
 
     return NextResponse.json(
       { 

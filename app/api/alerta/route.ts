@@ -8,6 +8,7 @@ interface AlarmaData {
   id_tipo_alerta?: number | null;
   mensaje: string;
   vista?: boolean;
+  correo_enviado?: boolean;
 }
 
 export async function GET(request: Request) {
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
     const usuarioId = searchParams.get('usuarioId');
     const tipoAlertaId = searchParams.get('tipoAlertaId');
     const noVistas = searchParams.get('noVistas') === 'true';
+    const correoNoEnviado = searchParams.get('correoNoEnviado') === 'true';
     const search = searchParams.get('search');
 
     const page = parseInt(searchParams.get('page') || '1');
@@ -55,6 +57,7 @@ export async function GET(request: Request) {
     if (usuarioId) whereClause.id_usuario = parseInt(usuarioId);
     if (tipoAlertaId) whereClause.id_tipo_alerta = parseInt(tipoAlertaId);
     if (noVistas) whereClause.vista = false;
+    if (correoNoEnviado) whereClause.correo_enviado = false;
 
     if (search) {
       const [usuariosConNombre, tiposConNombre] = await Promise.all([
@@ -170,7 +173,8 @@ export async function POST(request: Request) {
         id_usuario: alarmaData.id_usuario || null,
         id_tipo_alerta: alarmaData.id_tipo_alerta || null,
         mensaje: alarmaData.mensaje,
-        vista: alarmaData.vista || false
+        vista: alarmaData.vista || false,
+        correo_enviado: alarmaData.correo_enviado || false
       },
       include: {
         usuario: {
@@ -220,7 +224,10 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Alarma no encontrada' }, { status: 404 });
     }
 
-    const data: any = { ...restoDatos };
+    const data: any = { 
+      ...restoDatos,
+      correo_enviado: restoDatos.correo_enviado !== undefined ? restoDatos.correo_enviado : undefined
+    };
 
     if (id_usuario) {
       const usuarioExistente = await prisma.usuario.findUnique({ where: { id: id_usuario } });
