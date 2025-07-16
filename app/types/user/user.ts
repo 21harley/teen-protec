@@ -7,6 +7,7 @@ export interface UsuarioBase {
   email: string;
   nombre: string;
   cedula: string;
+  telefono: string;
   fecha_nacimiento: string | Date | null;
   sexo?: string;
   password?: string;

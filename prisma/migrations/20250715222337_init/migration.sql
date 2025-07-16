@@ -2,6 +2,7 @@
 CREATE TABLE "Usuario" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "nombre" TEXT NOT NULL,
+    "telefono" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "cedula" TEXT NOT NULL,
     "password" TEXT NOT NULL,

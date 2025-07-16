@@ -129,6 +129,7 @@ const dataUsuarios = [
     password_iv: contraseñaEncriptada.iv,
     nombre: "Admin Principal",
     cedula: "111111111",
+    telefono:"11111111111",
     fecha_nacimiento: new Date("1980-05-15"),
     id_tipo_usuario: 1,
     sexo: "Masculino",
@@ -144,6 +145,7 @@ const dataUsuarios = [
     password_iv: contraseñaEncriptada.iv,
     nombre: "Dra. María González",
     cedula: "222222222",
+    telefono:"222222222",
     fecha_nacimiento: new Date("1985-08-20"),
     id_tipo_usuario: 2,
     sexo: "Femenino",
@@ -173,6 +175,7 @@ const dataUsuarios = [
     password_iv: contraseñaEncriptada.iv,
     nombre: "Dr. Carlos Méndez",
     cedula: "333333333",
+    telefono:"33333333",
     fecha_nacimiento: new Date("1979-03-10"),
     id_tipo_usuario: 2,
     sexo: "Masculino",
@@ -201,6 +204,7 @@ const dataUsuarios = [
     password_iv: contraseñaEncriptada.iv,
     nombre: "Ana López",
     cedula: "444444444",
+    telefono:"444444444",
     fecha_nacimiento: new Date("2008-07-22"),
     id_tipo_usuario: 3,
     id_psicologo: 2, // Asignado al Psicólogo 1 (Dra. María González)
@@ -232,6 +236,7 @@ const dataUsuarios = [
     password_iv: contraseñaEncriptada.iv,
     nombre: "Pedro Ramírez",
     cedula: "666666666",
+    telefono:"666666666",
     fecha_nacimiento: new Date("2007-11-05"),
     id_tipo_usuario: 3,
     id_psicologo: 3, // Asignado al Psicólogo 2 (Dr. Carlos Méndez)
@@ -263,6 +268,7 @@ const dataUsuarios = [
     password_iv: contraseñaEncriptada.iv,
     nombre: "Carlos Sánchez",
     cedula: "999999999",
+    telefono:"999999999",
     fecha_nacimiento: new Date("2009-02-15"),
     id_tipo_usuario: 3,
     id_psicologo: 2, // Asignado al Psicólogo 1 (Dra. María González)
@@ -294,6 +300,7 @@ const dataUsuarios = [
     password_iv: contraseñaEncriptada.iv,
     nombre: "Laura Fernández",
     cedula: "777777777",
+    telefono:"777777777",
     fecha_nacimiento: new Date("1995-04-30"),
     id_tipo_usuario: 4,
     id_psicologo: 3, // Asignado al Psicólogo 2 (Dr. Carlos Méndez)

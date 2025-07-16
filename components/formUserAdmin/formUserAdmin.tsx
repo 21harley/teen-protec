@@ -52,6 +52,7 @@ export default function FormUserAdmin({
     email: '',
     password: '',
     nombre: '',
+    telefono: '',
     cedula: '',
     fecha_nacimiento: '',
     sexo: ''
@@ -99,6 +100,7 @@ export default function FormUserAdmin({
         password: '',
         nombre: user.nombre,
         cedula: user.cedula,
+        telefono: user.telefono,
         fecha_nacimiento: formatDateForInput(user.fecha_nacimiento ?? undefined),
         sexo: user.sexo || ''
       });
@@ -411,6 +413,7 @@ export default function FormUserAdmin({
           password: '',
           nombre: '',
           cedula: '',
+          telefono: '',
           fecha_nacimiento: '',
           sexo: ''
         });
@@ -486,7 +489,7 @@ export default function FormUserAdmin({
       )}
 
       <div className="flex flex-col justify-center md:flex-row md:justify-around p-5 gap-2 md:gap-2 w-full max-w-[400px] md:max-w-[800px]">
-        <div className="grid place-items-center w-[240px] m-auto">
+         <div className={`grid ${!isMinor ? 'md:grid-cols-2 md:w-[600px]' : ''} place-items-center w-[240px] m-auto`}>
           {!isEdit && (
             <div className="w-full max-w-[190px]">
               <label htmlFor="tipoRegistro" className="text-sm">Tipo de registro:</label>
@@ -537,6 +540,33 @@ export default function FormUserAdmin({
             />
           </div>
 
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="cedula" className="text-sm">Cédula:</label>
+            <input 
+              required 
+              type="text" 
+              name="cedula" 
+              id="cedula" 
+              value={userData.cedula}
+              onChange={handleUserChange}
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              readOnly={isEdit}
+            />
+          </div>
+
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="telefono" className="text-sm">Telefono:</label>
+            <input 
+              required 
+              type="text" 
+              name="telefono" 
+              id="telefono" 
+              value={userData.telefono}
+              onChange={handleUserChange}
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              readOnly={isEdit}
+            />
+          </div>
           <div className="w-full max-w-[190px]">
             <label htmlFor="sexo" className="text-sm">Sexo:</label>
             <select
@@ -627,20 +657,6 @@ export default function FormUserAdmin({
               </div>
             </>
           )}
-          
-          <div className="w-full max-w-[190px]">
-            <label htmlFor="cedula" className="text-sm">Cédula:</label>
-            <input 
-              required 
-              type="text" 
-              name="cedula" 
-              id="cedula" 
-              value={userData.cedula}
-              onChange={handleUserChange}
-              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-              readOnly={isEdit}
-            />
-          </div>
           
           <div className="w-full max-w-[190px]">
             <label htmlFor="fecha_nacimiento" className="text-sm">Fecha de nacimiento:</label>

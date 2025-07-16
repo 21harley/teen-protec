@@ -48,6 +48,7 @@ export default function FormPsychologist({
     password: '',
     nombre: '',
     cedula: '',
+    telefono: '',
     fecha_nacimiento: '',
     sexo: ''
   });
@@ -77,6 +78,7 @@ export default function FormPsychologist({
         password: '',
         nombre: user.nombre,
         cedula: user.cedula,
+        telefono: user.telefono,
         fecha_nacimiento: formatDateForInput(user.fecha_nacimiento ?? undefined),
         sexo: user.sexo || ''
       });
@@ -276,6 +278,7 @@ export default function FormPsychologist({
           password: '',
           nombre: '',
           cedula: '',
+          telefono: '',
           fecha_nacimiento: '',
           sexo: ''
         });
@@ -361,7 +364,32 @@ export default function FormPsychologist({
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
           </div>
-
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="cedula" className="text-sm">Cédula:</label>
+            <input 
+              required 
+              type="text" 
+              name="cedula" 
+              id="cedula" 
+              value={userData.cedula}
+              onChange={handleUserChange}
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              readOnly={isEdit}
+            />
+          </div>
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="telefono" className="text-sm">Telefono:</label>
+            <input 
+              required 
+              type="text" 
+              name="telefono" 
+              id="telefono" 
+              value={userData.telefono}
+              onChange={handleUserChange}
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              readOnly={isEdit}
+            />
+          </div>
           <div className="w-full max-w-[190px]">
             <label htmlFor="sexo" className="text-sm">Sexo:</label>
             <select
@@ -453,19 +481,6 @@ export default function FormPsychologist({
             </>
           )}
           
-          <div className="w-full max-w-[190px]">
-            <label htmlFor="cedula" className="text-sm">Cédula:</label>
-            <input 
-              required 
-              type="text" 
-              name="cedula" 
-              id="cedula" 
-              value={userData.cedula}
-              onChange={handleUserChange}
-              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-              readOnly={isEdit}
-            />
-          </div>
           
           <div className="w-full max-w-[190px]">
             <label htmlFor="fecha_nacimiento" className="text-sm">Fecha de nacimiento:</label>
@@ -617,7 +632,7 @@ export default function FormPsychologist({
       
       {!isEdit && (
         <div>
-          <label htmlFor="" className="text-[10px]">
+          <label htmlFor="" className="text-[12px]">
             ¿Ya tiene una cuenta?  
             <Link
               href="/auth/login"
@@ -625,7 +640,7 @@ export default function FormPsychologist({
             > Iniciar sesión</Link>
           </label>
           <br/>
-          <label htmlFor="" className="text-[10px]">
+          <label htmlFor="" className="text-[12px]">
             ¿Olvidaste tu contraseña? 
             <Link
               href="/auth/recovery"

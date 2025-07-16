@@ -51,6 +51,7 @@ interface UsuarioResponse {
   nombre: string;
   email: string;
   cedula: string;
+  telefono: string;
   fecha_nacimiento: Date;
   id_tipo_usuario: number;
   id_psicologo?: number | null;
@@ -71,6 +72,7 @@ interface LoginResponse {
     email: string;
     nombre: string;
     cedula: string;
+    telefono: string;
     fecha_nacimiento: Date;
     sexo?: string;
     id_tipo_usuario: number;
@@ -127,6 +129,7 @@ export async function GET(request: Request) {
     const nombre = searchParams.get('nombre');
     const email = searchParams.get('email');
     const cedula = searchParams.get('cedula');
+    const telefono = searchParams.get('telefono');
     const id_psicologo = searchParams.get('id_psicologo');
 
     const paginated = searchParams.get('paginated') === 'true';
@@ -224,6 +227,7 @@ export async function GET(request: Request) {
     if (nombre) whereClause.nombre = { contains: nombre };
     if (email) whereClause.email = { contains: email };
     if (cedula) whereClause.cedula = { contains: cedula };
+    if (telefono) whereClause.telefono = { contains: telefono };
 
     if (paginated) {
       const total = await prisma.usuario.count({ where: whereClause });
@@ -452,6 +456,7 @@ export async function POST(request: Request) {
           nombre: usuarioData.nombre,
           password: contraseñaEncriptada.contenido,
           cedula: usuarioData.cedula,
+          telefono: usuarioData.telefono,
           sexo: usuarioData?.sexo,
           fecha_nacimiento: new Date(usuarioData.fecha_nacimiento),
           id_tipo_usuario: idTipoUsuario,
@@ -567,6 +572,7 @@ export async function POST(request: Request) {
         email: usuarioCompleto.email,
         nombre: usuarioCompleto.nombre,
         cedula: usuarioCompleto.cedula,
+        telefono: usuarioCompleto.telefono,
         fecha_nacimiento: usuarioCompleto.fecha_nacimiento,
         sexo: usuarioCompleto.sexo ?? undefined,
         id_tipo_usuario: usuarioCompleto.id_tipo_usuario,
@@ -813,6 +819,7 @@ export async function PUT(request: Request) {
         email: usuarioActualizado.email,
         nombre: usuarioActualizado.nombre,
         cedula: usuarioActualizado.cedula,
+        telefono: usuarioActualizado.telefono,
         fecha_nacimiento: usuarioActualizado.fecha_nacimiento,
         id_tipo_usuario: usuarioActualizado.id_tipo_usuario,
         id_psicologo: usuarioActualizado.id_psicologo || undefined,

@@ -25,6 +25,7 @@ enum PesoPreguntaTipo {
 model Usuario {
   id                       Int             @id @default(autoincrement())
   nombre                   String
+  telefono                 String
   email                    String          @unique
   cedula                   String          @unique
   password                 String

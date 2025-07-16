@@ -64,6 +64,7 @@ export interface Usuario {
   nombre: string;
   email: string;
   cedula: string;
+  telefono: string;
   fecha_nacimiento: string | Date | null;
   sexo?: 'Masculino' | 'Femenino' | 'Otro' | string;
   id_tipo_usuario: number;
@@ -84,6 +85,7 @@ export type LoginResponse = {
     email: string;
     nombre: string;
     cedula: string;
+    telefono: string;
     fecha_nacimiento: Date | string | null;
     sexo?: string;
     id_tipo_usuario: number;
@@ -111,6 +113,7 @@ export type UsuarioInfo = {
   email: string;
   nombre: string;
   cedula: string;
+  telefono: string;
   fecha_nacimiento: Date | string | null;
   sexo?: string;
   id_tipo_usuario: number;

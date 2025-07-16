@@ -88,7 +88,7 @@ export default function PasswordRecovery() {
             </div>
             
             <div className="text-center">
-              <label className="text-[10px]">
+              <label className="text-[12px]">
                 ¿No tiene cuenta?  
                 <Link
                   href="/auth/register"
@@ -98,7 +98,7 @@ export default function PasswordRecovery() {
                 </Link>
               </label>
               <br/>
-              <label className="text-[10px]">
+              <label className="text-[12px]">
                 ¿Tiene cuenta?
                 <Link
                   href="/auth/login"

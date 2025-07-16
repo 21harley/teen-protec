@@ -226,6 +226,7 @@ export default function ModalPaciente({
               <p><span className="font-medium">Nombre y Apellido:</span> {paciente.nombre}</p>
               <p><span className="font-medium">Email:</span> {paciente.email}</p>
               <p><span className="font-medium">Cédula:</span> {paciente.cedula || 'No especificado'}</p>
+              <p><span className="font-medium">:</span> {paciente.telefono|| 'No especificado'}</p>
               <p>
                 <span className="font-medium">Fecha de Nacimiento:</span>{' '}
                 {paciente.fecha_nacimiento ? new Date(paciente.fecha_nacimiento).toLocaleDateString() : 'No especificado'}

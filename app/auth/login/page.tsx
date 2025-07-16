@@ -195,7 +195,7 @@ export default function Login() {
             </div>
             
             <div className="text-center">
-              <label className="text-[10px]">
+              <label className="text-[12px]">
                 ¿No tiene cuenta?  
                 <Link
                   href="/auth/register"
@@ -205,7 +205,7 @@ export default function Login() {
                 </Link>
               </label>
               <br/>
-              <label className="text-[10px]">
+              <label className="text-[12px]">
                 ¿Olvidaste tu contraseña? 
                 <Link
                   href="/auth/recovery"

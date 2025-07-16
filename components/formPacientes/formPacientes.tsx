@@ -41,6 +41,7 @@ export default function FormPacientes({
     password: '',
     nombre: user.nombre,
     cedula: user.cedula,
+    telefono: user.telefono,
     fecha_nacimiento: formatDateForInput(user.fecha_nacimiento),
     sexo: user.sexo || '',
   });
@@ -330,6 +331,34 @@ export default function FormPacientes({
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
             />
           </div>
+
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="cedula" className="text-sm">Cédula:</label>
+            <input 
+              required 
+              type="text" 
+              name="cedula" 
+              id="cedula" 
+              value={userData.cedula}
+              onChange={handleUserChange}
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              readOnly
+            />
+          </div>
+          
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="telefono" className="text-sm">Telefono:</label>
+            <input 
+              required 
+              type="text" 
+              name="telefono" 
+              id="telefono" 
+              value={userData.telefono}
+              onChange={handleUserChange}
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              readOnly
+            />
+          </div>
           
           <div className="w-full max-w-[190px]">
             <label htmlFor="sexo" className="text-sm">Sexo:</label>
@@ -383,20 +412,6 @@ export default function FormPacientes({
             {errors.confirmPassword && (
               <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
             )}
-          </div>
-          
-          <div className="w-full max-w-[190px]">
-            <label htmlFor="cedula" className="text-sm">Cédula:</label>
-            <input 
-              required 
-              type="text" 
-              name="cedula" 
-              id="cedula" 
-              value={userData.cedula}
-              onChange={handleUserChange}
-              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-              readOnly
-            />
           </div>
           
           <div className="w-full max-w-[190px]">

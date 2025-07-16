@@ -26,6 +26,7 @@ export interface UsuarioCompleto {
   email: string;
   nombre: string;
   cedula: string;
+  telefono: string;
   fecha_nacimiento: Date | null;
   id_tipo_usuario: number;
   sexo?: string; // Nuevo campo: 'Masculino', 'Femenino', 'No binario', etc.

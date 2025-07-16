@@ -4,6 +4,7 @@ export interface UsuarioBase {
   email: string;
   nombre: string;
   cedula: string;
+  telefono: string;
   fecha_nacimiento: string | Date | null;
   sexo?: string;
   password?: string;
@@ -34,6 +35,7 @@ export interface LoginResponse {
     email: string;
     nombre: string;
     cedula: string;
+    telefono: string;
     fecha_nacimiento: Date;
     id_tipo_usuario: number;
     tipoUsuario: { 
@@ -76,6 +78,7 @@ export interface LoginResponseDB {
   nombre: string;
   email: string;
   cedula: string;
+  telefono: string;
   fecha_nacimiento: string;
   tipo_usuario: {
     id: number;
