@@ -324,11 +324,10 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
         )}
         
         {/* Peso (para SIN_VALOR o cuando no es respuesta corta) */}
-        {(pesoPreguntaTipo === PesoPreguntaTipo.SIN_VALOR || 
-          (pesoPreguntaTipo === PesoPreguntaTipo.BAREMO && questionType !== TipoPreguntaNombre.RESPUESTA_CORTA)) && (
+        {( questionType !== TipoPreguntaNombre.RESPUESTA_CORTA) && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Peso de la pregunta {pesoPreguntaTipo === PesoPreguntaTipo.SIN_VALOR ? '(opcional)' : ''}
+              Peso de la pregunta 
             </label>
             <input
               type="number"
@@ -340,6 +339,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
             />
           </div>
         )}
+
         {/* Mostrar el valor fijo solo si el tipo es IGUAL_VALOR */}
         {pesoPreguntaTipo === PesoPreguntaTipo.IGUAL_VALOR && (
           <div className="mb-4">

@@ -281,7 +281,7 @@ export async function POST(request: Request) {
       const result_email = await  create_alarma_email({
         id_usuario: usuarioActualizado.id ,
         id_tipo_alerta: 1,
-        mensaje: "Test asignado",
+        mensaje: `El psicolog,${usuarioAutenticado.nombre} te atendera protamente.`,
         vista: false,
         correo_enviado: true,
         emailParams: {
@@ -400,6 +400,36 @@ export async function POST(request: Request) {
       progreso: calcularProgreso(nuevoTest.id, nuevoTest.id_usuario ?? undefined)
     };
 
+    if (usuarioAutenticado && paciente) {
+        console.log("consulta usuario");
+        const psicologoExistente = await prisma.usuario.findUnique({
+          where: { id: usuarioAutenticado.id }
+        });
+
+        if( psicologoExistente){
+        console.log("crea alarma de test");
+        const result_email = await  create_alarma_email({
+        id_usuario: paciente.id ,
+        id_tipo_alerta: 1,
+        mensaje: `Tiene asignado un test.`,
+        vista: false,
+        correo_enviado: true,
+        emailParams: {
+          to: paciente.email,
+          subject: "Tienes una nueva alerta",
+          template: "test_asignado",
+          props: {
+            name: paciente.nombre,
+            psicologo_name:psicologoExistente.nombre,
+            alertMessage: `El psicologo ${psicologoExistente.nombre}, te a enviado un test.`
+          }
+        }
+      });
+      
+      if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
+      }
+    }
+    
     return NextResponse.json(
       { 
         message: 'Test asignado correctamente desde plantilla', 

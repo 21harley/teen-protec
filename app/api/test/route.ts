@@ -419,18 +419,17 @@ export async function POST(request: Request) {
     }
 
     // Verificar que el psicólogo existe si se proporciona
-    if (id_psicologo) {
-      const psicologoExistente = await prisma.psicologo.findUnique({
-        where: { id_usuario: id_psicologo }
-      });
-
-      if (!psicologoExistente) {
-        return NextResponse.json(
-          { error: 'Psicólogo no encontrado' },
-          { status: 404 }
-        );
-      }
+    if (id_usuario) {
+    const psicologoExistente = await prisma.psicologo.findUnique({
+      where: { id_usuario: id_psicologo }
+    });
+    if (!psicologoExistente) {
+      return NextResponse.json(
+        { error: 'Psicólogo no encontrado' },
+        { status: 404 }
+      );
     }
+  }
 
     // Verificar que el usuario existe si se proporciona
     if (id_usuario) {
@@ -562,6 +561,40 @@ export async function POST(request: Request) {
       return nuevoTest;
     });
 
+    if(result){
+    console.log("crear test",id_psicologo,id_usuario);
+    if (id_usuario && id_psicologo) {
+        console.log("consulta usuario");
+        const psicologoExistente = await prisma.usuario.findUnique({
+          where: { id: id_psicologo }
+        });
+        const usuarioExistente = await prisma.usuario.findUnique({
+           where: { id: id_usuario }
+        });
+        if(usuarioExistente && psicologoExistente){
+        console.log("crea alarma de test");
+        const result_email = await  create_alarma_email({
+        id_usuario: id_usuario ,
+        id_tipo_alerta: 1,
+        mensaje: `Tiene asignado un test.`,
+        vista: false,
+        correo_enviado: true,
+        emailParams: {
+          to: usuarioExistente.email,
+          subject: "Tienes una nueva alerta",
+          template: "test_asignado",
+          props: {
+            name: usuarioExistente.nombre,
+            psicologo_name:psicologoExistente.nombre,
+            alertMessage: `El psicologo ${psicologoExistente.nombre}, te a enviado un test.`
+          }
+        }
+      });
+      
+      if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
+      }
+    }
+    }
     // Obtener el test completo con sus relaciones para la respuesta
     const testCompleto = await prisma.test.findUnique({
       where: { id: result.id },
@@ -862,28 +895,34 @@ export async function PUT(request: Request) {
           }
         });
 
-        if(determinarEstado(completado) == "COMPLETADO" && !id_psicologo && !id_usuario){
+      }
+
+      return test;
+    });
+            
+      if(testActualizado.estado=="COMPLETADO" &&  id_usuario){
               const usuarioExistente = await prisma.usuario.findUnique({
                 where: { id: id_usuario }
               });
+              if(usuarioExistente?.id_psicologo){
                const psicologoExistente = await prisma.usuario.findUnique({
-                 where: { id: id_psicologo }
+                 where: { id: usuarioExistente?.id_psicologo }
                });
-               if(psicologoExistente?.email){
+               if(psicologoExistente && usuarioExistente){
                const result_email = await  create_alarma_email({
-                  id_usuario: psicologoExistente?.id,
+                  id_usuario: psicologoExistente.id,
                   id_tipo_alerta: 2,
-                  mensaje: "Test completado",
+                  mensaje: `El paciente ${usuarioExistente.nombre}, completo el test.`,
                   vista: false,
                   correo_enviado: true,
                   emailParams: {
-                    to: psicologoExistente?.email,
+                    to: psicologoExistente.email,
                     subject: "Tienes una nueva alerta",
                     template: "test_completado",
                     props: {
                       name: psicologoExistente.nombre,
-                      user_name:usuarioExistente?.nombre,
-                      alertMessage: `El paciente ${usuarioExistente?.nombre}, completo el test.`
+                      user_name:usuarioExistente.nombre,
+                      alertMessage: `El paciente ${usuarioExistente.nombre}, completo el test.`
                     }
                   }
                 });
@@ -892,12 +931,8 @@ export async function PUT(request: Request) {
                }else{
                 console.log("No se envio correo, el usuario no tiene.");
                }
+              }
         }
-
-      }
-
-      return test;
-    });
 
     // Obtener el test actualizado con relaciones
     const testCompleto = await prisma.test.findUnique({

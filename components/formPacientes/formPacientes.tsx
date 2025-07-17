@@ -36,6 +36,8 @@ export default function FormPacientes({
 }: FormPacientesProps) {
   const router = useRouter();
 
+  const [isMinor, setIsMinor] = useState(false);
+
   const [userData, setUserData] = useState({
     email: user.email,
     password: '',
@@ -45,7 +47,7 @@ export default function FormPacientes({
     fecha_nacimiento: formatDateForInput(user.fecha_nacimiento),
     sexo: user.sexo || '',
   });
-
+ 
   const [tutorData, setTutorData] = useState<TutorInfo>({
     cedula_tutor: user.adolecente?.tutor?.cedula_tutor || '',
     nombre_tutor: user.adolecente?.tutor?.nombre_tutor || '',
@@ -95,7 +97,28 @@ export default function FormPacientes({
         setOtherParentescoValue(user.adolecente.tutor.parentesco);
       }
     }
+     validateAge(formatDateForInput(user.fecha_nacimiento));
   }, []);
+
+  const validateAge = (fecha_nacimiento: string | null) => {
+    if(fecha_nacimiento == null) return
+    if (!fecha_nacimiento) {
+      setIsMinor(false);
+      return;
+    }
+
+    const today = new Date();
+    const birthDate = new Date(fecha_nacimiento);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    const minor = age < 18;
+    setIsMinor(minor);
+  };
 
   const handleUserChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -305,7 +328,7 @@ export default function FormPacientes({
       )}
 
       <div className="flex flex-col justify-center md:flex-row md:justify-around p-5 gap-2 md:gap-2 w-full max-w-[400px] md:max-w-[800px]">
-        <div className="grid place-items-center w-[240px] m-auto">
+        <div className={`grid ${ !isMinor ? 'md:grid-cols-2 md:w-[600px]' : ''} place-items-center w-[240px] m-auto`}>
           <div className="w-full max-w-[190px]">
             <label htmlFor="email" className="text-sm">Correo electrónico:</label>
             <input 

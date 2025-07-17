@@ -103,6 +103,7 @@ export async function POST(request: Request) {
         email: usuario.email,
         nombre: usuario.nombre,
         cedula: usuario.cedula,
+        telefono: usuario.telefono,
         fecha_nacimiento: usuario.fecha_nacimiento,
         id_tipo_usuario: usuario.id_tipo_usuario,
         sexo: usuario.sexo || undefined, // Nuevo campo en respuesta

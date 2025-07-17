@@ -124,6 +124,7 @@ export async function POST(request: Request) {
           nombre: usuarioData.nombre,
           password: contraseñaEncriptada.contenido,
           cedula: usuarioData.cedula,
+          telefono: usuarioData.telefono,
           fecha_nacimiento: new Date(usuarioData.fecha_nacimiento),
           id_tipo_usuario: idTipoUsuario,
           password_iv: contraseñaEncriptada.iv,
@@ -234,6 +235,7 @@ export async function POST(request: Request) {
         email: usuarioCompleto.email,
         nombre: usuarioCompleto.nombre,
         cedula: usuarioCompleto.cedula,
+        telefono: usuarioCompleto.telefono,
         fecha_nacimiento: usuarioCompleto.fecha_nacimiento,
         id_tipo_usuario: usuarioCompleto.id_tipo_usuario,
         sexo: usuarioCompleto.sexo, // Incluimos el sexo en la respuesta

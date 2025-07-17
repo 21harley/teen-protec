@@ -5,6 +5,7 @@ export interface UsuarioBase {
   password?: string;
   nombre: string;
   cedula: string;
+  telefono: string;
   fecha_nacimiento: string | Date;
   id_tipo_usuario?: number;
   id_psicologo?: number | null;
@@ -51,6 +52,7 @@ export interface LoginResponse {
     email: string;
     nombre: string;
     cedula: string;
+    telefono: string;
     fecha_nacimiento: Date;
     id_tipo_usuario: number;
     id_psicologo?: number | null;

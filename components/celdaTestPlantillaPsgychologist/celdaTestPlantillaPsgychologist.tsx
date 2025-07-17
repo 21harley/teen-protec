@@ -31,33 +31,43 @@ const CeldaTestPlantilla: React.FC<CeldaTestPlantillaProps> = ({
 const handleEditPlantilla = async (plantillaData: any) => {
   try {
     setIsLoading(true);
+    
+    // Preparar el cuerpo de la petición con todos los campos necesarios
+    const requestBody = {
+      id: plantilla.id,
+      nombre: plantillaData.nombre,
+      estado: plantilla.estado, // Mantener el estado original
+      peso_preguntas: plantillaData.peso_preguntas,
+      config_baremo: plantillaData.config_baremo || null,
+      valor_total: plantillaData.valor_total || null,
+      preguntas: plantillaData.preguntas?.map((p: any) => ({
+        id: p.id || undefined, // Incluir ID si existe (para actualización)
+        texto_pregunta: p.texto_pregunta,
+        id_tipo: p.id_tipo,
+        orden: p.orden,
+        obligatoria: p.obligatoria,
+        placeholder: p.placeholder ?? null,
+        min: p.min ?? null,
+        max: p.max ?? null,
+        paso: p.paso ?? null,
+        peso: p.peso ?? null, // Incluir peso
+        baremo_detalle: p.baremo_detalle || null, // Incluir baremo
+        opciones: p.opciones?.map((o: any) => ({
+          id: o.id || undefined, // Incluir ID si existe
+          texto: o.texto,
+          valor: o.valor,
+          orden: o.orden,
+          es_otro: o.es_otro ?? false
+        })) ?? []
+      }))
+    };
+
     const response = await fetch(`/api/plantilla?id=${plantilla.id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        id: plantilla.id, // Use id from the existing plantilla
-        nombre: plantillaData.nombre,
-        estado: plantillaData.estado || plantilla.estado, // Keep existing estado if not provided
-        id_psicologo: plantilla.id_psicologo,
-        preguntas: plantillaData.preguntas?.map((p: any) => ({
-          texto_pregunta: p.texto_pregunta,
-          id_tipo: p.id_tipo,
-          orden: p.orden,
-          obligatoria: p.obligatoria,
-          placeholder: p.placeholder ?? null,
-          min: p.min ?? null,
-          max: p.max ?? null,
-          paso: p.paso ?? null,
-          opciones: p.opciones?.map((o: any) => ({
-            texto: o.texto,
-            valor: o.valor,
-            orden: o.orden,
-            es_otro: o.es_otro ?? false
-          })) ?? []
-        }))
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {

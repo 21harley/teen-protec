@@ -481,7 +481,7 @@ export default function FormUser({
       )}
 
       <div className="flex flex-col justify-center md:flex-row md:justify-around p-5 gap-2 md:gap-2 w-full max-w-[400px] md:max-w-[800px]">
-        <div className={`grid ${!isMinor ? 'md:grid-cols-2 md:w-[600px]' : ''} place-items-center w-[240px] m-auto`}>
+        <div className={`grid ${(!isMinor && currentTipoRegistro != 'psicologo')? 'md:grid-cols-2 md:w-[600px]' : ''} place-items-center w-[240px] m-auto`}>
           <div className="w-full max-w-[190px]">
             <label htmlFor="email" className="text-sm">Correo electrónico:</label>
             <input 

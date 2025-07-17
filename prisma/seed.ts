@@ -679,9 +679,9 @@ async function main() {
   console.log("📝 Creando tests de ejemplo...");
   
   await crearTestCompleto(2, 4, 'COMPLETADO', 'IGUAL_VALOR'); // Test completado para adolescente 1
-  await crearTestCompleto(3, 5, 'EN_PROGRESO', 'BAREMO'); // Test en progreso para adolescente 2
+  await crearTestCompleto(3, 5, 'EN_PROGRESO', 'IGUAL_VALOR'); // Test en progreso para adolescente 2
   await crearTestCompleto(2, 6, 'NO_INICIADO', 'SIN_VALOR'); // Test no iniciado para adolescente 3
-  await crearTestCompleto(3, 7, 'COMPLETADO', 'BAREMO'); // Test completado para usuario adulto
+  await crearTestCompleto(3, 7, 'COMPLETADO', 'SIN_VALOR'); // Test completado para usuario adulto
   await crearTestCompleto(null, 1, 'EN_PROGRESO', 'IGUAL_VALOR'); // Test en progreso para admin
 
   // Crear plantillas de tests para psicólogos

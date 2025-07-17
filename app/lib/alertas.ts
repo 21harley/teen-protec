@@ -67,6 +67,8 @@ export async function create_alarma_email(params: AlarmaWithEmailParams): Promis
       vista: params.vista,
       correo_enviado: true
     });
+    
+    console.log("Alarmar creada",alarmaCreated);
 
     if (!alarmaCreated) {
       return { alarmaCreated: false, emailSent: false };
