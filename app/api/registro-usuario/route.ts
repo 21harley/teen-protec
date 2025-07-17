@@ -5,10 +5,18 @@ const prisma = new PrismaClient();
 
 interface RegistroUsuarioData {
   usuario_id: number;
-  sexo?: String;
+  sexo?: string;  // Lowercase 'string' is the TypeScript type
   edad?: number;
   tipo_usuario: string;
-  psicologo_id?: number;
+  psicologo_id?: number | null;
+  tests_ids: number[] | string;  // Can be either array or stringified array
+  tests_evaluados?: {            // Properly typed as an array of objects
+    testId: number;
+    nota: number;
+    fecha: string; // ISO 8601 format
+  }[] | null;
+  total_tests: number;
+  avg_notas?: number | null;
 }
 
 export async function GET(request: Request) {

@@ -43,6 +43,10 @@ CREATE TABLE "Test" (
     "fecha_ultima_respuesta" DATETIME,
     "id_psicologo" INTEGER,
     "id_usuario" INTEGER,
+    "evaluado" BOOLEAN NOT NULL DEFAULT false,
+    "fecha_evaluacion" DATETIME,
+    "ponderacion_final" REAL,
+    "comentarios_psicologo" TEXT,
     CONSTRAINT "Test_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Psicologo" ("id_usuario") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Test_id_usuario_fkey" FOREIGN KEY ("id_usuario") REFERENCES "Usuario" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
@@ -207,7 +211,11 @@ CREATE TABLE "RegistroUsuario" (
     "sexo" TEXT,
     "edad" INTEGER,
     "tipo_usuario" TEXT NOT NULL,
-    "psicologo_id" INTEGER
+    "psicologo_id" INTEGER,
+    "tests_ids" JSONB,
+    "tests_evaluados" JSONB,
+    "total_tests" INTEGER NOT NULL DEFAULT 0,
+    "avg_notas" REAL DEFAULT 0
 );
 
 -- CreateTable
@@ -220,7 +228,11 @@ CREATE TABLE "RegistroTest" (
     "fecha_completado" DATETIME,
     "estado" TEXT NOT NULL,
     "nombre_test" TEXT,
-    "valor_total" REAL
+    "valor_total" REAL,
+    "nota_psicologo" REAL,
+    "evaluado" BOOLEAN NOT NULL DEFAULT false,
+    "fecha_evaluacion" DATETIME,
+    "ponderacion_usada" TEXT NOT NULL
 );
 
 -- CreateTable
@@ -241,7 +253,8 @@ CREATE TABLE "RegistroMetricaUsuario" (
     "fecha" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "tests_asignados" INTEGER NOT NULL,
     "tests_completados" INTEGER NOT NULL,
-    "tests_pendientes" INTEGER NOT NULL,
+    "tests_evaluados" INTEGER NOT NULL,
+    "avg_notas" REAL,
     "sesiones_totales" INTEGER NOT NULL,
     CONSTRAINT "RegistroMetricaUsuario_registro_usuario_id_fkey" FOREIGN KEY ("registro_usuario_id") REFERENCES "RegistroUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -254,6 +267,7 @@ CREATE TABLE "RegistroMetricaTest" (
     "tiempo_respuesta" INTEGER,
     "preguntas_contestadas" INTEGER NOT NULL,
     "preguntas_totales" INTEGER NOT NULL,
+    "nota_psicologo" REAL,
     CONSTRAINT "RegistroMetricaTest_registro_test_id_fkey" FOREIGN KEY ("registro_test_id") REFERENCES "RegistroTest" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -378,22 +392,13 @@ CREATE INDEX "OpcionPlantilla_id_pregunta_idx" ON "OpcionPlantilla"("id_pregunta
 CREATE INDEX "RegistroUsuario_usuario_id_idx" ON "RegistroUsuario"("usuario_id");
 
 -- CreateIndex
-CREATE INDEX "RegistroUsuario_fecha_registro_idx" ON "RegistroUsuario"("fecha_registro");
-
--- CreateIndex
 CREATE INDEX "RegistroUsuario_psicologo_id_idx" ON "RegistroUsuario"("psicologo_id");
 
 -- CreateIndex
 CREATE INDEX "RegistroTest_test_id_idx" ON "RegistroTest"("test_id");
 
 -- CreateIndex
-CREATE INDEX "RegistroTest_usuario_id_idx" ON "RegistroTest"("usuario_id");
-
--- CreateIndex
-CREATE INDEX "RegistroTest_psicologo_id_idx" ON "RegistroTest"("psicologo_id");
-
--- CreateIndex
-CREATE INDEX "RegistroTest_fecha_creacion_idx" ON "RegistroTest"("fecha_creacion");
+CREATE INDEX "RegistroTest_evaluado_fecha_completado_idx" ON "RegistroTest"("evaluado", "fecha_completado");
 
 -- CreateIndex
 CREATE INDEX "RegistroTrazabilidad_registro_usuario_id_idx" ON "RegistroTrazabilidad"("registro_usuario_id");
@@ -402,13 +407,10 @@ CREATE INDEX "RegistroTrazabilidad_registro_usuario_id_idx" ON "RegistroTrazabil
 CREATE INDEX "RegistroTrazabilidad_psicologo_id_idx" ON "RegistroTrazabilidad"("psicologo_id");
 
 -- CreateIndex
-CREATE INDEX "RegistroMetricaUsuario_registro_usuario_id_idx" ON "RegistroMetricaUsuario"("registro_usuario_id");
+CREATE INDEX "RegistroMetricaUsuario_registro_usuario_id_fecha_idx" ON "RegistroMetricaUsuario"("registro_usuario_id", "fecha");
 
 -- CreateIndex
-CREATE INDEX "RegistroMetricaUsuario_fecha_idx" ON "RegistroMetricaUsuario"("fecha");
-
--- CreateIndex
-CREATE INDEX "RegistroMetricaTest_registro_test_id_idx" ON "RegistroMetricaTest"("registro_test_id");
+CREATE INDEX "RegistroMetricaTest_registro_test_id_nota_psicologo_idx" ON "RegistroMetricaTest"("registro_test_id", "nota_psicologo");
 
 -- CreateIndex
 CREATE INDEX "RegistroSesion_registro_usuario_id_idx" ON "RegistroSesion"("registro_usuario_id");

@@ -9,6 +9,8 @@ interface RegistroMetricaUsuarioData {
   tests_completados: number;
   tests_pendientes: number;
   sesiones_totales: number;
+  tests_evaluados:  number;       
+  avg_notas:        number; 
 }
 
 export async function GET(request: Request) {

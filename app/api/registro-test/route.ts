@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from "./../../generated/prisma";
 
 const prisma = new PrismaClient();
+enum EstadoTestRegistro {
+  NO_INICIADO="NO_INICIADO",
+  EN_PROGRESO="EN_PROGRESO",
+  COMPLETADO="COMPLETAD",
+  CANCELADO="CANCELADO",
+  EVALUADO="EVALUADO"
+}
+
+enum PesoPreguntaTipo {
+  SIN_VALOR = 'SIN_VALOR',
+  IGUAL_VALOR = 'IGUAL_VALOR',
+  BAREMO = 'BAREMO'
+}
 
 interface RegistroTestData {
   test_id: number;
@@ -12,6 +25,10 @@ interface RegistroTestData {
   estado: EstadoTestRegistro;
   nombre_test?: string;
   valor_total?: number;
+   nota_psicologo?:   number;
+  evaluado?:         Boolean;             
+  fecha_evaluacion?: Date;
+  ponderacion_usada?: PesoPreguntaTipo;
 }
 
 export async function GET(request: Request) {

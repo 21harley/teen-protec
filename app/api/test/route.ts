@@ -7,7 +7,8 @@ const prisma = new PrismaClient()
 enum TestStatus {
   NO_INICIADO = 'NO_INICIADO',
   EN_PROGRESO = 'EN_PROGRESO',
-  COMPLETADO = 'COMPLETADO'
+  COMPLETADO = 'COMPLETADO',
+  EVALUADO = 'EVALUADO'
 }
 
 enum PesoPreguntaTipo {
@@ -26,6 +27,10 @@ interface TestBase {
   valor_total?: number;
   fecha_creacion?: Date | string;
   fecha_ultima_respuesta?: Date | string;
+  evaluado?:            Boolean;          
+  fecha_evaluacion?:    Date;
+  ponderacion_final?:      number;           
+  comentarios_psicologo?: String;  
 }
 
 interface PreguntaData {

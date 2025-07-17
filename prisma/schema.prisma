@@ -13,6 +13,7 @@ enum TestStatus {
   NO_INICIADO
   EN_PROGRESO
   COMPLETADO
+  EVALUADO 
 }
 
 enum PesoPreguntaTipo {
@@ -79,6 +80,11 @@ model Test {
   fecha_ultima_respuesta DateTime?
   id_psicologo        Int?
   id_usuario          Int?
+
+  evaluado            Boolean          @default(false)
+  fecha_evaluacion    DateTime?
+  ponderacion_final      Float?           
+  comentarios_psicologo String?        
 
   // Relaciones
   psicologo           Psicologo?       @relation("TestPsicologo", fields: [id_psicologo], references: [id_usuario])
@@ -303,32 +309,37 @@ enum EstadoTestRegistro {
   EN_PROGRESO
   COMPLETADO
   CANCELADO
+  EVALUADO
 }
 
 // Registro snapshot de usuarios (datos desnormalizados para reporting)
 model RegistroUsuario {
   id               Int       @id @default(autoincrement())
-  usuario_id       Int       // ID referencia al usuario real, sin FK
+  usuario_id       Int
   fecha_registro   DateTime  @default(now())
   sexo             Sexo?
   edad             Int?
   tipo_usuario     String
-  psicologo_id     Int?      // ID referencia al psicólogo asignado
-  
-  // Relaciones solo dentro del esquema de registros
+  psicologo_id     Int?
+
+  tests_ids        Json?     // Ej: [1, 2, 3]
+  tests_evaluados  Json?     // Ej: [{"testId": 1, "nota": 8.5, "fecha": "2024-01-01T00:00:00Z"}]
+  total_tests      Int       @default(0)
+  avg_notas        Float?    @default(0)
+
+  // Relaciones
   trazabilidades   RegistroTrazabilidad[]
   metricas         RegistroMetricaUsuario[]
   sesiones         RegistroSesion[]
-  
+
   @@index([usuario_id])
-  @@index([fecha_registro])
   @@index([psicologo_id])
 }
 
 // Registro snapshot de tests (datos desnormalizados)
 model RegistroTest {
   id               Int                 @id @default(autoincrement())
-  test_id          Int                 // ID referencia al test real
+  test_id          Int
   usuario_id       Int
   psicologo_id     Int?
   fecha_creacion   DateTime
@@ -336,14 +347,18 @@ model RegistroTest {
   estado           EstadoTestRegistro
   nombre_test      String?
   valor_total      Float?
-  
-  // Relaciones solo dentro del esquema de registros
+
+  // ✅ Campos nuevos
+  nota_psicologo   Float?
+  evaluado         Boolean             @default(false)
+  fecha_evaluacion DateTime?
+  ponderacion_usada PesoPreguntaTipo
+
+  // Relaciones
   metricas         RegistroMetricaTest[]
-  
+
   @@index([test_id])
-  @@index([usuario_id])
-  @@index([psicologo_id])
-  @@index([fecha_creacion])
+  @@index([evaluado, fecha_completado]) // ✅ Índice compuesto
 }
 
 // Trazabilidad de atención (sin FK a tablas principales)
@@ -369,27 +384,27 @@ model RegistroMetricaUsuario {
   fecha            DateTime  @default(now())
   tests_asignados  Int
   tests_completados Int
-  tests_pendientes Int
+  tests_evaluados  Int       
+  avg_notas        Float?    
   sesiones_totales Int
   
   usuario          RegistroUsuario @relation(fields: [registro_usuario_id], references: [id])
   
-  @@index([registro_usuario_id])
-  @@index([fecha])
+  @@index([registro_usuario_id, fecha])
 }
 
-// Métricas por test
 model RegistroMetricaTest {
   id               Int       @id @default(autoincrement())
   registro_test_id Int
   fecha            DateTime  @default(now())
-  tiempo_respuesta Int?      // En minutos
+  tiempo_respuesta Int?
   preguntas_contestadas Int
   preguntas_totales Int
+  nota_psicologo   Float?    // ✅ Nuevo campo
   
   test             RegistroTest @relation(fields: [registro_test_id], references: [id])
   
-  @@index([registro_test_id])
+  @@index([registro_test_id, nota_psicologo]) 
 }
 
 // Registro de sesiones (sin FK a tablas principales)
