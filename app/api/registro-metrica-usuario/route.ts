@@ -7,10 +7,9 @@ interface RegistroMetricaUsuarioData {
   registro_usuario_id: number;
   tests_asignados: number;
   tests_completados: number;
-  tests_pendientes: number;
+  tests_evaluados: number;       
+  avg_notas?: number | null; 
   sesiones_totales: number;
-  tests_evaluados:  number;       
-  avg_notas:        number; 
 }
 
 export async function GET(request: Request) {
@@ -100,13 +99,14 @@ export async function POST(request: Request) {
   try {
     const metricaData: RegistroMetricaUsuarioData = await request.json();
 
+    // Validación de campos requeridos
     if (!metricaData.registro_usuario_id || 
         metricaData.tests_asignados === undefined || 
         metricaData.tests_completados === undefined || 
-        metricaData.tests_pendientes === undefined || 
+        metricaData.tests_evaluados === undefined || 
         metricaData.sesiones_totales === undefined) {
       return NextResponse.json(
-        { error: 'Todos los campos son requeridos' },
+        { error: 'Todos los campos requeridos son obligatorios' },
         { status: 400 }
       );
     }
@@ -123,13 +123,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Crear la nueva métrica con los campos actualizados
     const nuevaMetrica = await prisma.registroMetricaUsuario.create({
       data: {
         registro_usuario_id: metricaData.registro_usuario_id,
         fecha: new Date(),
         tests_asignados: metricaData.tests_asignados,
         tests_completados: metricaData.tests_completados,
-        tests_pendientes: metricaData.tests_pendientes,
+        tests_evaluados: metricaData.tests_evaluados,
+        avg_notas: metricaData.avg_notas || null,
         sesiones_totales: metricaData.sesiones_totales
       },
       include: {
@@ -173,6 +175,19 @@ export async function PATCH(request: Request) {
 
     if (!metricaExistente) {
       return NextResponse.json({ error: 'Métrica no encontrada' }, { status: 404 });
+    }
+
+    // Validar que los datos a actualizar sean válidos
+    if (restoDatos.registro_usuario_id) {
+      const registroUsuario = await prisma.registroUsuario.findUnique({
+        where: { id: restoDatos.registro_usuario_id }
+      });
+      if (!registroUsuario) {
+        return NextResponse.json(
+          { error: 'Registro de usuario no encontrado' },
+          { status: 404 }
+        );
+      }
     }
 
     const metricaActualizada = await prisma.registroMetricaUsuario.update({

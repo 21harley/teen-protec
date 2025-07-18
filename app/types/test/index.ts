@@ -4,7 +4,8 @@
 export enum TestStatus {
   NO_INICIADO = 'NO_INICIADO',
   EN_PROGRESO = 'EN_PROGRESO',
-  COMPLETADO = 'COMPLETADO'
+  COMPLETADO = 'COMPLETADO',
+  EVALUADO = 'EVALUADO'
 }
 
 export enum PesoPreguntaTipo {
@@ -21,6 +22,15 @@ export enum TipoPreguntaNombre {
   RANGO = 'range'
 }
 
+
+export const TipoPreguntaMap: Record<number, string> = {
+  1: 'radio',
+  2: 'checkbox',
+  3: 'text',
+  4: 'select',
+  5: 'range'
+};
+
 /**
  * Interfaces principales para Tests
  */
@@ -35,6 +45,10 @@ export interface TestBase {
   valor_total?: number | null;
   fecha_creacion?: Date | string | null;
   fecha_ultima_respuesta?: Date | string | null;
+  evaluado?:            boolean;          
+  fecha_evaluacion?:    Date;
+  ponderacion_final?:      number;           
+  comentarios_psicologo?: string; 
 }
 
 export interface PreguntaData {

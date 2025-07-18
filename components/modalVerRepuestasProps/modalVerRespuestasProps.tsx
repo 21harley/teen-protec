@@ -12,7 +12,8 @@ interface ModalVerRespuestasProps {
 
 export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerRespuestasProps) {
   // Función para obtener respuestas de una pregunta específica
-  const getRespuestasForPregunta = (preguntaId: number): RespuestaData[] => {
+  const getRespuestasForPregunta = (preguntaId: number | undefined): RespuestaData[] => {
+    if(preguntaId == undefined ) return []
     return respuestas.filter(r => r.id_pregunta === preguntaId)
   }
 

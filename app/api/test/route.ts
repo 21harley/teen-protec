@@ -17,6 +17,21 @@ enum PesoPreguntaTipo {
   BAREMO = 'BAREMO'
 }
 
+enum TipoPreguntaNombre {
+  OPCION_UNICA= 'radio',
+  OPCION_MULTIPLE = 'checkbox',
+  RESPUESTA_CORTA = 'text',
+  SELECT = 'select',
+  RANGO = 'range'
+}
+
+interface TipoPregunta {
+  id: number;
+  nombre: TipoPreguntaNombre;
+  descripcion?: string | null;
+  tipo_respuesta: string;
+}
+
 interface TestBase {
   id_psicologo?: number;
   id_usuario?: number;
@@ -27,10 +42,10 @@ interface TestBase {
   valor_total?: number;
   fecha_creacion?: Date | string;
   fecha_ultima_respuesta?: Date | string;
-  evaluado?:            Boolean;          
+  evaluado?:            boolean;          
   fecha_evaluacion?:    Date;
   ponderacion_final?:      number;           
-  comentarios_psicologo?: String;  
+  comentarios_psicologo?: string;  
 }
 
 interface PreguntaData {
@@ -46,6 +61,7 @@ interface PreguntaData {
   max?: number;
   paso?: number;
   opciones?: OpcionData[];
+  tipo?: TipoPregunta;
 }
 
 interface OpcionData {
@@ -659,6 +675,109 @@ export async function POST(request: Request) {
   }
 }
 
+async function handleEvaluacionPsicologo(
+  prisma: PrismaClient,
+  testId: number,
+  evaluado: boolean,
+  fecha_evaluacion: Date | string | undefined,
+  ponderacion_final: number | undefined,
+  comentarios_psicologo: string | undefined,
+  id_usuario?: number
+): Promise<{test: any; notificacionEnviada: boolean}> {
+  return await prisma.$transaction(async (tx) => {
+    // Verificar datos de evaluación
+    if (!evaluado || ponderacion_final === undefined) {
+      throw new Error('Datos de evaluación incompletos');
+    }
+
+    // Obtener test con relaciones necesarias
+    const test = await tx.test.findUnique({
+      where: { id: testId },
+      include: {
+        usuario: true,
+        psicologo: { include: { usuario: true } }
+      }
+    });
+
+    if (!test) throw new Error('Test no encontrado');
+    if (test.estado !== 'COMPLETADO') throw new Error('El test debe estar COMPLETADO para ser evaluado');
+
+    // Actualizar test
+    const testActualizado = await tx.test.update({
+      where: { id: testId },
+      data: {
+        estado: 'EVALUADO',
+        evaluado: true,
+        fecha_evaluacion: fecha_evaluacion ? new Date(fecha_evaluacion) : new Date(),
+        ponderacion_final,
+        comentarios_psicologo: comentarios_psicologo || null
+      }
+    });
+
+    // Notificaciones (si aplica)
+    let notificacionEnviada = false;
+    if (id_usuario && test.usuario) {
+      try {
+        const psicologoNombre = test.psicologo?.usuario?.nombre || 'el psicólogo';
+        
+        const result_email = await create_alarma_email({
+          id_usuario: id_usuario,
+          id_tipo_alerta: 3,
+          mensaje: `${psicologoNombre} ha evaluado tu test.`,
+          vista: false,
+          correo_enviado: true,
+          emailParams: {
+            to: test.usuario.email,
+            subject: "Tu test ha sido evaluado",
+            template: "test_evaluado",
+            props: {
+              name: test.usuario.nombre,
+              psicologo_name: psicologoNombre,
+              alertMessage: `${psicologoNombre} ha evaluado tu test.`
+            }
+          }
+        });
+
+        notificacionEnviada = result_email.emailSent;
+
+        await create_alarma({
+          id_usuario: id_usuario,
+          id_tipo_alerta: 3,
+          mensaje: `${psicologoNombre} ha evaluado tu test.`,
+          vista: false,
+          correo_enviado: true
+        });
+
+      } catch (error) {
+        console.error('Error enviando notificación de evaluación:', error);
+      }
+    }
+
+    return {
+      test: testActualizado,
+      notificacionEnviada
+    };
+  });
+}
+
+async function obtenerTestCompleto(testId: number, id_usuario?: number) {
+  return await prisma.test.findUnique({
+    where: { id: testId },
+    include: {
+      psicologo: { include: { usuario: true, redes_sociales: true } },
+      usuario: true,
+      preguntas: {
+        include: { tipo: true, opciones: { orderBy: { orden: 'asc' } } },
+        orderBy: { orden: 'asc' }
+      },
+      respuestas: {
+        where: id_usuario ? { id_usuario } : undefined,
+        include: { pregunta: true, opcion: true, usuario: true }
+      }
+    }
+  });
+}
+
 export async function PUT(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -681,7 +800,11 @@ export async function PUT(request: Request) {
       config_baremo,
       valor_total,
       preguntas,
-      respuestas
+      respuestas,
+      evaluado,
+      fecha_evaluacion,
+      ponderacion_final,
+      comentarios_psicologo
     }: FullTestData = await request.json();
 
     // Verificar si el test existe
@@ -749,6 +872,21 @@ export async function PUT(request: Request) {
         { error: 'Tipo de peso de pregunta no válido' },
         { status: 400 }
       );
+    }
+
+    if(evaluado && fecha_evaluacion ){
+      console.log("EVALUANDO");  
+      const { test: testEvaluado } = await handleEvaluacionPsicologo(
+        prisma,
+        testId,
+        evaluado,
+        fecha_evaluacion,
+        ponderacion_final,
+        comentarios_psicologo,
+        id_usuario
+      );
+
+      return NextResponse.json(await obtenerTestCompleto(testId, id_usuario));
     }
 
     // Usar transacción para operaciones atómicas
@@ -905,7 +1043,7 @@ export async function PUT(request: Request) {
       return test;
     });
             
-      if(testActualizado.estado=="COMPLETADO" &&  id_usuario){
+    if(testActualizado.estado=="COMPLETADO" &&  id_usuario){
               const usuarioExistente = await prisma.usuario.findUnique({
                 where: { id: id_usuario }
               });
@@ -937,7 +1075,7 @@ export async function PUT(request: Request) {
                 console.log("No se envio correo, el usuario no tiene.");
                }
               }
-        }
+    }
 
     // Obtener el test actualizado con relaciones
     const testCompleto = await prisma.test.findUnique({
@@ -1074,3 +1212,4 @@ export async function DELETE(request: Request) {
     await prisma.$disconnect();
   }
 }
+

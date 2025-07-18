@@ -3,6 +3,14 @@ import { encriptar } from "@/app/lib/crytoManager";
 
 const prisma = new PrismaClient();
 
+enum TipoPreguntaNombre {
+  OPCION_UNICA= 'radio',
+  OPCION_MULTIPLE = 'checkbox',
+  RESPUESTA_CORTA = 'text',
+  SELECT = 'select',
+  RANGO = 'range'
+}
+
 const tipoUsuarioData = [
   {
     nombre: "administrador",

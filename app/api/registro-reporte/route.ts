@@ -4,8 +4,8 @@ import { PrismaClient } from "./../../generated/prisma";
 const prisma = new PrismaClient();
 
 interface RegistroReporteData {
-  tipo: string;
-  parametros: any;
+  tipo: "general" | "psicologo" | "paciente"; // Más específico según el modelo
+  parametros: object; // Más específico que 'any'
   generado_por_id?: number;
   formato: string;
   ruta_almacenamiento?: string;
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const tipo = searchParams.get('tipo');
+    const tipo = searchParams.get('tipo') as "general" | "psicologo" | "paciente" | null;
     const generadoPorId = searchParams.get('generadoPorId');
     const formato = searchParams.get('formato');
     const fechaDesde = searchParams.get('fechaDesde');
@@ -61,9 +61,9 @@ export async function GET(request: Request) {
 
     if (search) {
       whereClause.OR = [
-        { tipo: { contains: search } },
-        { formato: { contains: search } },
-        { ruta_almacenamiento: { contains: search } }
+        { tipo: { contains: search, mode: 'insensitive' } },
+        { formato: { contains: search, mode: 'insensitive' } },
+        { ruta_almacenamiento: { contains: search, mode: 'insensitive' } }
       ];
     }
 
@@ -105,11 +105,34 @@ export async function POST(request: Request) {
   try {
     const reporteData: RegistroReporteData = await request.json();
 
-    if (!reporteData.tipo || !reporteData.parametros || !reporteData.formato) {
+    // Validación más estricta según el modelo
+    if (!reporteData.tipo || !reporteData.formato || !reporteData.parametros) {
       return NextResponse.json(
-        { error: 'tipo, parametros y formato son requeridos' },
+        { error: 'tipo, formato y parametros son campos requeridos' },
         { status: 400 }
       );
+    }
+
+    // Validar que el tipo sea uno de los valores permitidos
+    const tiposPermitidos = ["general", "psicologo", "paciente"];
+    if (!tiposPermitidos.includes(reporteData.tipo)) {
+      return NextResponse.json(
+        { error: 'Tipo de reporte no válido. Debe ser: general, psicologo o paciente' },
+        { status: 400 }
+      );
+    }
+
+    // Verificar usuario si se proporciona generado_por_id
+    if (reporteData.generado_por_id) {
+      const usuario = await prisma.usuario.findUnique({
+        where: { id: reporteData.generado_por_id }
+      });
+      if (!usuario) {
+        return NextResponse.json(
+          { error: 'Usuario generador no encontrado' },
+          { status: 404 }
+        );
+      }
     }
 
     const nuevoReporte = await prisma.registroReporte.create({
@@ -118,7 +141,8 @@ export async function POST(request: Request) {
         parametros: reporteData.parametros,
         generado_por_id: reporteData.generado_por_id || null,
         formato: reporteData.formato,
-        ruta_almacenamiento: reporteData.ruta_almacenamiento || null
+        ruta_almacenamiento: reporteData.ruta_almacenamiento || null,
+        fecha_generacion: new Date() // Asegurar que tenga fecha actual
       }
     });
 
@@ -158,6 +182,30 @@ export async function PATCH(request: Request) {
 
     if (!reporteExistente) {
       return NextResponse.json({ error: 'Reporte no encontrado' }, { status: 404 });
+    }
+
+    // Validar tipo si se está actualizando
+    if (restoDatos.tipo) {
+      const tiposPermitidos = ["general", "psicologo", "paciente"];
+      if (!tiposPermitidos.includes(restoDatos.tipo)) {
+        return NextResponse.json(
+          { error: 'Tipo de reporte no válido' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Verificar usuario si se actualiza generado_por_id
+    if (restoDatos.generado_por_id) {
+      const usuario = await prisma.usuario.findUnique({
+        where: { id: restoDatos.generado_por_id }
+      });
+      if (!usuario) {
+        return NextResponse.json(
+          { error: 'Usuario generador no encontrado' },
+          { status: 404 }
+        );
+      }
     }
 
     const reporteActualizado = await prisma.registroReporte.update({

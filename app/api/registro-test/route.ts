@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from "./../../generated/prisma";
 
 const prisma = new PrismaClient();
+
 enum EstadoTestRegistro {
-  NO_INICIADO="NO_INICIADO",
-  EN_PROGRESO="EN_PROGRESO",
-  COMPLETADO="COMPLETAD",
-  CANCELADO="CANCELADO",
-  EVALUADO="EVALUADO"
+  NO_INICIADO = "NO_INICIADO",
+  EN_PROGRESO = "EN_PROGRESO",
+  COMPLETADO = "COMPLETADO", // Corregido el typo (antes "COMPLETAD")
+  CANCELADO = "CANCELADO",
+  EVALUADO = "EVALUADO"
 }
 
 enum PesoPreguntaTipo {
@@ -19,16 +20,16 @@ enum PesoPreguntaTipo {
 interface RegistroTestData {
   test_id: number;
   usuario_id: number;
-  psicologo_id?: number;
-  fecha_creacion?: Date;
-  fecha_completado?: Date;
+  psicologo_id?: number | null;
+  fecha_creacion?: Date | string;
+  fecha_completado?: Date | string | null;
   estado: EstadoTestRegistro;
-  nombre_test?: string;
-  valor_total?: number;
-   nota_psicologo?:   number;
-  evaluado?:         Boolean;             
-  fecha_evaluacion?: Date;
-  ponderacion_usada?: PesoPreguntaTipo;
+  nombre_test?: string | null;
+  valor_total?: number | null;
+  nota_psicologo?: number | null;
+  evaluado?: boolean;
+  fecha_evaluacion?: Date | string | null;
+  ponderacion_usada?: PesoPreguntaTipo | null;
 }
 
 export async function GET(request: Request) {
@@ -38,7 +39,8 @@ export async function GET(request: Request) {
     const testId = searchParams.get('testId');
     const usuarioId = searchParams.get('usuarioId');
     const psicologoId = searchParams.get('psicologoId');
-    const estado = searchParams.get('estado');
+    const estado = searchParams.get('estado') as EstadoTestRegistro | null;
+    const evaluado = searchParams.get('evaluado');
     const fechaDesde = searchParams.get('fechaDesde');
     const fechaHasta = searchParams.get('fechaHasta');
     const search = searchParams.get('search');
@@ -51,7 +53,9 @@ export async function GET(request: Request) {
       const registro = await prisma.registroTest.findUnique({
         where: { id: parseInt(id) },
         include: {
-          metricas: true
+          metricas: {
+            orderBy: { fecha: 'desc' }
+          }
         }
       });
 
@@ -77,17 +81,31 @@ export async function GET(request: Request) {
     if (usuarioId) whereClause.usuario_id = parseInt(usuarioId);
     if (psicologoId) whereClause.psicologo_id = parseInt(psicologoId);
     if (estado) whereClause.estado = estado;
+    if (evaluado) whereClause.evaluado = evaluado === 'true';
 
     if (fechaDesde || fechaHasta) {
-      whereClause.fecha_creacion = {};
-      if (fechaDesde) whereClause.fecha_creacion.gte = new Date(fechaDesde);
-      if (fechaHasta) whereClause.fecha_creacion.lte = new Date(fechaHasta);
+      whereClause.OR = [
+        { fecha_creacion: {} },
+        { fecha_completado: {} },
+        { fecha_evaluacion: {} }
+      ];
+      
+      if (fechaDesde) {
+        whereClause.OR[0].fecha_creacion.gte = new Date(fechaDesde);
+        whereClause.OR[1].fecha_completado.gte = new Date(fechaDesde);
+        whereClause.OR[2].fecha_evaluacion.gte = new Date(fechaDesde);
+      }
+      if (fechaHasta) {
+        whereClause.OR[0].fecha_creacion.lte = new Date(fechaHasta);
+        whereClause.OR[1].fecha_completado.lte = new Date(fechaHasta);
+        whereClause.OR[2].fecha_evaluacion.lte = new Date(fechaHasta);
+      }
     }
 
     if (search) {
       whereClause.OR = [
-        { nombre_test: { contains: search } },
-        { estado: { contains: search } }
+        { nombre_test: { contains: search, mode: 'insensitive' } },
+        { estado: { contains: search, mode: 'insensitive' } }
       ];
     }
 
@@ -98,9 +116,7 @@ export async function GET(request: Request) {
       where: whereClause,
       include: {
         metricas: {
-          orderBy: {
-            fecha: 'desc'
-          },
+          orderBy: { fecha: 'desc' },
           take: 5
         }
       },
@@ -137,24 +153,67 @@ export async function POST(request: Request) {
   try {
     const registroData: RegistroTestData = await request.json();
 
+    // Validación de campos requeridos
     if (!registroData.test_id || !registroData.usuario_id || !registroData.estado) {
       return NextResponse.json(
-        { error: 'test_id, usuario_id y estado son requeridos' },
+        { error: 'test_id, usuario_id y estado son campos requeridos' },
         { status: 400 }
       );
     }
 
+    // Validar que el test existe
+    const testExistente = await prisma.test.findUnique({
+      where: { id: registroData.test_id }
+    });
+    if (!testExistente) {
+      return NextResponse.json(
+        { error: 'Test no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Validar que el usuario existe
+    const usuarioExistente = await prisma.usuario.findUnique({
+      where: { id: registroData.usuario_id }
+    });
+    if (!usuarioExistente) {
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Validar psicologo si se proporciona
+    if (registroData.psicologo_id) {
+      const psicologoExistente = await prisma.psicologo.findUnique({
+        where: { id_usuario: registroData.psicologo_id }
+      });
+      if (!psicologoExistente) {
+        return NextResponse.json(
+          { error: 'Psicólogo no encontrado' },
+          { status: 404 }
+        );
+      }
+    }
+
+    // Preparar datos para creación
+    const datosCreacion = {
+      test_id: registroData.test_id,
+      usuario_id: registroData.usuario_id,
+      psicologo_id: registroData.psicologo_id || null,
+      fecha_creacion: registroData.fecha_creacion ? new Date(registroData.fecha_creacion) : new Date(),
+      fecha_completado: registroData.fecha_completado ? new Date(registroData.fecha_completado) : null,
+      estado: registroData.estado,
+      nombre_test: registroData.nombre_test || testExistente.nombre || null,
+      valor_total: registroData.valor_total || null,
+      nota_psicologo: registroData.nota_psicologo || null,
+      evaluado: registroData.evaluado || false,
+      fecha_evaluacion: registroData.fecha_evaluacion ? new Date(registroData.fecha_evaluacion) : null,
+      ponderacion_usada: registroData.ponderacion_usada || testExistente.peso_preguntas || null
+    };
+
     const nuevoRegistro = await prisma.registroTest.create({
-      data: {
-        test_id: registroData.test_id,
-        usuario_id: registroData.usuario_id,
-        psicologo_id: registroData.psicologo_id || null,
-        fecha_creacion: registroData.fecha_creacion || new Date(),
-        fecha_completado: registroData.fecha_completado || null,
-        estado: registroData.estado,
-        nombre_test: registroData.nombre_test || null,
-        valor_total: registroData.valor_total || null
-      },
+      data: datosCreacion,
       include: {
         metricas: true
       }
@@ -192,20 +251,72 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'ID de registro es requerido' }, { status: 400 });
     }
 
-    const registroExistente = await prisma.registroTest.findUnique({ where: { id } });
+    const registroExistente = await prisma.registroTest.findUnique({ 
+      where: { id },
+      include: { metricas: true }
+    });
 
     if (!registroExistente) {
       return NextResponse.json({ error: 'Registro de test no encontrado' }, { status: 404 });
     }
 
+    // Preparar los datos de actualización según lo que espera Prisma
+    const updateData: any = {};
+
+    // Mapear los campos según sea necesario
+    if (restoDatos.estado !== undefined) {
+      if (!Object.values(EstadoTestRegistro).includes(restoDatos.estado)) {
+        return NextResponse.json(
+          { error: 'Estado de test no válido' },
+          { status: 400 }
+        );
+      }
+      updateData.estado = restoDatos.estado;
+    }
+
+    if (restoDatos.nota_psicologo !== undefined) {
+      updateData.nota_psicologo = restoDatos.nota_psicologo;
+    }
+
+    if (restoDatos.evaluado !== undefined) {
+      updateData.evaluado = restoDatos.evaluado;
+      if (restoDatos.evaluado === true && !registroExistente.fecha_evaluacion) {
+        updateData.fecha_evaluacion = new Date();
+      }
+    }
+
+    if (restoDatos.ponderacion_usada !== undefined) {
+      // Manejo especial para el enum
+      updateData.ponderacion_usada = restoDatos.ponderacion_usada === null ? 
+        null : 
+        { set: restoDatos.ponderacion_usada };
+    }
+
+    // Manejo de fechas
+    if (restoDatos.fecha_creacion !== undefined) {
+      updateData.fecha_creacion = new Date(restoDatos.fecha_creacion);
+    }
+
+    if (restoDatos.fecha_completado !== undefined) {
+      updateData.fecha_completado = restoDatos.fecha_completado === null ? 
+        null : 
+        new Date(restoDatos.fecha_completado);
+    }
+
+    if (restoDatos.fecha_evaluacion !== undefined) {
+      updateData.fecha_evaluacion = restoDatos.fecha_evaluacion === null ? 
+        null : 
+        new Date(restoDatos.fecha_evaluacion);
+    }
+
     // Si se está actualizando el estado a COMPLETADO, establecer la fecha de completado
-    if (restoDatos.estado === 'COMPLETADO' && !registroExistente.fecha_completado) {
-      restoDatos.fecha_completado = new Date();
+    if (restoDatos.estado === EstadoTestRegistro.COMPLETADO && !registroExistente.fecha_completado) {
+      updateData.fecha_completado = new Date();
     }
 
     const registroActualizado = await prisma.registroTest.update({
       where: { id },
-      data: restoDatos,
+      data: updateData,
       include: {
         metricas: true
       }
@@ -268,7 +379,10 @@ export async function DELETE(request: Request) {
     ]);
 
     return NextResponse.json(
-      { message: 'Registro de test y métricas relacionadas eliminados correctamente' },
+      { 
+        message: 'Registro de test y métricas relacionadas eliminados correctamente',
+        deletedRecord: registroExistente
+      },
       { status: 200 }
     );
 

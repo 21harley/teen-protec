@@ -1,32 +1,34 @@
 'use client'
-import React, { useState, useEffect } from 'react';
-import { UsuarioData, PsicologoData, PreguntaData, RespuestaData } from "./../../app/types/test";
+import React, { useState, useEffect } from 'react'
+import { UsuarioData, PsicologoData, PreguntaData, RespuestaData, TestStatus, PesoPreguntaTipo } from "@/app/types/test"
 import { UsuarioCompleto, TutorInfo } from "./../../app/types/gestionPaciente/index"
-import Image from 'next/image';
-import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
-import IconLogoEditar from "./../../app/public/logos/icon_editar.svg";
-import IconLupa from "./../../app/public/logos/lupa.svg";
-import IconLogoDarAlta from "./../../app/public/logos/user-dar-alta.svg.svg";
-import { ModalVerPacientesTestResultados } from './../modalVerPacientesTestResultados/modalVerPacientesTestResultados';
-import FormPacientes from './../formPacientes/formPacientes';
-import { TestStatus } from '@/app/types/test';
+import Image from 'next/image'
+import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg"
+import IconLogoEditar from "./../../app/public/logos/icon_editar.svg"
+import IconLupa from "./../../app/public/logos/lupa.svg"
+import IconLogoDarAlta from "./../../app/public/logos/user-dar-alta.svg.svg"
+import { ModalVerPacientesTestResultados } from './../modalVerPacientesTestResultados/modalVerPacientesTestResultados'
+import FormPacientes from './../formPacientes/formPacientes'
 
 interface TestAsignado {
-  id: number;
-  nombre: string;
-  estado: TestStatus;
-  fecha_creacion: string | Date;
-  preguntas?: PreguntaData[];
-  respuestas?: RespuestaData[];
-  progreso?: number;
+  id: number
+  nombre: string
+  estado: TestStatus
+  fecha_creacion: string | Date
+  preguntas?: PreguntaData[]
+  respuestas?: RespuestaData[]
+  progreso?: number
+  peso_preguntas?: PesoPreguntaTipo
+  id_usuario?: number
+  id_psicologo?: number
 }
 
 interface ModalPacienteProps {
-  paciente: UsuarioCompleto;
-  psicologoId: number;
-  onClose: () => void;
-  onRefresh: () => void;
-  esAsignacion?: boolean;
+  paciente: UsuarioCompleto
+  psicologoId: number
+  onClose: () => void
+  onRefresh: () => void
+  esAsignacion?: boolean
 }
 
 export default function ModalPaciente({ 
@@ -36,13 +38,14 @@ export default function ModalPaciente({
   onRefresh,
   esAsignacion = false 
 }: ModalPacienteProps) {
-  const [tests, setTests] = useState<TestAsignado[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deletingTestId, setDeletingTestId] = useState<number | null>(null);
-  const [showTestModal, setShowTestModal] = useState(false);
-  const [selectedTest, setSelectedTest] = useState<TestAsignado | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [tests, setTests] = useState<TestAsignado[]>([])
+  const [loading, setLoading] = useState(true)
+  const [deletingTestId, setDeletingTestId] = useState<number | null>(null)
+  const [showTestModal, setShowTestModal] = useState(false)
+  const [selectedTest, setSelectedTest] = useState<TestAsignado | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isEvaluating, setIsEvaluating] = useState(false)
 
   // Obtener los tests del paciente
   useEffect(() => {
@@ -50,62 +53,108 @@ export default function ModalPaciente({
       try {
         const response = await fetch(
           `/api/paciente?id_psicologo=${psicologoId}&id_paciente=${paciente.id}&conTests=true`
-        );
-        if (!response.ok) throw new Error('Error al obtener tests');
+        )
+        if (!response.ok) throw new Error('Error al obtener tests')
         
-        const data = await response.json();
-        setTests(data.tests || []);
+        const data = await response.json()
+        setTests(data.tests || [])
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error:', error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
     if (!esAsignacion) {
-      fetchTests();
+      fetchTests()
     } else {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [paciente.id, psicologoId, esAsignacion]);
+  }, [paciente.id, psicologoId, esAsignacion])
 
   const handleDeleteTest = async (testId: number) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este test? Esta acción no se puede deshacer.')) {
-      return;
+      return
     }
 
-    setDeletingTestId(testId);
+    setDeletingTestId(testId)
     try {
       const response = await fetch(`/api/test?id=${testId}`, {
         method: 'DELETE'
-      });
+      })
 
-      if (!response.ok) throw new Error('Error al eliminar test');
+      if (!response.ok) throw new Error('Error al eliminar test')
 
-      setTests(prev => prev.filter(t => t.id !== testId));
-      onRefresh();
+      setTests(prev => prev.filter(t => t.id !== testId))
+      onRefresh()
     } catch (error) {
-      console.error('Error eliminando test:', error);
-      alert('Error al eliminar el test');
+      console.error('Error eliminando test:', error)
+      alert('Error al eliminar el test')
     } finally {
-      setDeletingTestId(null);
+      setDeletingTestId(null)
     }
-  };
+  }
 
   const handleViewTest = (test: TestAsignado) => {
-    if (test.estado === TestStatus.COMPLETADO) {
-      setSelectedTest(test);
-      setShowTestModal(true);
+    if (test.estado === TestStatus.COMPLETADO || test.estado === TestStatus.EVALUADO) {
+      setSelectedTest(test)
+      setShowTestModal(true)
     }
-  };
+  }
+
+  const handleEvaluarTest = async (puntajes: Record<number, number>, comentario: string) => {
+    if (!selectedTest) return
+
+    setIsEvaluating(true)
+    try {
+      const response = await fetch(`/api/test?id=${selectedTest.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          evaluado: true,
+          fecha_evaluacion: new Date().toISOString(),
+          ponderacion_final: Object.values(puntajes).reduce((a, b) => a + b, 0),
+          comentarios_psicologo: comentario,
+          estado: TestStatus.EVALUADO
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al evaluar el test')
+      }
+
+      // Actualizar el estado local
+      setTests(prev => prev.map(t => 
+        t.id === selectedTest.id ? { 
+          ...t, 
+          estado: TestStatus.EVALUADO,
+          respuestas: t.respuestas?.map(r => ({
+            ...r,
+            puntaje: puntajes[r.id_pregunta!]
+          }))
+        } : t
+      ))
+
+      setShowTestModal(false)
+      onRefresh()
+      alert('Test evaluado correctamente')
+    } catch (error) {
+      console.error('Error evaluando test:', error)
+      alert('Error al evaluar el test')
+    } finally {
+      setIsEvaluating(false)
+    }
+  }
 
   const handleEditUser = () => {
-    setShowEditModal(true);
-  };
+    setShowEditModal(true)
+  }
 
   const handleCloseEdit = () => {
-    setShowEditModal(false);
-  };
+    setShowEditModal(false)
+  }
 
   const handleUserUpdated = async (updatedUser: UsuarioData) => {
     try {
@@ -116,87 +165,89 @@ export default function ModalPaciente({
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify(updatedUser)
-      });
+      })
 
-      const responseData = await response.json();
+      const responseData = await response.json()
       
       if (!response.ok) {
-        throw new Error(responseData.error || 'Error al actualizar el paciente');
+        throw new Error(responseData.error || 'Error al actualizar el paciente')
       }
 
       // Actualizar los datos del paciente en el modal principal
-      Object.assign(paciente, updatedUser);
-      setShowEditModal(false);
-      onRefresh();
-      alert('Paciente actualizado correctamente');
+      Object.assign(paciente, updatedUser)
+      setShowEditModal(false)
+      onRefresh()
+      alert('Paciente actualizado correctamente')
     } catch (error) {
-      console.error('Error al actualizar paciente:', error);
-      alert('Error al actualizar el paciente');
+      console.error('Error al actualizar paciente:', error)
+      alert('Error al actualizar el paciente')
     }
-  };
+  }
 
   const handleDarDeAlta = async () => {
     const message = esAsignacion 
       ? '¿Estás seguro de asignar este paciente?'
-      : '¿Estás seguro de dar de alta a este paciente? Esto eliminará todos sus tests asignados.';
+      : '¿Estás seguro de dar de alta a este paciente? Esto eliminará todos sus tests asignados.'
     
-    if (!confirm(message)) return;
+    if (!confirm(message)) return
 
-    setIsDeleting(true);
+    setIsDeleting(true)
     try {
       const url = esAsignacion
         ? `/api/paciente`
-        : `/api/paciente?id_paciente=${paciente.id}&id_psicologo=${psicologoId}`;
+        : `/api/paciente?id_paciente=${paciente.id}&id_psicologo=${psicologoId}`
 
-      const method = esAsignacion ? 'POST' : 'DELETE';
+      const method = esAsignacion ? 'POST' : 'DELETE'
       const body = esAsignacion 
         ? JSON.stringify({ id_paciente: paciente.id, id_psicologo: psicologoId })
-        : undefined;
+        : undefined
 
       const response = await fetch(url, {
         method,
         headers: esAsignacion ? { 'Content-Type': 'application/json' } : undefined,
         body
-      });
+      })
 
       if (!response.ok) throw new Error(
         esAsignacion ? 'Error al asignar paciente' : 'Error al dar de alta al paciente'
-      );
+      )
 
-      onClose();
-      onRefresh();
+      onClose()
+      onRefresh()
     } catch (error) {
-      console.error('Error:', error);
-      alert(esAsignacion ? 'Error al asignar paciente' : 'Error al dar de alta al paciente');
+      console.error('Error:', error)
+      alert(esAsignacion ? 'Error al asignar paciente' : 'Error al dar de alta al paciente')
     } finally {
-      setIsDeleting(false);
+      setIsDeleting(false)
     }
-  };
+  }
 
   const getTestColor = (estado: TestStatus) => {
     switch (estado) {
       case TestStatus.COMPLETADO:
-        return 'bg-[#6DC7E4]';
+        return 'bg-[#6DC7E4]'
+      case TestStatus.EVALUADO:
+        return 'bg-green-100'
       case TestStatus.EN_PROGRESO:
-        return 'bg-yellow-100';
+        return 'bg-yellow-100'
       default:
-        return 'bg-white';
+        return 'bg-white'
     }
-  };
+  }
 
   const calcularEdad = (fechaNacimiento?: string | Date) => {
-    if (!fechaNacimiento) return null;
-    const fechaNac = new Date(fechaNacimiento);
-    const hoy = new Date();
-    let edad = hoy.getFullYear() - fechaNac.getFullYear();
-    const mes = hoy.getMonth() - fechaNac.getMonth();
+    if (!fechaNacimiento) return null
+    const fechaNac = new Date(fechaNacimiento)
+    const hoy = new Date()
+    let edad = hoy.getFullYear() - fechaNac.getFullYear()
+    const mes = hoy.getMonth() - fechaNac.getMonth()
     
     if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
-      edad--;
+      edad--
     }
     
-    return edad;
-  };
+    return edad
+  }
 
   return (
     <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -283,9 +334,11 @@ export default function ModalPaciente({
                             <span className="text-sm text-gray-600">
                               {test.estado === TestStatus.COMPLETADO
                                 ? 'Completado' 
-                                : test.estado === TestStatus.EN_PROGRESO 
-                                  ? 'En progreso' 
-                                  : 'No iniciado'}
+                                : test.estado === TestStatus.EVALUADO
+                                  ? 'Evaluado'
+                                  : test.estado === TestStatus.EN_PROGRESO 
+                                    ? 'En progreso' 
+                                    : 'No iniciado'}
                             </span>
                             {typeof test.progreso === 'number' && (
                               <span className="text-xs bg-white px-2 py-0.5 rounded-full">
@@ -301,7 +354,7 @@ export default function ModalPaciente({
                         </div>
                         
                         <div className="flex gap-2">
-                          {test.estado === TestStatus.COMPLETADO && (
+                          {(test.estado === TestStatus.COMPLETADO || test.estado === TestStatus.EVALUADO) && (
                             <button
                               onClick={() => handleViewTest(test)}
                               className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
@@ -383,7 +436,10 @@ export default function ModalPaciente({
         <ModalVerPacientesTestResultados
           preguntas={selectedTest.preguntas ?? []}
           respuestas={selectedTest.respuestas ?? []}
+          estado={selectedTest.estado}
+          pesoPreguntas={selectedTest.peso_preguntas ?? PesoPreguntaTipo.SIN_VALOR}
           onClose={() => setShowTestModal(false)}
+          onEvaluar={handleEvaluarTest}
         />
       )}
 
@@ -415,5 +471,5 @@ export default function ModalPaciente({
         </div>
       )}
     </div>
-  );
+  )
 }

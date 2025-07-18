@@ -3,19 +3,27 @@ import { PrismaClient } from "./../../generated/prisma";
 
 const prisma = new PrismaClient();
 
+enum Sexo {
+  MASCULINO = "MASCULINO",
+  FEMENINO = "FEMENINO",
+  OTRO = "OTRO"
+}
+
+interface TestEvaluado {
+  testId: number;
+  nota: number;
+  fecha: string; // ISO 8601 format
+}
+
 interface RegistroUsuarioData {
   usuario_id: number;
-  sexo?: string;  // Lowercase 'string' is the TypeScript type
-  edad?: number;
+  sexo?: Sexo | null;
+  edad?: number | null;
   tipo_usuario: string;
   psicologo_id?: number | null;
-  tests_ids: number[] | string;  // Can be either array or stringified array
-  tests_evaluados?: {            // Properly typed as an array of objects
-    testId: number;
-    nota: number;
-    fecha: string; // ISO 8601 format
-  }[] | null;
-  total_tests: number;
+  tests_ids?: number[] | null;
+  tests_evaluados?: TestEvaluado[] | null;
+  total_tests?: number;
   avg_notas?: number | null;
 }
 
@@ -39,8 +47,14 @@ export async function GET(request: Request) {
         where: { id: parseInt(id) },
         include: {
           trazabilidades: true,
-          metricas: true,
-          sesiones: true
+          metricas: {
+            orderBy: { fecha: 'desc' },
+            take: 5
+          },
+          sesiones: {
+            orderBy: { fecha: 'desc' },
+            take: 5
+          }
         }
       });
 
@@ -74,8 +88,8 @@ export async function GET(request: Request) {
 
     if (search) {
       whereClause.OR = [
-        { tipo_usuario: { contains: search } },
-        { sexo: { contains: search } }
+        { tipo_usuario: { contains: search, mode: 'insensitive' } },
+        { sexo: { contains: search, mode: 'insensitive' } }
       ];
     }
 
@@ -87,15 +101,11 @@ export async function GET(request: Request) {
       include: {
         trazabilidades: true,
         metricas: {
-          orderBy: {
-            fecha: 'desc'
-          },
+          orderBy: { fecha: 'desc' },
           take: 5
         },
         sesiones: {
-          orderBy: {
-            fecha: 'desc'
-          },
+          orderBy: { fecha: 'desc' },
           take: 5
         }
       },
@@ -128,15 +138,58 @@ export async function GET(request: Request) {
   }
 }
 
+interface TestEvaluado {
+  testId: number;
+  nota: number;
+  fecha: string;
+}
+
+interface RegistroUsuarioData {
+  usuario_id: number;
+  sexo?: Sexo | null;
+  edad?: number | null;
+  tipo_usuario: string;
+  psicologo_id?: number | null;
+  tests_ids?: number[] | null;
+  tests_evaluados?: TestEvaluado[] | null;
+  total_tests?: number;
+  avg_notas?: number | null;
+}
+
 export async function POST(request: Request) {
   try {
     const registroData: RegistroUsuarioData = await request.json();
 
+    // Validación de campos requeridos
     if (!registroData.usuario_id || !registroData.tipo_usuario) {
       return NextResponse.json(
-        { error: 'usuario_id y tipo_usuario son requeridos' },
+        { error: 'usuario_id y tipo_usuario son campos requeridos' },
         { status: 400 }
       );
+    }
+
+    // Verificar que el usuario existe
+    const usuarioExistente = await prisma.usuario.findUnique({
+      where: { id: registroData.usuario_id }
+    });
+    if (!usuarioExistente) {
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Verificar psicólogo si se proporciona
+    if (registroData.psicologo_id) {
+      const psicologoExistente = await prisma.psicologo.findUnique({
+        where: { id_usuario: registroData.psicologo_id }
+      });
+      if (!psicologoExistente) {
+        return NextResponse.json(
+          { error: 'Psicólogo no encontrado' },
+          { status: 404 }
+        );
+      }
     }
 
     // Verificar si ya existe un registro para este usuario hoy
@@ -159,14 +212,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Preparar datos para creación con el tipo correcto para campos JSON
+    const datosCreacion = {
+      usuario_id: registroData.usuario_id,
+      sexo: registroData.sexo ?? null,
+      edad: registroData.edad ?? null,
+      tipo_usuario: registroData.tipo_usuario,
+      psicologo_id: registroData.psicologo_id ?? null,
+      tests_ids: registroData.tests_ids ,
+      tests_evaluados: registroData.tests_evaluados,
+      total_tests: registroData.total_tests ?? 0,
+      avg_notas: registroData.avg_notas ?? null,
+      fecha_registro: new Date()
+    };
+
     const nuevoRegistro = await prisma.registroUsuario.create({
-      data: {
-        usuario_id: registroData.usuario_id,
-        sexo: registroData.sexo || null,
-        edad: registroData.edad || null,
-        tipo_usuario: registroData.tipo_usuario,
-        psicologo_id: registroData.psicologo_id || null
-      },
+      data: datosCreacion,
       include: {
         trazabilidades: true,
         metricas: true,
@@ -206,15 +267,55 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'ID de registro es requerido' }, { status: 400 });
     }
 
-    const registroExistente = await prisma.registroUsuario.findUnique({ where: { id } });
+    const registroExistente = await prisma.registroUsuario.findUnique({ 
+      where: { id },
+      include: {
+        trazabilidades: true,
+        metricas: true,
+        sesiones: true
+      }
+    });
 
     if (!registroExistente) {
       return NextResponse.json({ error: 'Registro no encontrado' }, { status: 404 });
     }
 
+    // Preparar datos de actualización
+    const updateData: any = {};
+
+    // Campos básicos
+    if (restoDatos.sexo !== undefined) {
+      updateData.sexo = restoDatos.sexo;
+    }
+    if (restoDatos.edad !== undefined) {
+      updateData.edad = restoDatos.edad;
+    }
+    if (restoDatos.tipo_usuario !== undefined) {
+      updateData.tipo_usuario = restoDatos.tipo_usuario;
+    }
+    if (restoDatos.psicologo_id !== undefined) {
+      updateData.psicologo_id = restoDatos.psicologo_id;
+    }
+
+    // Campos JSON
+    if (restoDatos.tests_ids !== undefined) {
+      updateData.tests_ids = restoDatos.tests_ids ? JSON.stringify(restoDatos.tests_ids) : null;
+    }
+    if (restoDatos.tests_evaluados !== undefined) {
+      updateData.tests_evaluados = restoDatos.tests_evaluados ? JSON.stringify(restoDatos.tests_evaluados) : null;
+    }
+
+    // Campos numéricos
+    if (restoDatos.total_tests !== undefined) {
+      updateData.total_tests = restoDatos.total_tests;
+    }
+    if (restoDatos.avg_notas !== undefined) {
+      updateData.avg_notas = restoDatos.avg_notas;
+    }
+
     const registroActualizado = await prisma.registroUsuario.update({
       where: { id },
-      data: restoDatos,
+      data: updateData,
       include: {
         trazabilidades: true,
         metricas: true,
@@ -287,7 +388,10 @@ export async function DELETE(request: Request) {
     ]);
 
     return NextResponse.json(
-      { message: 'Registro y datos relacionados eliminados correctamente' },
+      { 
+        message: 'Registro y datos relacionados eliminados correctamente',
+        deletedRecord: registroExistente
+      },
       { status: 200 }
     );
 

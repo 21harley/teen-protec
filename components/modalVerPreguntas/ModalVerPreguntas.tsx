@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import { PreguntaData, TipoPreguntaNombre, OpcionData } from "@/app/types/test"
+import { PreguntaData, TipoPreguntaNombre, OpcionData, TipoPreguntaMap } from "@/app/types/test"
 import Image from 'next/image'
 import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
 import IconLogoEditar from "./../../app/public/logos/icon_editar.svg";
@@ -18,7 +18,7 @@ export function ModalVerPreguntas({ preguntas, testId, onClose, onEdit }: ModalV
   const [deleteError, setDeleteError] = React.useState<string | null>(null)
 
   const renderEjemploRespuesta = (pregunta: PreguntaData) => {
-    switch (pregunta.tipo.nombre) {
+    switch ( TipoPreguntaMap[pregunta.id_tipo]) {
       case TipoPreguntaNombre.OPCION_MULTIPLE:
         return (
           <div className="text-sm text-gray-500 italic">
@@ -59,7 +59,7 @@ case TipoPreguntaNombre.OPCION_UNICA:
         )
       
       default:
-        return <div className="text-sm text-gray-500 italic">Tipo de pregunta: {pregunta.tipo.nombre}</div>
+        return <div className="text-sm text-gray-500 italic">Tipo de pregunta: {TipoPreguntaMap[pregunta.id_tipo]}</div>
     }
   }
 
