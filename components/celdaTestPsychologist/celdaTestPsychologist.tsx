@@ -45,7 +45,8 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
             placeholder: q.placeholder ?? null,
             min: q.min ?? null,
             max: q.max ?? null,
-            paso: q.paso ?? null,
+            paso: q.paso ??null,
+            eva_psi: q.eva_psi ?? null,
             opciones: q.opciones?.map(o => ({
               texto: o.texto,
               valor: o.valor,
@@ -200,6 +201,7 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
               min: p.min || undefined,
               max: p.max || undefined,
               paso: p.paso || undefined,
+              eva_psi: p.eva_psi || undefined,
               tipo: p.tipo,
               opciones: p.opciones?.map(o => ({
                 id: o.id,

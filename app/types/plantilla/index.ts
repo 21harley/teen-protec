@@ -44,7 +44,8 @@ export interface PreguntaPlantillaBase {
   placeholder?: string;
   min?: number;
   max?: number;
-  paso?: number;
+  paso?:number;
+  eva_psi?: number;
   opciones?: OpcionPlantillaBase[];
 }
 
@@ -164,7 +165,8 @@ export interface PlantillaDetailResponse {
     placeholder?: string;
     min?: number;
     max?: number;
-    paso?: number;
+    paso?:number;
+    eva_psi?: number;
     tipo: TipoPreguntaPlantilla;
     opciones?: OpcionPlantilla[];
   }[];

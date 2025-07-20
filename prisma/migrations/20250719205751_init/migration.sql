@@ -65,6 +65,7 @@ CREATE TABLE "Pregunta" (
     "min" INTEGER,
     "max" INTEGER,
     "paso" INTEGER,
+    "eva_psi" INTEGER,
     CONSTRAINT "Pregunta_id_test_fkey" FOREIGN KEY ("id_test") REFERENCES "Test" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "Pregunta_id_tipo_fkey" FOREIGN KEY ("id_tipo") REFERENCES "TipoPregunta" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -96,6 +97,7 @@ CREATE TABLE "PreguntaPlantilla" (
     "min" INTEGER,
     "max" INTEGER,
     "paso" INTEGER,
+    "eva_psi" INTEGER,
     CONSTRAINT "PreguntaPlantilla_id_test_fkey" FOREIGN KEY ("id_test") REFERENCES "TestPlantilla" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "PreguntaPlantilla_id_tipo_fkey" FOREIGN KEY ("id_tipo") REFERENCES "TipoPregunta" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );

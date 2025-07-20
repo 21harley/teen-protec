@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { PreguntaData, RespuestaData, TestStatus, PesoPreguntaTipo, TipoPreguntaNombre, TipoPreguntaMap } from "@/app/types/test"
 import svg from "./../../app/public/logos/logo_texto.svg"
 import Image from 'next/image'
@@ -10,7 +10,7 @@ interface ModalVerPacientesTestResultadosProps {
   estado: TestStatus
   pesoPreguntas: PesoPreguntaTipo
   onClose: () => void
-  onEvaluar: (puntajes: Record<number, number>, comentario: string) => Promise<void>
+  onEvaluar: (preguntasActualizadas: PreguntaData[], comentario: string, totalPuntaje: number) => Promise<void>
 }
 
 export function ModalVerPacientesTestResultados({ 
@@ -21,38 +21,81 @@ export function ModalVerPacientesTestResultados({
   onClose, 
   onEvaluar 
 }: ModalVerPacientesTestResultadosProps) {
-  const [puntajes, setPuntajes] = useState<Record<number, number>>({})
+  const [evaluacionesPsi, setEvaluacionesPsi] = useState<Record<number, number | null>>({})
   const [comentario, setComentario] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [puntajeActual, setPuntajeActual] = useState(0)
+
+  // Inicializar estados con los valores de las preguntas
+  useEffect(() => {
+    const initialEvaluacionesPsi: Record<number, number | null> = {}
+
+    preguntas.forEach(pregunta => {
+      if (pesoPreguntas === 'IGUAL_VALOR' || pesoPreguntas === 'BAREMO') {
+        initialEvaluacionesPsi[pregunta.id!] = typeof pregunta.eva_psi === 'string' 
+          ? parseFloat(pregunta.eva_psi) 
+          : pregunta.eva_psi ?? (pesoPreguntas === 'IGUAL_VALOR' ? 0 : null)
+      }
+    })
+
+    setEvaluacionesPsi(initialEvaluacionesPsi)
+    setPuntajeActual(calcularPuntajeTotal(initialEvaluacionesPsi))
+  }, [preguntas, pesoPreguntas])
 
   const getRespuestasForPregunta = (preguntaId: number) => {
     return respuestas.filter(r => r.id_pregunta === preguntaId)
   }
 
-  const getTextoOpcion = (pregunta: PreguntaData, idOpcion: number | null) => {
-    if (!idOpcion || !pregunta.opciones) return null
-    const opcion = pregunta.opciones.find(o => o.id === idOpcion)
-    return opcion?.texto || `Opción ${idOpcion}`
+  const getTextoOpcion = (respuesta: RespuestaData) => {
+    if (respuesta.opcion) {
+      return respuesta.opcion.texto
+    }
+    return respuesta.texto_respuesta || null
   }
 
-  const getValorOpcion = (pregunta: PreguntaData, idOpcion: number | null) => {
-    if (!idOpcion || !pregunta.opciones) return 0
-    const opcion = pregunta.opciones.find(o => o.id === idOpcion)
-    return opcion?.valor ? parseFloat(opcion.valor) : 0
+  const getValorOpcion = (respuesta: RespuestaData) => {
+    if (respuesta.opcion) {
+      return respuesta.opcion.valor ? parseFloat(respuesta.opcion.valor) : 0
+    }
+    return 0
   }
 
-  const calcularPuntajeTotal = () => {
-    if (estado === 'EVALUADO') {
+  const calcularPuntajeTotal = (evaluaciones: Record<number, number | null> = evaluacionesPsi) => {
+    if (pesoPreguntas !== 'SIN_VALOR') {
       return preguntas.reduce((total, pregunta) => {
         const respuestasPregunta = getRespuestasForPregunta(pregunta.id!)
-        if (respuestasPregunta.length === 0) return total
+        const tipoPregunta = TipoPreguntaMap[pregunta.id_tipo]
         
         if (pesoPreguntas === 'IGUAL_VALOR') {
-          return total + (pregunta.peso || 0)
+          // Para igual valor, suma el peso si hay respuesta Y si el psicólogo ha aprobado (1)
+          if (respuestasPregunta.length > 0) {
+            if (tipoPregunta === TipoPreguntaNombre.RESPUESTA_CORTA || tipoPregunta === TipoPreguntaNombre.RANGO) {
+              // Solo suma si el psicólogo ha marcado como "Sí" (1)
+              return total + (evaluaciones[pregunta.id!] === 1 ? pregunta.peso || 0 : 0)
+            } else {
+              // Para otros tipos, suma directamente el peso
+              return total + (pregunta.peso || 0)
+            }
+          }
+          return total
         } else if (pesoPreguntas === 'BAREMO') {
-          return respuestasPregunta.reduce((subTotal, respuesta) => {
-            return subTotal + (puntajes[respuesta.id_pregunta!] || 0)
-          }, total)
+          if (tipoPregunta === TipoPreguntaNombre.OPCION_MULTIPLE) {
+            const valores = respuestasPregunta.map(r => getValorOpcion(r))
+            const maxValor = valores.length > 0 ? Math.max(...valores) : 0
+            return total + maxValor
+          } else if (tipoPregunta === TipoPreguntaNombre.OPCION_UNICA || 
+                    tipoPregunta === TipoPreguntaNombre.SELECT) {
+            const valor = respuestasPregunta.length > 0 ? getValorOpcion(respuestasPregunta[0]) : 0
+            return total + valor
+          } else if (tipoPregunta === TipoPreguntaNombre.RESPUESTA_CORTA) {
+            // Para respuesta corta, suma la evaluación del psicólogo (0 si no hay evaluación)
+            return total + (evaluaciones[pregunta.id!] || 0)
+          } else if (tipoPregunta === TipoPreguntaNombre.RANGO) {
+            // Para rango, suma el valor del rango más la evaluación adicional del psicólogo
+            const valorRango = respuestasPregunta[0]?.valor_rango || 0
+            const evalPsi = evaluaciones[pregunta.id!] || 0
+            return total + valorRango + evalPsi
+          }
         }
         return total
       }, 0)
@@ -60,24 +103,103 @@ export function ModalVerPacientesTestResultados({
     return 0
   }
 
-  const handlePuntajeChange = (preguntaId: number, valor: number) => {
-    setPuntajes(prev => ({
-      ...prev,
-      [preguntaId]: valor
-    }))
+  const handleEvaluacionPsiChange = (preguntaId: number, valor: string | number, maxPuntos: number) => {
+    let numericValue: number | null = null
+
+    if (pesoPreguntas === 'IGUAL_VALOR') {
+      // Para igual valor, solo aceptamos 0 (No) o 1 (Sí)
+      numericValue = valor === 1 ? 1 : 0
+    } else {
+      // Para baremo, manejamos el input numérico
+      numericValue = valor === '' ? null : typeof valor === 'number' ? valor : parseFloat(valor)
+      
+      if (numericValue !== null) {
+        if (numericValue > maxPuntos) {
+          numericValue = maxPuntos
+        } else if (numericValue < 0) {
+          numericValue = 0
+        }
+      }
+    }
+
+    const newEvaluaciones = {
+      ...evaluacionesPsi,
+      [preguntaId]: numericValue
+    }
+
+    setEvaluacionesPsi(newEvaluaciones)
+    setPuntajeActual(calcularPuntajeTotal(newEvaluaciones))
   }
 
   const handleSubmitEvaluacion = async () => {
     setIsLoading(true)
     try {
-      await onEvaluar(puntajes, comentario)
+      const preguntasActualizadas = preguntas.map(pregunta => ({
+        ...pregunta,
+        eva_psi: (pesoPreguntas === 'IGUAL_VALOR' || pesoPreguntas === 'BAREMO') 
+          ? evaluacionesPsi[pregunta.id!] !== undefined 
+            ? evaluacionesPsi[pregunta.id!] 
+            : typeof pregunta.eva_psi === 'string'
+              ? parseFloat(pregunta.eva_psi) || 0
+              : pregunta.eva_psi || 0
+          : null
+      }))
+      
+      await onEvaluar(preguntasActualizadas, comentario, puntajeActual);
     } finally {
       setIsLoading(false)
     }
   }
 
+  const renderEvaluacionInput = (preguntaId: number, maxPuntos: number, currentValue: number | null) => {
+    if (pesoPreguntas === 'IGUAL_VALOR') {
+      return (
+        <div className="flex items-center gap-4">
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name={`eval-${preguntaId}`}
+              checked={currentValue === 1}
+              onChange={() => handleEvaluacionPsiChange(preguntaId, 1, maxPuntos)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+            />
+            <span className="ml-2 text-sm text-gray-700">Sí ({maxPuntos} puntos)</span>
+          </label>
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name={`eval-${preguntaId}`}
+              checked={currentValue === 0}
+              onChange={() => handleEvaluacionPsiChange(preguntaId, 0, maxPuntos)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+            />
+            <span className="ml-2 text-sm text-gray-700">No (0 puntos)</span>
+          </label>
+        </div>
+      )
+    } else {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Puntuación (max {maxPuntos}):</span>
+          <input
+            type="number"
+            min="0"
+            max={maxPuntos}
+            step="1"
+            value={currentValue ?? ''}
+            onChange={(e) => handleEvaluacionPsiChange(preguntaId, e.target.value, maxPuntos)}
+            className="w-20 px-2 py-1 border rounded text-sm"
+            placeholder="0"
+          />
+        </div>
+      )
+    }
+  }
+
   const renderRespuesta = (pregunta: PreguntaData) => {
     const respuestasPregunta = getRespuestasForPregunta(pregunta.id!)
+    const maxPuntos = pregunta.peso || 10
+    const currentEval = evaluacionesPsi[pregunta.id!] ?? null
     
     if (respuestasPregunta.length === 0) {
       return (
@@ -86,76 +208,55 @@ export function ModalVerPacientesTestResultados({
         </div>
       )
     }
-    console.log(pregunta);
+
     switch (TipoPreguntaMap[pregunta.id_tipo]) {
       case TipoPreguntaNombre.OPCION_UNICA:
       case TipoPreguntaNombre.SELECT:
         const respuesta = respuestasPregunta[0]
-        const textoOpcion = getTextoOpcion(pregunta, respuesta.id_opcion ?? null)
-        const valorOpcion = getValorOpcion(pregunta, respuesta.id_opcion ?? null)
-        const textoAdicional = respuesta.texto_respuesta ? ` - ${respuesta.texto_respuesta}` : ''
+        const textoOpcion = getTextoOpcion(respuesta)
+        const valorOpcion = getValorOpcion(respuesta)
         
         return (
           <div className="space-y-2">
             <div className="text-sm text-gray-700 bg-green-50 p-2 rounded border border-green-100">
-              {textoOpcion || 'Ninguna opción seleccionada'}{textoAdicional}
+              {textoOpcion || 'Ninguna opción seleccionada'} {pesoPreguntas !== 'SIN_VALOR' && `(Valor: ${valorOpcion})`}
             </div>
-            {estado === 'COMPLETADO' && pesoPreguntas === 'BAREMO' && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Puntaje:</span>
-                <input
-                  type="number"
-                  min="0"
-                  max={pregunta.peso || 10}
-                  value={puntajes[pregunta.id!] || 0}
-                  onChange={(e) => handlePuntajeChange(pregunta.id!, parseFloat(e.target.value))}
-                  className="w-20 px-2 py-1 border rounded text-sm"
-                />
-                <span className="text-sm text-gray-500">/ {pregunta.peso || '?'}</span>
-              </div>
-            )}
-            {estado === 'EVALUADO' && pesoPreguntas === 'BAREMO' && (
-              <div className="text-sm text-gray-600">
-                Puntaje asignado: {puntajes[pregunta.id!] || 0} / {pregunta.peso || '?'}
-              </div>
-            )}
           </div>
         )
       
       case TipoPreguntaNombre.OPCION_MULTIPLE:
-        const opcionesSeleccionadas = respuestasPregunta
-          .map(r => ({
-            texto: getTextoOpcion(pregunta, r.id_opcion ?? null),
-            valor: getValorOpcion(pregunta, r.id_opcion ?? null),
-            textoAdicional: r.texto_respuesta
-          }))
-          .filter(op => op.texto !== null)
-
+        const opcionesSeleccionadas = respuestasPregunta.map(r => ({
+          texto: getTextoOpcion(r),
+          valor: getValorOpcion(r),
+          textoAdicional: r.texto_respuesta
+        })).filter(op => op.texto !== null)
+        
         return (
           <div className="space-y-2">
             {opcionesSeleccionadas.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {opcionesSeleccionadas.map((op, index) => (
-                  <div key={index} className="flex flex-col">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                      {op.texto} {pesoPreguntas === 'BAREMO' && `(${op.valor})`}
-                    </span>
-                    {op.textoAdicional && (
-                      <span className="text-xs text-gray-500 mt-1">{op.textoAdicional}</span>
-                    )}
-                  </div>
-                ))}
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {opcionesSeleccionadas.map((op, index) => (
+                    <div key={index} className="flex flex-col">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${op.valor > 0 ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-gray-100 text-gray-800 border border-gray-200'}`}>
+                        {op.texto} {pesoPreguntas !== 'SIN_VALOR' && `(Valor: ${op.valor})`}
+                      </span>
+                      {op.textoAdicional && (
+                        <span className="text-xs text-gray-500 mt-1">{op.textoAdicional}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                  {
+                    pesoPreguntas !== 'SIN_VALOR'?(
+                                      <div className="text-sm text-gray-600">
+                  <span className="font-medium">Valor máximo seleccionado:</span> {Math.max(...opcionesSeleccionadas.map(op => op.valor))}
+                </div>
+                    ):<></>
+                  }
               </div>
             ) : (
               <span className="text-sm text-gray-500 italic">No se seleccionaron opciones</span>
-            )}
-            {estado === 'COMPLETADO' && pesoPreguntas === 'BAREMO' && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Puntaje total:</span>
-                <span className="text-sm font-medium">
-                  {opcionesSeleccionadas.reduce((sum, op) => sum + op.valor, 0)}
-                </span>
-              </div>
             )}
           </div>
         )
@@ -168,24 +269,9 @@ export function ModalVerPacientesTestResultados({
                 <div className="text-sm text-gray-700 bg-gray-50 p-2 rounded border border-gray-200 whitespace-pre-wrap">
                   {respuesta.texto_respuesta || 'Sin texto proporcionado'}
                 </div>
-                {estado === 'COMPLETADO' && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Asignar puntaje:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max={pregunta.peso || 10}
-                      value={puntajes[pregunta.id!] || 0}
-                      onChange={(e) => handlePuntajeChange(pregunta.id!, parseFloat(e.target.value))}
-                      className="w-20 px-2 py-1 border rounded text-sm"
-                    />
-                    <span className="text-sm text-gray-500">/ {pregunta.peso || '?'}</span>
-                  </div>
-                )}
-                {estado === 'EVALUADO' && (
-                  <div className="text-sm text-gray-600">
-                    Puntaje asignado: {puntajes[pregunta.id!] || 0} / {pregunta.peso || '?'}
-                  </div>
+                
+                {(pesoPreguntas === 'IGUAL_VALOR' || pesoPreguntas === 'BAREMO') && estado === 'COMPLETADO' && (
+                  renderEvaluacionInput(pregunta.id!, maxPuntos, currentEval)
                 )}
               </div>
             ))}
@@ -212,10 +298,8 @@ export function ModalVerPacientesTestResultados({
                 {valor} / {max}
               </span>
             </div>
-            {estado === 'EVALUADO' && pesoPreguntas === 'IGUAL_VALOR' && (
-              <div className="text-sm text-gray-600">
-                Puntaje: {pregunta.peso || 0}
-              </div>
+            {(pesoPreguntas === 'IGUAL_VALOR' || pesoPreguntas === 'BAREMO') && estado === 'COMPLETADO' && (
+              renderEvaluacionInput(pregunta.id!, maxPuntos, currentEval)
             )}
           </div>
         )
@@ -233,7 +317,6 @@ export function ModalVerPacientesTestResultados({
     <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          {/* Encabezado */}
           <div className="flex justify-between items-start mb-6">
             <div className="flex flex-col items-center mx-auto">
               <Image
@@ -247,9 +330,9 @@ export function ModalVerPacientesTestResultados({
               <h2 className="text-xl font-semibold text-gray-800">
                 {estado === 'EVALUADO' ? 'Resultados Evaluados' : 'Resultados del Test'}
               </h2>
-              {estado === 'EVALUADO' && (
+              {pesoPreguntas !== 'SIN_VALOR' && (
                 <div className="text-lg font-bold text-blue-600 mt-1">
-                  Puntaje Total: {calcularPuntajeTotal()}
+                  Puntaje: {puntajeActual}
                 </div>
               )}
             </div>
@@ -264,7 +347,6 @@ export function ModalVerPacientesTestResultados({
             </button>
           </div>
 
-          {/* Listado de preguntas y respuestas */}
           <div className="space-y-6">
             {preguntas.map((pregunta, index) => (
               <div 
@@ -278,7 +360,7 @@ export function ModalVerPacientesTestResultados({
                       <span className="text-red-500 ml-1" aria-hidden="true">*</span>
                     )}
                   </h3>
-                  {pesoPreguntas === 'IGUAL_VALOR' && pregunta.peso !== undefined && (
+                  {pesoPreguntas !== 'SIN_VALOR' && pregunta.peso !== undefined && (
                     <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                       Puntos: {pregunta.peso}
                     </span>
@@ -289,7 +371,6 @@ export function ModalVerPacientesTestResultados({
             ))}
           </div>
 
-          {/* Sección de evaluación para psicólogo */}
           {estado === 'COMPLETADO' && (
             <div className="mt-6 space-y-4">
               <div>
@@ -308,9 +389,11 @@ export function ModalVerPacientesTestResultados({
               <div className="flex justify-between items-center pt-2">
                 <div className="text-sm text-gray-600">
                   {pesoPreguntas === 'IGUAL_VALOR' ? (
-                    <span>Puntaje automático por pregunta respondida</span>
+                    <span>Marque "Sí" para asignar los puntos completos a cada respuesta válida</span>
+                  ) : pesoPreguntas === 'BAREMO' ? (
+                    <span>Asigne puntuación específica a cada respuesta según corresponda</span>
                   ) : (
-                    <span>Asigne puntaje a cada respuesta según corresponda</span>
+                    <span>Revise las respuestas del paciente</span>
                   )}
                 </div>
                 <button
@@ -324,7 +407,6 @@ export function ModalVerPacientesTestResultados({
             </div>
           )}
 
-          {/* Botón de cierre cuando ya está evaluado */}
           {estado === 'EVALUADO' && (
             <div className="flex justify-center pt-6">
               <button

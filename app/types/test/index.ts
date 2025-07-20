@@ -63,7 +63,8 @@ export interface PreguntaData {
   placeholder?: string | null;
   min?: number | null;
   max?: number | null;
-  paso?: number | null;
+  paso?: number;
+  eva_psi?: number | null;
   opciones?: OpcionData[];
   tipo?: TipoPregunta;
 }
@@ -202,7 +203,8 @@ export interface PreguntaPlantillaData {
   placeholder?: string;
   min?: number;
   max?: number;
-  paso?: number;
+  paso?:number;
+  eva_psi?: number;
   tipo?: TipoPregunta;
   opciones?: OpcionPlantillaData[];
 }
@@ -307,6 +309,7 @@ export interface TestFormValues {
     placeholder?: string;
     min?: number;
     max?: number;
-    paso?: number;
+    paso?:number;
+    eva_psi?: number;
   }>;
 }

@@ -50,6 +50,7 @@ const handleEditPlantilla = async (plantillaData: any) => {
         min: p.min ?? null,
         max: p.max ?? null,
         paso: p.paso ?? null,
+        eva_psi: p.eva_psi ?? null,
         peso: p.peso ?? null, // Incluir peso
         baremo_detalle: p.baremo_detalle || null, // Incluir baremo
         opciones: p.opciones?.map((o: any) => ({

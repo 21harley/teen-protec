@@ -102,7 +102,7 @@ export default function ModalPaciente({
     }
   }
 
-  const handleEvaluarTest = async (puntajes: Record<number, number>, comentario: string) => {
+  const handleEvaluarTest = async (preguntasActualizadas: PreguntaData[], comentario: string,totalPuntaje:number) => {
     if (!selectedTest) return
 
     setIsEvaluating(true)
@@ -115,9 +115,10 @@ export default function ModalPaciente({
         body: JSON.stringify({
           evaluado: true,
           fecha_evaluacion: new Date().toISOString(),
-          ponderacion_final: Object.values(puntajes).reduce((a, b) => a + b, 0),
+          ponderacion_final: totalPuntaje,
           comentarios_psicologo: comentario,
-          estado: TestStatus.EVALUADO
+          estado: TestStatus.EVALUADO,
+          preguntas:preguntasActualizadas,
         })
       })
 
@@ -132,7 +133,7 @@ export default function ModalPaciente({
           estado: TestStatus.EVALUADO,
           respuestas: t.respuestas?.map(r => ({
             ...r,
-            puntaje: puntajes[r.id_pregunta!]
+            puntaje: totalPuntaje
           }))
         } : t
       ))

@@ -66,7 +66,8 @@ export interface Pregunta {
   placeholder?: string;
   min?: number;
   max?: number;
-  paso?: number;
+  paso?:number;
+  eva_psi?: number;
   opciones?: Opcion[];
   tipo?: TipoPregunta;
   test?: Test;
@@ -117,7 +118,8 @@ export interface PreguntaPlantilla {
   placeholder?: string;
   min?: number;
   max?: number;
-  paso?: number;
+  paso?:number;
+  eva_psi?: number;
   opciones?: OpcionPlantilla[];
   tipo?: TipoPregunta;
   plantilla?: TestPlantilla;

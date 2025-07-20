@@ -27,7 +27,8 @@ interface PreguntaData {
   placeholder?: string;
   min?: number;
   max?: number;
-  paso?: number;
+  paso?:number;
+  eva_psi?: number;
   opciones?: OpcionData[];
 }
 

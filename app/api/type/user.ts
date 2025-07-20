@@ -128,7 +128,8 @@ export interface PreguntaData {
   placeholder?: string;
   min?: number;
   max?: number;
-  paso?: number;
+  paso?:number;
+  eva_psi?: number;
 }
 
 export interface OpcionData {

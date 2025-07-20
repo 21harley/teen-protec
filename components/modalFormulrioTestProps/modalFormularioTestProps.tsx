@@ -49,7 +49,6 @@ export function ModalFormularioTest({
       
       if (!pregunta) return
       
-      // Verificar si la pregunta está respondida adecuadamente según su tipo
       const estaRespondida = respuestasPreg.some(r => {
         if (!pregunta.tipo) return false;
         switch (pregunta.tipo.nombre) {
@@ -73,7 +72,6 @@ export function ModalFormularioTest({
         }
       })
       
-      // Si es obligatoria, debe estar respondida
       if (pregunta.obligatoria && !estaRespondida) {
         return
       }
@@ -94,6 +92,7 @@ export function ModalFormularioTest({
       if (isCheckbox) {
         const currentAnswers = prev[idPregunta] || [];
         const existingIndex = currentAnswers.findIndex(r => r.id_opcion === idOpcion);
+        const opcion = pregunta.opciones?.find(o => o.id === idOpcion);
         
         if (existingIndex >= 0) {
           // Remove if unchecked
@@ -102,7 +101,7 @@ export function ModalFormularioTest({
             [idPregunta]: currentAnswers.filter(r => r.id_opcion !== idOpcion)
           };
         } else {
-          // Add if checked
+          // Add if checked (incluyendo el texto de la opción)
           return {
             ...prev,
             [idPregunta]: [
@@ -110,7 +109,7 @@ export function ModalFormularioTest({
               {
                 id_pregunta: idPregunta,
                 id_opcion: idOpcion,
-                texto_respuesta: null,
+                texto_respuesta: opcion?.texto || null,
                 valor_rango: null,
                 fecha: new Date().toISOString()
               }
@@ -140,10 +139,10 @@ export function ModalFormularioTest({
     // Validación de preguntas obligatorias
     const faltanObligatorias = preguntas.some(pregunta => {
       if (!pregunta.obligatoria) return false;
+      if(!pregunta.id) return false
       
       const respuestasPreg = respuestas[pregunta.id] || [];
       
-      // Diferentes validaciones según el tipo de pregunta
       if (!pregunta.tipo) return false;
       switch (pregunta.tipo.nombre) {
         case TipoPreguntaNombre.OPCION_MULTIPLE:
@@ -173,7 +172,6 @@ export function ModalFormularioTest({
         const pregunta = preguntas.find(p => p.id === r.id_pregunta);
         if (!pregunta) return false;
         
-        // Filtrar respuestas vacías
         if (!pregunta.tipo) return false;
         switch (pregunta.tipo.nombre) {
           case TipoPreguntaNombre.RESPUESTA_CORTA:
@@ -190,7 +188,6 @@ export function ModalFormularioTest({
       });
 
     console.log('Respuestas preparadas para enviar:', respuestasArray);
-
     try {
       await onSave(respuestasArray);
       setRespuestasGuardadas(true);
@@ -205,12 +202,15 @@ export function ModalFormularioTest({
   }
 
   const renderPregunta = (pregunta: PreguntaData) => {
+    if(!pregunta.id || pregunta.id == undefined) return(<></>)
+   
     const estaRespondida = (respuestas[pregunta.id]?.length ?? 0) > 0
     const claseInput = (estaCompletado && respuestasGuardadas) 
       ? 'bg-gray-100 cursor-not-allowed' 
       : 'focus:border-blue-500 focus:ring-blue-500'
     
       if (!pregunta.tipo) return false;
+      if (!pregunta.id) return false;
     switch (pregunta.tipo.nombre) {
       case TipoPreguntaNombre.OPCION_MULTIPLE:
         return (
@@ -221,7 +221,7 @@ export function ModalFormularioTest({
                   type="checkbox"
                   id={`p${pregunta.id}_o${opcion.id}`}
                   checked={isOptionChecked(pregunta.id, opcion.id ?? 0)}
-                  onChange={() => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, opcion.valor, opcion.id, true)}
+                  onChange={() => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, opcion.texto, opcion.id, true)}
                   disabled={estaCompletado && respuestasGuardadas}
                   className={`h-4 w-4 text-blue-600 ${claseInput}`}
                 />
@@ -244,7 +244,7 @@ export function ModalFormularioTest({
                   name={`pregunta_radio_${pregunta.id}`}
                   value={opcion.valor}
                   checked={isOptionChecked(pregunta.id, opcion.id ?? 0)}
-                  onChange={() => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, opcion.valor, opcion.id)}
+                  onChange={() => !(estaCompletado && respuestasGuardadas) && handleChange(pregunta.id, opcion.texto, opcion.id)}
                   disabled={estaCompletado && respuestasGuardadas}
                   className={`h-4 w-4 text-blue-600 ${claseInput}`}
                 />
@@ -290,7 +290,7 @@ export function ModalFormularioTest({
               if (estaCompletado && respuestasGuardadas) return
               const opcionId = parseInt(e.target.value)
               const opcion = pregunta.opciones?.find(o => o.id === opcionId)
-              handleChange(pregunta.id, opcion?.valor || '', opcionId)
+              handleChange(pregunta.id, opcion?.texto || '', opcionId)
             }}
             disabled={estaCompletado && respuestasGuardadas}
             className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm ${claseInput}`}

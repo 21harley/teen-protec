@@ -366,7 +366,8 @@ const preguntasTest = [
     peso: 1.2,
     min: 1,
     max: 10,
-    paso: 1
+    paso:1,
+    eva_psi:null
   },
   {
     texto_pregunta: "¿Con qué frecuencia te sientes abrumado/a?",
@@ -574,6 +575,7 @@ async function main() {
             min: pregunta.min,
             max: pregunta.max,
             paso: pregunta.paso,
+            eva_psi: pregunta.eva_psi,
             opciones: pregunta.opciones ? {
               create: pregunta.opciones.map(opcion => ({
                 texto: opcion.texto,
@@ -667,6 +669,7 @@ async function main() {
             min: pregunta.min,
             max: pregunta.max,
             paso: pregunta.paso,
+            eva_psi: pregunta.eva_psi,
             opciones: pregunta.opciones ? {
               create: pregunta.opciones.map(opcion => ({
                 texto: opcion.texto,

@@ -35,7 +35,8 @@ interface PreguntaPlantillaData {
   placeholder?: string;
   min?: number;
   max?: number;
-  paso?: number;
+  paso?:number;
+  eva_psi?: number;
   opciones?: OpcionPlantillaData[];
 }
 
@@ -275,7 +276,8 @@ export async function POST(request: Request) {
               placeholder: preguntaData.placeholder,
               min: preguntaData.min,
               max: preguntaData.max,
-              paso: preguntaData.paso
+              paso:preguntaData.paso,
+              eva_psi: preguntaData.eva_psi
             }
           });
 
@@ -475,7 +477,7 @@ export async function PUT(request: Request) {
               placeholder: preguntaData.placeholder,
               min: preguntaData.min,
               max: preguntaData.max,
-              paso: preguntaData.paso
+              eva_psi: preguntaData.eva_psi
             }
           });
 

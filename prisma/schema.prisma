@@ -109,6 +109,7 @@ model Pregunta {
   min            Int?
   max            Int?
   paso           Int?
+  eva_psi        Int?
 
   // Relaciones
   test           Test         @relation(fields: [id_test], references: [id])
@@ -150,6 +151,7 @@ model PreguntaPlantilla {
   min            Int?
   max            Int?
   paso           Int?
+  eva_psi        Int?
 
   // Relaciones
   test           TestPlantilla @relation(fields: [id_test], references: [id])

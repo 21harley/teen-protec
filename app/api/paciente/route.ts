@@ -96,8 +96,13 @@ export async function GET(request: Request) {
     if (conTests) {
       includeOptions.tests = {
         include: {
-          preguntas: true,
-          respuestas: true
+        preguntas: true,
+        respuestas: {
+          include: {
+            pregunta: true,
+            opcion: true
+          }
+        }
         }
       };
     }
@@ -373,6 +378,7 @@ export async function POST(request: Request) {
             min: preguntaPlantilla.min,
             max: preguntaPlantilla.max,
             paso: preguntaPlantilla.paso,
+            eva_psi: preguntaPlantilla.eva_psi,
             opciones: {
               create: preguntaPlantilla.opciones.map(opcionPlantilla => ({
                 texto: opcionPlantilla.texto,

@@ -59,7 +59,8 @@ interface PreguntaData {
   placeholder?: string;
   min?: number;
   max?: number;
-  paso?: number;
+  paso?:number;
+  eva_psi?: number;
   opciones?: OpcionData[];
   tipo?: TipoPregunta;
 }
@@ -524,7 +525,8 @@ export async function POST(request: Request) {
               placeholder: preguntaData.placeholder,
               min: preguntaData.min,
               max: preguntaData.max,
-              paso: preguntaData.paso
+              paso: preguntaData.paso,
+              eva_psi: preguntaData.eva_psi
             }
           });
 
@@ -682,7 +684,8 @@ async function handleEvaluacionPsicologo(
   fecha_evaluacion: Date | string | undefined,
   ponderacion_final: number | undefined,
   comentarios_psicologo: string | undefined,
-  id_usuario?: number
+  id_usuario?: number,
+  preguntas?: PreguntaData[]
 ): Promise<{test: any; notificacionEnviada: boolean}> {
   return await prisma.$transaction(async (tx) => {
     // Verificar datos de evaluación
@@ -695,12 +698,123 @@ async function handleEvaluacionPsicologo(
       where: { id: testId },
       include: {
         usuario: true,
-        psicologo: { include: { usuario: true } }
+        psicologo: { include: { usuario: true } },
+        preguntas: {
+          include: {
+            opciones: true
+          }
+        }
       }
     });
 
     if (!test) throw new Error('Test no encontrado');
     if (test.estado !== 'COMPLETADO') throw new Error('El test debe estar COMPLETADO para ser evaluado');
+
+    // Actualizar preguntas si se proporcionan
+    if (preguntas && preguntas.length > 0) {
+      // Primero actualizar las preguntas existentes manteniendo sus IDs
+      // para no afectar las respuestas asociadas
+      
+      // Crear un mapa de preguntas existentes por ID (si tienen ID)
+      const preguntasExistentesMap = new Map<number, any>();
+      test.preguntas.forEach(p => preguntasExistentesMap.set(p.id, p));
+
+      for (const preguntaData of preguntas) {
+        // Si la pregunta tiene ID y existe, actualizarla
+        if (preguntaData.id && preguntasExistentesMap.has(preguntaData.id)) {
+          await tx.pregunta.update({
+            where: { id: preguntaData.id },
+            data: {
+              texto_pregunta: preguntaData.texto_pregunta,
+              id_tipo: preguntaData.id_tipo,
+              orden: preguntaData.orden,
+              obligatoria: preguntaData.obligatoria || false,
+              peso: preguntaData.peso,
+              baremo_detalle: preguntaData.baremo_detalle,
+              placeholder: preguntaData.placeholder,
+              min: preguntaData.min,
+              max: preguntaData.max,
+              paso: preguntaData.paso,
+              eva_psi: preguntaData.eva_psi
+            }
+          });
+
+          // Actualizar opciones si existen
+          if (preguntaData.opciones && preguntaData.opciones.length > 0) {
+            // Primero eliminar las opciones existentes (no las respuestas)
+            await tx.opcion.deleteMany({
+              where: { id_pregunta: preguntaData.id }
+            });
+
+            // Crear nuevas opciones
+            for (const opcionData of preguntaData.opciones) {
+              await tx.opcion.create({
+                data: {
+                  id_pregunta: preguntaData.id,
+                  texto: opcionData.texto,
+                  valor: opcionData.valor,
+                  orden: opcionData.orden,
+                  es_otro: opcionData.es_otro || false
+                }
+              });
+            }
+          }
+        } else {
+          // Si no tiene ID o no existe, crear nueva pregunta
+          const tipoPregunta = await tx.tipoPregunta.findUnique({
+            where: { id: preguntaData.id_tipo }
+          });
+
+          if (!tipoPregunta) {
+            throw new Error(`Tipo de pregunta con ID ${preguntaData.id_tipo} no encontrado`);
+          }
+
+          await tx.pregunta.create({
+            data: {
+              id_test: testId,
+              id_tipo: preguntaData.id_tipo,
+              texto_pregunta: preguntaData.texto_pregunta,
+              orden: preguntaData.orden,
+              obligatoria: preguntaData.obligatoria || false,
+              peso: preguntaData.peso,
+              baremo_detalle: preguntaData.baremo_detalle,
+              placeholder: preguntaData.placeholder,
+              min: preguntaData.min,
+              max: preguntaData.max,
+              paso: preguntaData.paso,
+              eva_psi: preguntaData.eva_psi,
+              // Crear opciones si existen
+              opciones: preguntaData.opciones && preguntaData.opciones.length > 0 ? {
+                create: preguntaData.opciones.map(opcion => ({
+                  texto: opcion.texto,
+                  valor: opcion.valor,
+                  orden: opcion.orden,
+                  es_otro: opcion.es_otro || false
+                }))
+              } : undefined
+            }
+          });
+        }
+      }
+
+      // Eliminar preguntas que ya no están en el nuevo conjunto
+      const nuevasPreguntasIds = preguntas
+        .filter(p => p.id !== undefined)
+        .map(p => p.id as number);
+      
+      const preguntasAEliminar = test.preguntas
+        .filter(p => !nuevasPreguntasIds.includes(p.id));
+      
+      if (preguntasAEliminar.length > 0) {
+        await tx.pregunta.deleteMany({
+          where: { 
+            id: { 
+              in: preguntasAEliminar.map(p => p.id) 
+            } 
+          }
+        });
+      }
+    }
 
     // Actualizar test
     const testActualizado = await tx.test.update({
@@ -883,7 +997,8 @@ export async function PUT(request: Request) {
         fecha_evaluacion,
         ponderacion_final,
         comentarios_psicologo,
-        id_usuario
+        id_usuario,
+        preguntas
       );
 
       return NextResponse.json(await obtenerTestCompleto(testId, id_usuario));
@@ -952,7 +1067,8 @@ export async function PUT(request: Request) {
               placeholder: preguntaData.placeholder,
               min: preguntaData.min,
               max: preguntaData.max,
-              paso: preguntaData.paso
+              paso:preguntaData.paso,
+              eva_psi: preguntaData.eva_psi
             }
           });
 
@@ -1017,7 +1133,8 @@ export async function PUT(request: Request) {
             placeholder: p.placeholder || undefined,
             min: p.min || undefined,
             max: p.max || undefined,
-            paso: p.paso || undefined
+            paso: p.paso || undefined,
+            eva_psi: p.eva_psi || undefined
           }));
         }
 
