@@ -11,6 +11,39 @@ enum TipoPreguntaNombre {
   RANGO = 'range'
 }
 
+const tiposCitaData = [
+  {
+    nombre: "Evaluación Inicial",
+    descripcion: "Primera sesión de evaluación psicológica",
+    duracion: 60, // 60 minutos
+    color_calendario: "#FF6B6B" // Rojo claro
+  },
+  {
+    nombre: "Seguimiento",
+    descripcion: "Sesión regular de seguimiento terapéutico",
+    duracion: 45,
+    color_calendario: "#4ECDC4" // Turquesa
+  },
+  {
+    nombre: "Emergencia",
+    descripcion: "Sesión para casos urgentes",
+    duracion: 30,
+    color_calendario: "#FFA500" // Naranja
+  },
+  {
+    nombre: "Taller Grupal",
+    descripcion: "Sesión grupal educativa",
+    duracion: 90,
+    color_calendario: "#A5D8FF" // Azul claro
+  },
+  {
+    nombre: "Revisión de Resultados",
+    descripcion: "Discusión de resultados de tests",
+    duracion: 30,
+    color_calendario: "#C8E6C9" // Verde claro
+  }
+];
+
 const tipoUsuarioData = [
   {
     nombre: "administrador",
@@ -18,6 +51,7 @@ const tipoUsuarioData = [
       { path: "/alertas", name: "Alertas", icon: "notifications" },
       { path: "/perfil", name: "Perfil", icon: "person" },
       { path: "/usuarios", name: "Usuarios", icon: "people" },
+      { path: "/cita", name: "Cita", icon: "cita" },
       { path: "/test", name: "Test", icon: "quiz" },
       { path: "/", name: "Sobre nosotros", icon: "info" }
     ]
@@ -28,6 +62,7 @@ const tipoUsuarioData = [
       { path: "/alertas", name: "Alertas", icon: "notifications" },
       { path: "/perfil", name: "Perfil", icon: "person" },
       { path: "/pacientes", name: "Pacientes", icon: "medical_services" },
+      { path: "/cita", name: "Cita", icon: "cita" },
       { path: "/test", name: "Test", icon: "quiz" },
       { path: "/", name: "Sobre nosotros", icon: "info" }
     ]
@@ -37,6 +72,7 @@ const tipoUsuarioData = [
     menu: [
       { path: "/alertas", name: "Alertas", icon: "notifications" },
       { path: "/perfil", name: "Perfil", icon: "person" },
+      { path: "/cita", name: "Cita", icon: "cita" },
       { path: "/test", name: "Test", icon: "quiz" },
       { path: "/", name: "Sobre nosotros", icon: "info" }
     ]
@@ -46,7 +82,18 @@ const tipoUsuarioData = [
     menu: [
       { path: "/alertas", name: "Alertas", icon: "notifications" },
       { path: "/perfil", name: "Perfil", icon: "person" },
+      { path: "/cita", name: "Cita", icon: "cita" },
       { path: "/test", name: "Test", icon: "quiz" },
+      { path: "/", name: "Sobre nosotros", icon: "info" }
+    ]
+  },
+  {
+    nombre: "secretaria",
+    menu: [
+      { path: "/alertas", name: "Alertas", icon: "notifications" },
+      { path: "/perfil", name: "Perfil", icon: "person" },
+      { path: "/cita", name: "Cita", icon: "cita" },
+      { path: "/registros", name: "Sobre nosotros", icon: "info" },
       { path: "/", name: "Sobre nosotros", icon: "info" }
     ]
   }
@@ -126,6 +173,79 @@ const tiposPreguntaData = [
     tipo_respuesta: "numero"
   }
 ];
+
+function generarCitasDeEjemplo() {
+  const ahora = new Date();
+  const citas = [];
+  
+  // Citas pasadas
+  for (let i = 1; i <= 5; i++) {
+    const fechaInicio = new Date(ahora);
+    fechaInicio.setDate(ahora.getDate() - i);
+    fechaInicio.setHours(10 + i, 0, 0, 0);
+    
+    const fechaFin = new Date(fechaInicio);
+    fechaFin.setMinutes(fechaFin.getMinutes() + 45);
+    
+    citas.push({
+      titulo: `Sesión de seguimiento ${i}`,
+      descripcion: `Sesión regular #${i} con el paciente`,
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+      estado: i % 2 === 0 ? 'COMPLETADA' : 'CANCELADA',
+      id_psicologo: 2, // Psicólogo 1
+      id_paciente: 4,  // Adolescente 1
+      id_tipo_cita: 2, // Seguimiento
+      duracion_real: i % 2 === 0 ? 50 : null,
+      notas_psicologo: i % 2 === 0 ? `El paciente mostró mejoría en los puntos discutidos. Se recomienda continuar con el tratamiento.` : null
+    });
+  }
+  
+  // Citas futuras
+  for (let i = 1; i <= 10; i++) {
+    const fechaInicio = new Date(ahora);
+    fechaInicio.setDate(ahora.getDate() + i);
+    
+    // Variar las horas
+    const hora = 9 + (i % 4);
+    fechaInicio.setHours(hora, 0, 0, 0);
+    
+    const fechaFin = new Date(fechaInicio);
+    const duracion = [30, 45, 60, 90][i % 4];
+    fechaFin.setMinutes(fechaFin.getMinutes() + duracion);
+    
+    // Alternar entre psicólogos y pacientes
+    const psicologoId = i % 2 === 0 ? 2 : 3; // Alternar entre psicólogo 1 y 2
+    const pacienteId = i % 2 === 0 ? 4 : 5; // Alternar entre adolescente 1 y 2
+    
+    citas.push({
+      titulo: `Cita ${i}`,
+      descripcion: `Descripción de la cita ${i}`,
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+      estado: 'PENDIENTE',
+      id_psicologo: psicologoId,
+      id_paciente: pacienteId,
+      id_tipo_cita: (i % 5) + 1, // Rotar entre los tipos de cita
+      recordatorios: {
+        create: [
+          {
+            metodo: "EMAIL",
+            fecha_envio: new Date(new Date(fechaInicio).setHours(fechaInicio.getHours() - 24)),
+            estado: "PENDIENTE"
+          },
+          {
+            metodo: "NOTIFICACION",
+            fecha_envio: new Date(new Date(fechaInicio).setHours(fechaInicio.getHours() - 2)),
+            estado: "PENDIENTE"
+          }
+        ]
+      }
+    });
+  }
+  
+  return citas;
+}
 
 const contraseñaEncriptada = encriptar("123456789");
 
@@ -404,6 +524,9 @@ async function main() {
   await prisma.tipoPregunta.deleteMany({});
   await prisma.tipoAlerta.deleteMany({});
   await prisma.tipoUsuario.deleteMany({});
+  await prisma.recordatorioCita.deleteMany({});
+  await prisma.cita.deleteMany({});
+  await prisma.tipoCita.deleteMany({});
 
   console.log("✅ Todos los datos existentes eliminados");
 
@@ -542,6 +665,24 @@ async function main() {
       }
     ]
   });
+
+    // 7. Crear tipos de cita
+  console.log("📅 Creando tipos de cita...");
+  for (const tipoCita of tiposCitaData) {
+    await prisma.tipoCita.create({
+      data: tipoCita
+    });
+  }
+
+  // 8. Crear citas de ejemplo
+  console.log("🗓️ Creando citas de ejemplo...");
+  const citasEjemplo = generarCitasDeEjemplo();
+  
+  for (const cita of citasEjemplo) {
+    await prisma.cita.create({
+      data: cita
+    });
+  }
 
   // Función para crear tests con preguntas y opciones
   async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, estado: 'NO_INICIADO' | 'EN_PROGRESO' | 'COMPLETADO', pesoPreguntas: 'SIN_VALOR' | 'IGUAL_VALOR' | 'BAREMO') {

@@ -4,6 +4,8 @@ import { encriptar, EncryptedData, generarTokenExpiry } from "@/app/lib/crytoMan
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
 import { create_alarma_email,create_alarma } from '@/app/lib/alertas';
+import RegistroUsuarioService from "../../lib/registro/registro-usuario"
+import { setImmediate } from 'timers/promises';
 
 const prisma = new PrismaClient();
 
@@ -125,6 +127,7 @@ export async function GET(request: Request) {
 
     const id = searchParams.get('id');
     const tipo = searchParams.get('tipo');
+    const rol = searchParams.get('rol'); // Nuevo parámetro para filtrar por rol
     const includePassword = searchParams.get('includePassword') === 'true';
     const nombre = searchParams.get('nombre');
     const email = searchParams.get('email');
@@ -212,20 +215,36 @@ export async function GET(request: Request) {
     // Construcción dinámica del filtro
     let whereClause: any = {};
 
-    if (tipo === 'adolescente') {
-      whereClause.adolecente = { isNot: null };
-    } else if (tipo === 'psicologo') {
-      whereClause.psicologo = { isNot: null };
-    } else if (tipo === 'usuario') {
-      whereClause.AND = [
-        { adolecente: { is: null } },
-        { psicologo: { is: null } }
-      ];
+    // Filtro por rol (prioriza 'rol' sobre 'tipo' si ambos están presentes)
+    const filterType = rol || tipo;
+    
+    if (filterType) {
+      const filterTypeUpper = filterType.toUpperCase();
+      
+      if (filterTypeUpper === 'ADOLESCENTE') {
+        whereClause.adolecente = { isNot: null };
+      } else if (filterTypeUpper === 'PSICOLOGO') {
+        whereClause.psicologo = { isNot: null };
+      } else if (filterTypeUpper === 'USUARIO') {
+        whereClause.AND = [
+          { adolecente: { is: null } },
+          { psicologo: { is: null } }
+        ];
+      } else {
+        // Filtra por tipo de usuario (rol) usando la relación con TipoUsuario
+        whereClause.tipo_usuario = {
+          nombre: {
+            equals: filterType,
+            mode: 'insensitive'
+          }
+        };
+      }
     }
 
+    // Resto de los filtros
     if (id_psicologo) whereClause.id_psicologo = parseInt(id_psicologo);
-    if (nombre) whereClause.nombre = { contains: nombre };
-    if (email) whereClause.email = { contains: email };
+    if (nombre) whereClause.nombre = { contains: nombre, mode: 'insensitive' };
+    if (email) whereClause.email = { contains: email, mode: 'insensitive' };
     if (cedula) whereClause.cedula = { contains: cedula };
     if (telefono) whereClause.telefono = { contains: telefono };
 
@@ -637,25 +656,50 @@ export async function POST(request: Request) {
         })) || []
       };
     }
-    
-  const result_email = await  create_alarma_email({
-  id_usuario: usuarioCompleto.id,
-  id_tipo_alerta: 8,
-  mensaje: "Registro completado con exito",
-  vista: false,
-  correo_enviado: true,
-  emailParams: {
-    to: usuarioCompleto.email,
-    subject: "Tienes una nueva alerta",
-    template: "welcome",
-    props: {
-      name: usuarioCompleto.nombre,
-      alertMessage: "¡Bienvenido al PsicoTest!"
-    }
-  }
-});
 
-  if (!result_email.emailSent) console.error('Error creando usuario',result_email); 
+  //crear email
+  setImmediate().then(async () => {
+       const result_email = await  create_alarma_email({
+       id_usuario: usuarioCompleto.id,
+       id_tipo_alerta: 8,
+       mensaje: "Registro completado con exito",
+       vista: false,
+       correo_enviado: true,
+       emailParams: {
+         to: usuarioCompleto.email,
+         subject: "Tienes una nueva alerta",
+         template: "welcome",
+         props: {
+           name: usuarioCompleto.nombre,
+           alertMessage: "¡Bienvenido al PsicoTest!"
+         }
+       }
+       });
+     
+       if (!result_email.emailSent) console.error('Error creando usuario',result_email); 
+  });
+
+  //crear registro
+  setImmediate().then(async ()=>{
+     try {
+    const nuevoRegistro = await RegistroUsuarioService.createRegistroUsuario({
+      usuario_id: usuarioCompleto.id,
+      sexo: usuarioCompleto.sexo ?? "",
+      fecha_nacimiento: usuarioCompleto.fecha_nacimiento,
+      tipo_usuario: usuarioCompleto.tipo_usuario.nombre,
+      psicologo_id: null,
+      tests_ids: [],
+      total_tests: 0,
+      avg_notas: 0
+    });
+    
+
+
+    console.log('Registro creado:', nuevoRegistro);
+  } catch (error) {
+    console.error('Error al crear registro:', error);
+  }
+  });
 
   return NextResponse.json(responseData, { status: 201 });
  

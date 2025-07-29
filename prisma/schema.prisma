@@ -40,7 +40,7 @@ model Usuario {
   resetPasswordToken       String?         @unique
   resetPasswordTokenExpiry DateTime?
 
-  // Relaciones
+  // Relaciones existentes
   tipo_usuario             TipoUsuario     @relation(fields: [id_tipo_usuario], references: [id])
   adolecente               Adolecente?
   psicologo                Psicologo?
@@ -49,6 +49,10 @@ model Usuario {
   pacientes                Usuario[]       @relation("PacientesPsicologo", fields: [], references: [])
   psicologoPacientes       Usuario?        @relation("PacientesPsicologo", fields: [id_psicologo], references: [id])
   alarmas                  Alarma[]        @relation("usuario")
+
+  // Relaciones agregadas para Cita
+  citasComoPsicologo       Cita[]          @relation("CitasPsicologo")
+  citasComoPaciente        Cita[]          @relation("CitasPaciente")
 
   @@index([email])
   @@index([cedula])
@@ -298,6 +302,69 @@ model OpcionPlantilla {
   @@index([id_pregunta])
 }
 
+enum EstadoCita {
+  PENDIENTE
+  CONFIRMADA
+  CANCELADA
+  COMPLETADA
+}
+
+model Cita {
+  id              Int         @id @default(autoincrement())
+  titulo          String
+  descripcion     String?
+  fecha_inicio    DateTime
+  fecha_fin       DateTime
+  estado          EstadoCita  @default(PENDIENTE)
+  fecha_creacion  DateTime    @default(now())
+  fecha_actualizacion DateTime @updatedAt
+  
+  // Relaciones con el esquema existente
+  id_psicologo    Int         // Referencia al psicólogo
+  id_paciente     Int?        // Opcional para citas con pacientes
+  id_tipo_cita    Int?        // Para clasificar tipos de citas
+  
+  psicologo       Usuario     @relation("CitasPsicologo", fields: [id_psicologo], references: [id])
+  paciente        Usuario?    @relation("CitasPaciente", fields: [id_paciente], references: [id])
+  tipo            TipoCita?   @relation(fields: [id_tipo_cita], references: [id])
+  
+  // Para registro histórico (similar a tu esquema de registros)
+  duracion_real   Int?        // En minutos
+  notas_psicologo String?
+  
+  // Relación agregada para RecordatorioCita
+  recordatorios   RecordatorioCita[]
+  
+  @@index([id_psicologo])
+  @@index([id_paciente])
+  @@index([fecha_inicio])
+  @@index([estado])
+}
+
+model TipoCita {
+  id              Int         @id @default(autoincrement())
+  nombre          String      @unique
+  descripcion     String?
+  duracion        Int         @default(30) // Duración predeterminada en minutos
+  color_calendario String?    // Para identificación visual
+  citas           Cita[]
+}
+
+// Tabla pivote para recordatorios de citas
+model RecordatorioCita {
+  id              Int         @id @default(autoincrement())
+  id_cita         Int
+  metodo          String      // "EMAIL", "SMS", "NOTIFICACION"
+  fecha_envio     DateTime
+  estado          String      // "PENDIENTE", "ENVIADO", "FALLIDO"
+  
+  cita            Cita        @relation(fields: [id_cita], references: [id])
+  
+  @@index([id_cita])
+  @@index([fecha_envio])
+}
+
+
 // ====================== ESQUEMA DE REGISTROS/INDICADORES (AISLADO) ======================
 
 enum Sexo {
@@ -319,13 +386,12 @@ model RegistroUsuario {
   id               Int       @id @default(autoincrement())
   usuario_id       Int
   fecha_registro   DateTime  @default(now())
-  sexo             Sexo?
-  edad             Int?
+  sexo             String
+  fecha_nacimiento DateTime?
   tipo_usuario     String
   psicologo_id     Int?
 
   tests_ids        Json?     // Ej: [1, 2, 3]
-  tests_evaluados  Json?     // Ej: [{"testId": 1, "nota": 8.5, "fecha": "2024-01-01T00:00:00Z"}]
   total_tests      Int       @default(0)
   avg_notas        Float?    @default(0)
 
@@ -342,7 +408,7 @@ model RegistroUsuario {
 model RegistroTest {
   id               Int                 @id @default(autoincrement())
   test_id          Int
-  usuario_id       Int
+  usuario_id       Int?
   psicologo_id     Int?
   fecha_creacion   DateTime
   fecha_completado DateTime?
@@ -350,7 +416,6 @@ model RegistroTest {
   nombre_test      String?
   valor_total      Float?
 
-  // ✅ Campos nuevos
   nota_psicologo   Float?
   evaluado         Boolean             @default(false)
   fecha_evaluacion DateTime?
@@ -360,7 +425,7 @@ model RegistroTest {
   metricas         RegistroMetricaTest[]
 
   @@index([test_id])
-  @@index([evaluado, fecha_completado]) // ✅ Índice compuesto
+  @@index([evaluado, fecha_completado]) 
 }
 
 // Trazabilidad de atención (sin FK a tablas principales)
@@ -370,7 +435,7 @@ model RegistroTrazabilidad {
   psicologo_id     Int       // ID referencia
   fecha_inicio     DateTime
   fecha_fin        DateTime?
-  secuencia       Int       // 1 = primer psicólogo, 2 = segundo, etc.
+  secuencia        Int       // 1 = primer psicólogo, 2 = segundo, etc.
   
   // Relación solo dentro del esquema de registros
   usuario          RegistroUsuario @relation(fields: [registro_usuario_id], references: [id])
@@ -381,8 +446,8 @@ model RegistroTrazabilidad {
 
 // Métricas por usuario
 model RegistroMetricaUsuario {
-  id               Int       @id @default(autoincrement())
-  registro_usuario_id Int
+  id                   Int       @id @default(autoincrement())
+  registro_usuario_id  Int
   fecha            DateTime  @default(now())
   tests_asignados  Int
   tests_completados Int
@@ -402,7 +467,7 @@ model RegistroMetricaTest {
   tiempo_respuesta Int?
   preguntas_contestadas Int
   preguntas_totales Int
-  nota_psicologo   Float?    // ✅ Nuevo campo
+  nota_psicologo   Float?   
   
   test             RegistroTest @relation(fields: [registro_test_id], references: [id])
   
@@ -411,13 +476,12 @@ model RegistroMetricaTest {
 
 // Registro de sesiones (sin FK a tablas principales)
 model RegistroSesion {
-  id               Int       @id @default(autoincrement())
+  id                  Int       @id @default(autoincrement())
   registro_usuario_id Int
-  psicologo_id     Int
-  fecha            DateTime
-  duracion        Int?      // En minutos
-  tests_revisados  String?   // IDs de tests separados por comas
-  
+  psicologo_id        Int
+  fecha               DateTime
+  duracion            Int?      // En minutos
+  tests_revisados     String?   // IDs de tests separados por comas
   usuario          RegistroUsuario @relation(fields: [registro_usuario_id], references: [id])
   
   @@index([registro_usuario_id])
@@ -438,6 +502,62 @@ model RegistroReporte {
   @@index([generado_por_id])
 }
 
+
+model RegistroCita {
+  id                   Int           @id @default(autoincrement())
+  cita_id              Int           // ID referencia (sin FK)
+  fecha_registro       DateTime      @default(now())
+  
+  // Datos desnormalizados de la cita
+  id_psicologo         Int
+  nombre_psicologo     String
+  id_paciente          Int?
+  nombre_paciente      String?
+  fecha_cita           DateTime
+  duracion_planeada    Int           // En minutos
+  duracion_real        Int?          // En minutos
+  estado               EstadoCita
+  tipo_cita            String?
+  color_calendario     String?
+  
+  // Métricas
+  tiempo_confirmacion  Int?          // Minutos entre creación y confirmación
+  cancelado_por        String?       // "PSICOLOGO", "PACIENTE", "SISTEMA"
+  motivo_cancelacion   String?
+  
+  // Relación con esquema de registros
+  registro_usuario_id  Int?          // Relación opcional con RegistroUsuario
+  
+  // Índices para reporting
+  @@index([id_psicologo])
+  @@index([id_paciente])
+  @@index([fecha_cita])
+  @@index([estado])
+  @@index([registro_usuario_id])
+}
+
+model RegistroMetricaCitas {
+  id                   Int       @id @default(autoincrement())
+  fecha                DateTime  @default(now())
+  periodo              String    // "DIARIO", "SEMANAL", "MENSUAL"
+  
+  // Métricas agregadas
+  citas_totales        Int
+  citas_completadas    Int
+  citas_canceladas     Int
+  tasa_confirmacion    Float
+  tiempo_promedio_confirmacion Int  // En minutos
+  duracion_promedio    Float
+  
+  // Desglose por tipo
+  tipos_cita           Json      // Ej: {"EVALUACION": 5, "SEGUIMIENTO": 3}
+  
+  // Índices
+  @@index([fecha])
+  @@index([periodo])
+}
+
+/*
 // Problemas/mejoras
 model RegistroProblema {
   id               Int       @id @default(autoincrement())
@@ -453,3 +573,4 @@ model RegistroProblema {
   @@index([fecha])
 }
 
+*/

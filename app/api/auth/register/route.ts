@@ -4,6 +4,8 @@ import { encriptar, generarTokenExpiry, desencriptar } from "@/app/lib/crytoMana
 import { UsuarioBase, TutorData, PsicologoData, TipoRegistro, LoginResponse } from "../../type";
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
+import RegistroUsuarioService from "../../../lib/registro/registro-usuario"
+import { setImmediate } from 'timers/promises';
 
 const prisma = new PrismaClient();
 
@@ -285,6 +287,10 @@ export async function POST(request: Request) {
         redes_sociales: usuarioCompleto.psicologo.redes_sociales
       };
     }
+
+    setImmediate().then(async ()=>{
+
+    })
 
     return NextResponse.json(responseData, { status: 201 });
 

@@ -206,16 +206,54 @@ CREATE TABLE "OpcionPlantilla" (
 );
 
 -- CreateTable
+CREATE TABLE "Cita" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "titulo" TEXT NOT NULL,
+    "descripcion" TEXT,
+    "fecha_inicio" DATETIME NOT NULL,
+    "fecha_fin" DATETIME NOT NULL,
+    "estado" TEXT NOT NULL DEFAULT 'PENDIENTE',
+    "fecha_creacion" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "fecha_actualizacion" DATETIME NOT NULL,
+    "id_psicologo" INTEGER NOT NULL,
+    "id_paciente" INTEGER,
+    "id_tipo_cita" INTEGER,
+    "duracion_real" INTEGER,
+    "notas_psicologo" TEXT,
+    CONSTRAINT "Cita_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Usuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "Cita_id_paciente_fkey" FOREIGN KEY ("id_paciente") REFERENCES "Usuario" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Cita_id_tipo_cita_fkey" FOREIGN KEY ("id_tipo_cita") REFERENCES "TipoCita" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "TipoCita" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "nombre" TEXT NOT NULL,
+    "descripcion" TEXT,
+    "duracion" INTEGER NOT NULL DEFAULT 30,
+    "color_calendario" TEXT
+);
+
+-- CreateTable
+CREATE TABLE "RecordatorioCita" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id_cita" INTEGER NOT NULL,
+    "metodo" TEXT NOT NULL,
+    "fecha_envio" DATETIME NOT NULL,
+    "estado" TEXT NOT NULL,
+    CONSTRAINT "RecordatorioCita_id_cita_fkey" FOREIGN KEY ("id_cita") REFERENCES "Cita" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "RegistroUsuario" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "usuario_id" INTEGER NOT NULL,
     "fecha_registro" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "sexo" TEXT,
-    "edad" INTEGER,
+    "sexo" TEXT NOT NULL,
+    "fecha_nacimiento" DATETIME,
     "tipo_usuario" TEXT NOT NULL,
     "psicologo_id" INTEGER,
     "tests_ids" JSONB,
-    "tests_evaluados" JSONB,
     "total_tests" INTEGER NOT NULL DEFAULT 0,
     "avg_notas" REAL DEFAULT 0
 );
@@ -224,7 +262,7 @@ CREATE TABLE "RegistroUsuario" (
 CREATE TABLE "RegistroTest" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "test_id" INTEGER NOT NULL,
-    "usuario_id" INTEGER NOT NULL,
+    "usuario_id" INTEGER,
     "psicologo_id" INTEGER,
     "fecha_creacion" DATETIME NOT NULL,
     "fecha_completado" DATETIME,
@@ -296,14 +334,38 @@ CREATE TABLE "RegistroReporte" (
 );
 
 -- CreateTable
-CREATE TABLE "RegistroProblema" (
+CREATE TABLE "RegistroCita" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "reportado_por_id" INTEGER NOT NULL,
-    "descripcion" TEXT NOT NULL,
-    "categoria" TEXT NOT NULL,
-    "prioridad" INTEGER NOT NULL DEFAULT 3,
+    "cita_id" INTEGER NOT NULL,
+    "fecha_registro" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "id_psicologo" INTEGER NOT NULL,
+    "nombre_psicologo" TEXT NOT NULL,
+    "id_paciente" INTEGER,
+    "nombre_paciente" TEXT,
+    "fecha_cita" DATETIME NOT NULL,
+    "duracion_planeada" INTEGER NOT NULL,
+    "duracion_real" INTEGER,
+    "estado" TEXT NOT NULL,
+    "tipo_cita" TEXT,
+    "color_calendario" TEXT,
+    "tiempo_confirmacion" INTEGER,
+    "cancelado_por" TEXT,
+    "motivo_cancelacion" TEXT,
+    "registro_usuario_id" INTEGER
+);
+
+-- CreateTable
+CREATE TABLE "RegistroMetricaCitas" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "fecha" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "estado" TEXT NOT NULL DEFAULT 'pendiente'
+    "periodo" TEXT NOT NULL,
+    "citas_totales" INTEGER NOT NULL,
+    "citas_completadas" INTEGER NOT NULL,
+    "citas_canceladas" INTEGER NOT NULL,
+    "tasa_confirmacion" REAL NOT NULL,
+    "tiempo_promedio_confirmacion" INTEGER NOT NULL,
+    "duracion_promedio" REAL NOT NULL,
+    "tipos_cita" JSONB NOT NULL
 );
 
 -- CreateIndex
@@ -391,6 +453,27 @@ CREATE UNIQUE INDEX "RedSocialPsicologo_id_psicologo_nombre_red_key" ON "RedSoci
 CREATE INDEX "OpcionPlantilla_id_pregunta_idx" ON "OpcionPlantilla"("id_pregunta");
 
 -- CreateIndex
+CREATE INDEX "Cita_id_psicologo_idx" ON "Cita"("id_psicologo");
+
+-- CreateIndex
+CREATE INDEX "Cita_id_paciente_idx" ON "Cita"("id_paciente");
+
+-- CreateIndex
+CREATE INDEX "Cita_fecha_inicio_idx" ON "Cita"("fecha_inicio");
+
+-- CreateIndex
+CREATE INDEX "Cita_estado_idx" ON "Cita"("estado");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TipoCita_nombre_key" ON "TipoCita"("nombre");
+
+-- CreateIndex
+CREATE INDEX "RecordatorioCita_id_cita_idx" ON "RecordatorioCita"("id_cita");
+
+-- CreateIndex
+CREATE INDEX "RecordatorioCita_fecha_envio_idx" ON "RecordatorioCita"("fecha_envio");
+
+-- CreateIndex
 CREATE INDEX "RegistroUsuario_usuario_id_idx" ON "RegistroUsuario"("usuario_id");
 
 -- CreateIndex
@@ -427,10 +510,22 @@ CREATE INDEX "RegistroReporte_fecha_generacion_idx" ON "RegistroReporte"("fecha_
 CREATE INDEX "RegistroReporte_generado_por_id_idx" ON "RegistroReporte"("generado_por_id");
 
 -- CreateIndex
-CREATE INDEX "RegistroProblema_reportado_por_id_idx" ON "RegistroProblema"("reportado_por_id");
+CREATE INDEX "RegistroCita_id_psicologo_idx" ON "RegistroCita"("id_psicologo");
 
 -- CreateIndex
-CREATE INDEX "RegistroProblema_estado_idx" ON "RegistroProblema"("estado");
+CREATE INDEX "RegistroCita_id_paciente_idx" ON "RegistroCita"("id_paciente");
 
 -- CreateIndex
-CREATE INDEX "RegistroProblema_fecha_idx" ON "RegistroProblema"("fecha");
+CREATE INDEX "RegistroCita_fecha_cita_idx" ON "RegistroCita"("fecha_cita");
+
+-- CreateIndex
+CREATE INDEX "RegistroCita_estado_idx" ON "RegistroCita"("estado");
+
+-- CreateIndex
+CREATE INDEX "RegistroCita_registro_usuario_id_idx" ON "RegistroCita"("registro_usuario_id");
+
+-- CreateIndex
+CREATE INDEX "RegistroMetricaCitas_fecha_idx" ON "RegistroMetricaCitas"("fecha");
+
+-- CreateIndex
+CREATE INDEX "RegistroMetricaCitas_periodo_idx" ON "RegistroMetricaCitas"("periodo");
