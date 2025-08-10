@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from "./../../../app/generated/prisma";
 import { create_alarma_email,create_alarma } from '@/app/lib/alertas';
+import { setImmediate } from 'timers/promises';
+import RegistroUsuarioService from "../../lib/registro/registro-usuario"
+import RegistroTestService,{CreateRegistroTestInput} from "../../lib/registro/registro-test"
+import { EstadoTestRegistro } from '@/app/types/registros';
 
 const prisma = new PrismaClient()
 
@@ -596,25 +600,53 @@ export async function POST(request: Request) {
         });
         if(usuarioExistente && psicologoExistente){
         console.log("crea alarma de test");
-        const result_email = await  create_alarma_email({
-        id_usuario: id_usuario ,
-        id_tipo_alerta: 1,
-        mensaje: `Tiene asignado un test.`,
-        vista: false,
-        correo_enviado: true,
-        emailParams: {
-          to: usuarioExistente.email,
-          subject: "Tienes una nueva alerta",
-          template: "test_asignado",
-          props: {
-            name: usuarioExistente.nombre,
-            psicologo_name:psicologoExistente.nombre,
-            alertMessage: `El psicologo ${psicologoExistente.nombre}, te a enviado un test.`
+        setImmediate().then(async () => {
+          const result_email = await  create_alarma_email({
+          id_usuario: id_usuario ,
+          id_tipo_alerta: 1,
+          mensaje: `Tiene asignado un test.`,
+          vista: false,
+          correo_enviado: true,
+          emailParams: {
+            to: usuarioExistente.email,
+            subject: "Tienes una nueva alerta",
+            template: "test_asignado",
+            props: {
+              name: usuarioExistente.nombre,
+              psicologo_name:psicologoExistente.nombre,
+              alertMessage: `El psicologo ${psicologoExistente.nombre}, te a enviado un test.`
+            }
           }
-        }
-      });
-      
-      if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
+        });
+        
+        if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
+        });
+
+        //crear registro de test
+        setImmediate().then(async () => {
+          try {
+              const test:CreateRegistroTestInput = {
+                test_id: result.id,
+                usuario_id: result.id_usuario!,
+                psicologo_id: result.id_psicologo,
+                fecha_creacion: result.fecha_creacion,
+                fecha_completado: result.fecha_ultima_respuesta,
+                estado: result.estado as unknown as EstadoTestRegistro ?? undefined,
+                nombre_test: result.nombre ?? undefined,
+                valor_total: result.valor_total ?? undefined,
+                nota_psicologo: result.ponderacion_final ?? undefined, 
+                evaluado: result.evaluado,
+                fecha_evaluacion: result.fecha_evaluacion
+              }         
+              const nuevoRegistro = await RegistroTestService.createRegistroTest(test)
+    
+
+
+               console.log('Registro test creado:', nuevoRegistro);
+             } catch (error) {
+               console.error('Error al crear registro test:', error);
+             }
+        });
       }
     }
     }
@@ -1000,7 +1032,33 @@ export async function PUT(request: Request) {
         id_usuario,
         preguntas
       );
+      const testCompleto = await obtenerTestCompleto(testId, id_usuario)
+       setImmediate().then(async () => {
+      if(!testCompleto){
+        console.log('Error al obtener el testCompleto al Registro test.');
+        return
+      }
+      try {
+          const test:CreateRegistroTestInput = {
+            test_id: testCompleto.id,
+            usuario_id: testCompleto.id_usuario!,
+            psicologo_id: testCompleto.id_psicologo,
+            fecha_creacion: testCompleto.fecha_creacion,
+            fecha_completado: testCompleto.fecha_ultima_respuesta,
+            estado: testCompleto.estado as unknown as EstadoTestRegistro ?? undefined,
+            nombre_test: testCompleto.nombre ?? undefined,
+            valor_total: testCompleto.valor_total ?? undefined,
+            nota_psicologo: testCompleto.ponderacion_final ?? undefined, 
+            evaluado: testCompleto.evaluado,
+            fecha_evaluacion: testCompleto.fecha_evaluacion,
+          }         
+          const nuevoRegistro = await RegistroTestService.upsertRegistroByTestId(testCompleto.id,test);
 
+           console.log('Registro test creado:', nuevoRegistro);
+         } catch (error) {
+           console.error('Error al crear registro test:', error);
+         }
+       });
       return NextResponse.json(await obtenerTestCompleto(testId, id_usuario));
     }
 
@@ -1161,37 +1219,39 @@ export async function PUT(request: Request) {
     });
             
     if(testActualizado.estado=="COMPLETADO" &&  id_usuario){
-              const usuarioExistente = await prisma.usuario.findUnique({
-                where: { id: id_usuario }
-              });
-              if(usuarioExistente?.id_psicologo){
-               const psicologoExistente = await prisma.usuario.findUnique({
-                 where: { id: usuarioExistente?.id_psicologo }
-               });
-               if(psicologoExistente && usuarioExistente){
-               const result_email = await  create_alarma_email({
-                  id_usuario: psicologoExistente.id,
-                  id_tipo_alerta: 2,
-                  mensaje: `El paciente ${usuarioExistente.nombre}, completo el test.`,
-                  vista: false,
-                  correo_enviado: true,
-                  emailParams: {
-                    to: psicologoExistente.email,
-                    subject: "Tienes una nueva alerta",
-                    template: "test_completado",
-                    props: {
-                      name: psicologoExistente.nombre,
-                      user_name:usuarioExistente.nombre,
-                      alertMessage: `El paciente ${usuarioExistente.nombre}, completo el test.`
-                    }
-                  }
-                });
-                
-                if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
-               }else{
-                console.log("No se envio correo, el usuario no tiene.");
-               }
+        const usuarioExistente = await prisma.usuario.findUnique({
+          where: { id: id_usuario }
+        });
+        if(usuarioExistente?.id_psicologo){
+         const psicologoExistente = await prisma.usuario.findUnique({
+           where: { id: usuarioExistente?.id_psicologo }
+         });
+         if(psicologoExistente && usuarioExistente){
+          setImmediate().then(async () => {
+           const result_email = await  create_alarma_email({
+             id_usuario: psicologoExistente.id,
+            id_tipo_alerta: 2,
+            mensaje: `El paciente ${usuarioExistente.nombre}, completo el test.`,
+            vista: false,
+            correo_enviado: true,
+            emailParams: {
+              to: psicologoExistente.email,
+              subject: "Tienes una nueva alerta",
+              template: "test_completado",
+              props: {
+                name: psicologoExistente.nombre,
+                user_name:usuarioExistente.nombre,
+                alertMessage: `El paciente ${usuarioExistente.nombre}, completo el test.`
               }
+            }
+             });
+             
+            if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
+          });
+         }else{
+          console.log("No se envio correo, el usuario no tiene.");
+         }
+        }
     }
 
     // Obtener el test actualizado con relaciones
@@ -1228,7 +1288,34 @@ export async function PUT(request: Request) {
         }
       }
     });
+    
+    //update registro de test
+    setImmediate().then(async () => {
+      if(!testCompleto){
+        console.log('Error al obtener el testCompleto al Registro test.');
+        return
+      }
+      try {
+          const test:CreateRegistroTestInput = {
+            test_id: testCompleto.id,
+            usuario_id: testCompleto.id_usuario!,
+            psicologo_id: testCompleto.id_psicologo,
+            fecha_creacion: testCompleto.fecha_creacion,
+            fecha_completado: testCompleto.fecha_ultima_respuesta,
+            estado: testCompleto.estado as unknown as EstadoTestRegistro ?? undefined,
+            nombre_test: testCompleto.nombre ?? undefined,
+            valor_total: testCompleto.valor_total ?? undefined,
+            nota_psicologo: testCompleto.ponderacion_final ?? undefined, 
+            evaluado: testCompleto.evaluado,
+            fecha_evaluacion: testCompleto.fecha_evaluacion,
+          }         
+          const nuevoRegistro = await RegistroTestService.upsertRegistroByTestId(testCompleto.id,test)
 
+           console.log('Registro test creado:', nuevoRegistro);
+         } catch (error) {
+           console.error('Error al crear registro test:', error);
+         }
+    });
     return NextResponse.json(testCompleto);
 
   } catch (error: any) {
@@ -1311,6 +1398,17 @@ export async function DELETE(request: Request) {
       });
     });
 
+    //atualizo registro test-usuario
+    setImmediate().then(async ()=>{
+    if(!testExistente.id_usuario) return 
+    try {
+      const eliminarRegistroTest = await RegistroUsuarioService.removerTestDeRegistroUsuario(testExistente.id_usuario,testExistente.id)  
+      console.log('Eliminar a registro-test-usuario:', eliminarRegistroTest);
+    } catch (error) {
+      console.error('Error al crear registro:', error);
+    }
+    });  
+    
     return NextResponse.json(
       { message: 'Test eliminado correctamente' },
       { status: 200 }

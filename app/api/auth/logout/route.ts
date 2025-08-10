@@ -1,16 +1,19 @@
-// /app/api/auth/logout/route.ts
 import { PrismaClient } from "./../../../../app/generated/prisma";
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import RegistroSesionService from "../../../../app/lib/registro/registro-sesion";
+import { setImmediate } from 'timers/promises';
 
 const prisma = new PrismaClient();
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const id_usuario = searchParams.get('id');
+    const id = parseInt(id_usuario ? id_usuario : '-1');
     const cookieStore = await cookies();
     const authToken = cookieStore.get('auth-token')?.value;
-
-    // Eliminar el token de la base de datos si existe
+    console.log(id_usuario,id,searchParams)
     if (authToken) {
       await prisma.usuario.updateMany({
         where: { authToken },
@@ -21,13 +24,22 @@ export async function POST() {
       });
     }
 
-    // Eliminar todas las cookies relacionadas con la autenticación
     cookieStore.delete('auth-token');
     cookieStore.delete('auth-token-expiry');
-    
-    // Opcional: Eliminar otras cookies de sesión si las tienes
-    // cookieStore.delete('session-data');
-    // cookieStore.delete('user-preferences');
+
+   if(id>0){
+    setImmediate().then(async () => {
+      try {
+        if(!id_usuario) return
+        const cierreSesion = await RegistroSesionService.cerrarSesionesActivas(id)
+        console.log("registro update cerrar sesion:",cierreSesion);
+        } catch (error) {
+          console.error('Error al crear registro cerrar sesion:', error);
+      }
+    });
+   }else{
+    console.log("Error al enviar el id, al cerrar sesion.");
+   }
 
     return NextResponse.json(
       { 

@@ -254,8 +254,42 @@ CREATE TABLE "RegistroUsuario" (
     "tipo_usuario" TEXT NOT NULL,
     "psicologo_id" INTEGER,
     "tests_ids" JSONB,
-    "total_tests" INTEGER NOT NULL DEFAULT 0,
-    "avg_notas" REAL DEFAULT 0
+    "total_tests" INTEGER NOT NULL DEFAULT 0
+);
+
+-- CreateTable
+CREATE TABLE "RegistroTrazabilidad" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "registro_usuario_id" INTEGER NOT NULL,
+    "psicologo_id" INTEGER NOT NULL,
+    "fecha_inicio" DATETIME NOT NULL,
+    "fecha_fin" DATETIME,
+    "secuencia" INTEGER NOT NULL,
+    CONSTRAINT "RegistroTrazabilidad_registro_usuario_id_fkey" FOREIGN KEY ("registro_usuario_id") REFERENCES "RegistroUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "RegistroSesion" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "registro_usuario_id" INTEGER NOT NULL,
+    "fecha_inicio" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "fecha_fin" DATETIME,
+    "duracion" INTEGER,
+    "ip_address" TEXT,
+    "user_agent" TEXT,
+    CONSTRAINT "RegistroSesion_registro_usuario_id_fkey" FOREIGN KEY ("registro_usuario_id") REFERENCES "RegistroUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "RegistroMetricaUsuario" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "registro_usuario_id" INTEGER NOT NULL,
+    "fecha" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "tests_asignados" INTEGER NOT NULL,
+    "tests_completados" INTEGER NOT NULL,
+    "tests_evaluados" INTEGER NOT NULL,
+    "sesiones_totales" INTEGER NOT NULL,
+    CONSTRAINT "RegistroMetricaUsuario_registro_usuario_id_fkey" FOREIGN KEY ("registro_usuario_id") REFERENCES "RegistroUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -271,55 +305,7 @@ CREATE TABLE "RegistroTest" (
     "valor_total" REAL,
     "nota_psicologo" REAL,
     "evaluado" BOOLEAN NOT NULL DEFAULT false,
-    "fecha_evaluacion" DATETIME,
-    "ponderacion_usada" TEXT NOT NULL
-);
-
--- CreateTable
-CREATE TABLE "RegistroTrazabilidad" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "registro_usuario_id" INTEGER NOT NULL,
-    "psicologo_id" INTEGER NOT NULL,
-    "fecha_inicio" DATETIME NOT NULL,
-    "fecha_fin" DATETIME,
-    "secuencia" INTEGER NOT NULL,
-    CONSTRAINT "RegistroTrazabilidad_registro_usuario_id_fkey" FOREIGN KEY ("registro_usuario_id") REFERENCES "RegistroUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "RegistroMetricaUsuario" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "registro_usuario_id" INTEGER NOT NULL,
-    "fecha" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "tests_asignados" INTEGER NOT NULL,
-    "tests_completados" INTEGER NOT NULL,
-    "tests_evaluados" INTEGER NOT NULL,
-    "avg_notas" REAL,
-    "sesiones_totales" INTEGER NOT NULL,
-    CONSTRAINT "RegistroMetricaUsuario_registro_usuario_id_fkey" FOREIGN KEY ("registro_usuario_id") REFERENCES "RegistroUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "RegistroMetricaTest" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "registro_test_id" INTEGER NOT NULL,
-    "fecha" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "tiempo_respuesta" INTEGER,
-    "preguntas_contestadas" INTEGER NOT NULL,
-    "preguntas_totales" INTEGER NOT NULL,
-    "nota_psicologo" REAL,
-    CONSTRAINT "RegistroMetricaTest_registro_test_id_fkey" FOREIGN KEY ("registro_test_id") REFERENCES "RegistroTest" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "RegistroSesion" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "registro_usuario_id" INTEGER NOT NULL,
-    "psicologo_id" INTEGER NOT NULL,
-    "fecha" DATETIME NOT NULL,
-    "duracion" INTEGER,
-    "tests_revisados" TEXT,
-    CONSTRAINT "RegistroSesion_registro_usuario_id_fkey" FOREIGN KEY ("registro_usuario_id") REFERENCES "RegistroUsuario" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    "fecha_evaluacion" DATETIME
 );
 
 -- CreateTable
@@ -480,28 +466,25 @@ CREATE INDEX "RegistroUsuario_usuario_id_idx" ON "RegistroUsuario"("usuario_id")
 CREATE INDEX "RegistroUsuario_psicologo_id_idx" ON "RegistroUsuario"("psicologo_id");
 
 -- CreateIndex
-CREATE INDEX "RegistroTest_test_id_idx" ON "RegistroTest"("test_id");
-
--- CreateIndex
-CREATE INDEX "RegistroTest_evaluado_fecha_completado_idx" ON "RegistroTest"("evaluado", "fecha_completado");
-
--- CreateIndex
 CREATE INDEX "RegistroTrazabilidad_registro_usuario_id_idx" ON "RegistroTrazabilidad"("registro_usuario_id");
 
 -- CreateIndex
 CREATE INDEX "RegistroTrazabilidad_psicologo_id_idx" ON "RegistroTrazabilidad"("psicologo_id");
 
 -- CreateIndex
-CREATE INDEX "RegistroMetricaUsuario_registro_usuario_id_fecha_idx" ON "RegistroMetricaUsuario"("registro_usuario_id", "fecha");
-
--- CreateIndex
-CREATE INDEX "RegistroMetricaTest_registro_test_id_nota_psicologo_idx" ON "RegistroMetricaTest"("registro_test_id", "nota_psicologo");
-
--- CreateIndex
 CREATE INDEX "RegistroSesion_registro_usuario_id_idx" ON "RegistroSesion"("registro_usuario_id");
 
 -- CreateIndex
-CREATE INDEX "RegistroSesion_psicologo_id_idx" ON "RegistroSesion"("psicologo_id");
+CREATE INDEX "RegistroSesion_fecha_inicio_idx" ON "RegistroSesion"("fecha_inicio");
+
+-- CreateIndex
+CREATE INDEX "RegistroMetricaUsuario_registro_usuario_id_fecha_idx" ON "RegistroMetricaUsuario"("registro_usuario_id", "fecha");
+
+-- CreateIndex
+CREATE INDEX "RegistroTest_test_id_idx" ON "RegistroTest"("test_id");
+
+-- CreateIndex
+CREATE INDEX "RegistroTest_evaluado_fecha_completado_idx" ON "RegistroTest"("evaluado", "fecha_completado");
 
 -- CreateIndex
 CREATE INDEX "RegistroReporte_fecha_generacion_idx" ON "RegistroReporte"("fecha_generacion");

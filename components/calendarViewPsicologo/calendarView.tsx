@@ -72,6 +72,7 @@ interface CitaProps {
 }
 
 const CalendarView: React.FC<CitaProps> = ({usuario})  => {
+  console.log(usuario);
   const [events, setEvents] = useState<any[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<Cita | null>(null);
@@ -112,7 +113,7 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
       setIsLoading(true);
       try {
         // Cargar citas del psicólogo actual
-        const citas = await fetchData(`/api/cita?psicologoId=${usuario.id}`);
+        const citas = await fetchData(`/api/cita?psicologoId=${usuario.id}&all=true`);
         formatEvents(citas.data);
 
         // Cargar tipos de cita
@@ -226,6 +227,8 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
   };
 
   const handleFormSubmit = async () => {
+    let response;
+    let result;
     try {
       const values = await form.validateFields();
       const formattedValues = {
@@ -236,8 +239,6 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
         id_tipo_cita: values.id_tipo_cita || null,
         id_psicologo: usuario.id // Siempre asignar al psicólogo actual
       };
-
-      let response;
       if (currentEvent) {
         // Actualizar cita existente
         formattedValues.id = currentEvent.id;
@@ -258,19 +259,22 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
           body: JSON.stringify(formattedValues)
         });
       }
-
+     
+      result = await response.json();
       if (!response.ok) throw new Error('Error al guardar la cita');
-
+      console.log(response,"Hola");
       message.success(currentEvent ? 'Cita actualizada' : 'Cita creada');
 
       // Refrescar eventos
-      const citasResponse = await fetch(`/api/cita?psicologoId=${usuario.id}`);
+      const citasResponse = await fetch(`/api/cita?psicologoId=${usuario.id}&all=true`);
       const citasData = await citasResponse.json();
       formatEvents(citasData.data);
       setIsModalVisible(false);
     } catch (error) {
-      console.error('Error submitting form:', error);
-      message.error('Error al guardar la cita');
+      console.log(result);
+      if(result.error) alert(result.error)
+      //console.error('Error submitting form:', error,response);
+      //message.error('Error al guardar la cita');
     }
     limpiarSearch();
   };

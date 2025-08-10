@@ -20,6 +20,7 @@ enum PesoPreguntaTipo {
   SIN_VALOR
   IGUAL_VALOR
   BAREMO
+  //MODULO
 }
 
 // ====================== MODELOS PRINCIPALES ======================
@@ -86,6 +87,7 @@ model Test {
   id_usuario          Int?
 
   evaluado            Boolean          @default(false)
+ //editable            Boolean?         @default(true)
   fecha_evaluacion    DateTime?
   ponderacion_final      Float?           
   comentarios_psicologo String?        
@@ -393,7 +395,6 @@ model RegistroUsuario {
 
   tests_ids        Json?     // Ej: [1, 2, 3]
   total_tests      Int       @default(0)
-  avg_notas        Float?    @default(0)
 
   // Relaciones
   trazabilidades   RegistroTrazabilidad[]
@@ -402,30 +403,6 @@ model RegistroUsuario {
 
   @@index([usuario_id])
   @@index([psicologo_id])
-}
-
-// Registro snapshot de tests (datos desnormalizados)
-model RegistroTest {
-  id               Int                 @id @default(autoincrement())
-  test_id          Int
-  usuario_id       Int?
-  psicologo_id     Int?
-  fecha_creacion   DateTime
-  fecha_completado DateTime?
-  estado           EstadoTestRegistro
-  nombre_test      String?
-  valor_total      Float?
-
-  nota_psicologo   Float?
-  evaluado         Boolean             @default(false)
-  fecha_evaluacion DateTime?
-  ponderacion_usada PesoPreguntaTipo
-
-  // Relaciones
-  metricas         RegistroMetricaTest[]
-
-  @@index([test_id])
-  @@index([evaluado, fecha_completado]) 
 }
 
 // Trazabilidad de atención (sin FK a tablas principales)
@@ -444,6 +421,24 @@ model RegistroTrazabilidad {
   @@index([psicologo_id])
 }
 
+// Registro de sesiones 
+model RegistroSesion {
+  id                  Int       @id @default(autoincrement())
+  registro_usuario_id Int
+  fecha_inicio        DateTime  @default(now())
+  fecha_fin           DateTime?
+  duracion            Int?      // En minutos (calculado automáticamente)
+  ip_address          String?
+  user_agent          String?
+  
+  // Relación con el usuario en el esquema de registros
+  usuario             RegistroUsuario @relation(fields: [registro_usuario_id], references: [id])
+  
+  // Índices para análisis
+  @@index([registro_usuario_id])
+  @@index([fecha_inicio])
+}
+
 // Métricas por usuario
 model RegistroMetricaUsuario {
   id                   Int       @id @default(autoincrement())
@@ -451,8 +446,7 @@ model RegistroMetricaUsuario {
   fecha            DateTime  @default(now())
   tests_asignados  Int
   tests_completados Int
-  tests_evaluados  Int       
-  avg_notas        Float?    
+  tests_evaluados  Int          
   sesiones_totales Int
   
   usuario          RegistroUsuario @relation(fields: [registro_usuario_id], references: [id])
@@ -460,33 +454,26 @@ model RegistroMetricaUsuario {
   @@index([registro_usuario_id, fecha])
 }
 
-model RegistroMetricaTest {
-  id               Int       @id @default(autoincrement())
-  registro_test_id Int
-  fecha            DateTime  @default(now())
-  tiempo_respuesta Int?
-  preguntas_contestadas Int
-  preguntas_totales Int
-  nota_psicologo   Float?   
-  
-  test             RegistroTest @relation(fields: [registro_test_id], references: [id])
-  
-  @@index([registro_test_id, nota_psicologo]) 
+// Registro  de tests
+model RegistroTest {
+  id               Int                 @id @default(autoincrement())
+  test_id          Int
+  usuario_id       Int?
+  psicologo_id     Int?
+  fecha_creacion   DateTime
+  fecha_completado DateTime?
+  estado           EstadoTestRegistro
+  nombre_test      String?
+  valor_total      Float?
+
+  nota_psicologo   Float?
+  evaluado         Boolean             @default(false)
+  fecha_evaluacion DateTime?
+
+  @@index([test_id])
+  @@index([evaluado, fecha_completado]) 
 }
 
-// Registro de sesiones (sin FK a tablas principales)
-model RegistroSesion {
-  id                  Int       @id @default(autoincrement())
-  registro_usuario_id Int
-  psicologo_id        Int
-  fecha               DateTime
-  duracion            Int?      // En minutos
-  tests_revisados     String?   // IDs de tests separados por comas
-  usuario          RegistroUsuario @relation(fields: [registro_usuario_id], references: [id])
-  
-  @@index([registro_usuario_id])
-  @@index([psicologo_id])
-}
 
 // Reportes generados
 model RegistroReporte {
@@ -501,7 +488,6 @@ model RegistroReporte {
   @@index([fecha_generacion])
   @@index([generado_por_id])
 }
-
 
 model RegistroCita {
   id                   Int           @id @default(autoincrement())

@@ -1,10 +1,11 @@
-// /app/api/auth/login/route.ts
 import { PrismaClient } from "./../../../../app/generated/prisma";
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { desencriptar, generarTokenExpiry } from "@/app/lib/crytoManager";
 import { LoginResponse } from "../../type";
+import RegistroSesionService from "../../../../app/lib/registro/registro-sesion";
+import { setImmediate } from 'timers/promises';
 
 const prisma = new PrismaClient();
 
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
             redes_sociales: true
           }
         },
-        psicologoPacientes: true // Incluir información del psicólogo asignado si es paciente
+        psicologoPacientes: true 
       }
     });
 
@@ -56,11 +57,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate auth token
+
     const authToken = crypto.randomBytes(64).toString('hex');
     const authTokenExpiry = generarTokenExpiry();
     
-    // Update user with new token
+
     await prisma.usuario.update({
       where: { id: usuario.id },
       data: { 
@@ -69,12 +70,11 @@ export async function POST(request: Request) {
       }
     });
 
-    // Set cookies
     const cookieStore = await cookies();
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
+      maxAge: 60 * 60 * 24 * 7, 
       path: '/',
       sameSite: 'strict' as const
     };
@@ -82,21 +82,19 @@ export async function POST(request: Request) {
     cookieStore.set('auth-token', authToken, cookieOptions);
     cookieStore.set('auth-token-expiry', authTokenExpiry.toISOString(), cookieOptions);
     
-    // Set user info cookie (accessible client-side)
     cookieStore.set('user-info', JSON.stringify({
       id: usuario.id,
       tipo: usuario.id_tipo_usuario,
       nombre: usuario.nombre,
       esAdolescente: !!usuario.adolecente,
       esPsicologo: !!usuario.psicologo,
-      sexo: usuario.sexo || null, // Nuevo campo en cookies
-      id_psicologo: usuario.id_psicologo || null // Nuevo campo en cookies
+      sexo: usuario.sexo || null, 
+      id_psicologo: usuario.id_psicologo || null 
     }), {
       ...cookieOptions,
       httpOnly: false
     });
 
-    // Prepare response data
     const responseData: LoginResponse = {
       user: {
         id: usuario.id,
@@ -125,7 +123,6 @@ export async function POST(request: Request) {
       }
     };
 
-    // Add adolescent-specific data if applicable
     if (usuario.adolecente) {
       responseData.user.esAdolescente = true;
       if (usuario.adolecente.tutor) {
@@ -143,7 +140,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Add psychologist-specific data if applicable
     if (usuario.psicologo) {
       responseData.user.esPsicologo = true;
       responseData.user.psicologoInfo = {
@@ -155,7 +151,6 @@ export async function POST(request: Request) {
       };
     }
 
-    // Add psychologist data if user is a patient
     if (usuario.psicologoPacientes) {
       let psicologoInfo;
       if (usuario.psicologoPacientes.id_psicologo) {
@@ -176,6 +171,24 @@ export async function POST(request: Request) {
         psicologo: psicologoInfo
       };
     }
+
+    setImmediate().then(async () => {
+        const ip_address = request.headers.get('x-forwarded-for') || 'Desconocido';
+        const user_agent = request.headers.get('user-agent') || 'Desconocido';
+      try {
+        await RegistroSesionService.cerrarSesionesActivas(usuario.id);
+
+        const nuevaSesion = await RegistroSesionService.createRegistroSesion({
+          usuario_id:usuario.id,
+          ip_address,
+          user_agent
+        });        
+
+        console.log("registro nueva sesion:",nuevaSesion);
+        } catch (error) {
+          console.error('Error al crear registro nueva sesion:', error);
+        }
+    });
 
     return NextResponse.json(responseData, { status: 200 });
 

@@ -29,7 +29,6 @@ interface RegistroTestData {
   nota_psicologo?: number | null;
   evaluado?: boolean;
   fecha_evaluacion?: Date | string | null;
-  ponderacion_usada?: PesoPreguntaTipo | null;
 }
 
 export async function GET(request: Request) {
@@ -52,11 +51,6 @@ export async function GET(request: Request) {
     if (id) {
       const registro = await prisma.registroTest.findUnique({
         where: { id: parseInt(id) },
-        include: {
-          metricas: {
-            orderBy: { fecha: 'desc' }
-          }
-        }
       });
 
       if (!registro) {
@@ -114,12 +108,6 @@ export async function GET(request: Request) {
 
     const registros = await prisma.registroTest.findMany({
       where: whereClause,
-      include: {
-        metricas: {
-          orderBy: { fecha: 'desc' },
-          take: 5
-        }
-      },
       orderBy: {
         fecha_creacion: 'desc'
       },
@@ -209,14 +197,10 @@ export async function POST(request: Request) {
       nota_psicologo: registroData.nota_psicologo || null,
       evaluado: registroData.evaluado || false,
       fecha_evaluacion: registroData.fecha_evaluacion ? new Date(registroData.fecha_evaluacion) : null,
-      ponderacion_usada: registroData.ponderacion_usada || testExistente.peso_preguntas || null
     };
 
     const nuevoRegistro = await prisma.registroTest.create({
       data: datosCreacion,
-      include: {
-        metricas: true
-      }
     });
 
     return NextResponse.json(nuevoRegistro, { status: 201 });
@@ -253,7 +237,6 @@ export async function PATCH(request: Request) {
 
     const registroExistente = await prisma.registroTest.findUnique({ 
       where: { id },
-      include: { metricas: true }
     });
 
     if (!registroExistente) {
@@ -285,13 +268,6 @@ export async function PATCH(request: Request) {
       }
     }
 
-    if (restoDatos.ponderacion_usada !== undefined) {
-      // Manejo especial para el enum
-      updateData.ponderacion_usada = restoDatos.ponderacion_usada === null ? 
-        null : 
-        { set: restoDatos.ponderacion_usada };
-    }
-
     // Manejo de fechas
     if (restoDatos.fecha_creacion !== undefined) {
       updateData.fecha_creacion = new Date(restoDatos.fecha_creacion);
@@ -317,9 +293,6 @@ export async function PATCH(request: Request) {
     const registroActualizado = await prisma.registroTest.update({
       where: { id },
       data: updateData,
-      include: {
-        metricas: true
-      }
     });
 
     return NextResponse.json(registroActualizado);
@@ -356,9 +329,6 @@ export async function DELETE(request: Request) {
 
     const registroExistente = await prisma.registroTest.findUnique({
       where: { id: registroId },
-      include: {
-        metricas: true
-      }
     });
 
     if (!registroExistente) {
@@ -370,9 +340,6 @@ export async function DELETE(request: Request) {
 
     // Eliminar en cascada las métricas
     await prisma.$transaction([
-      prisma.registroMetricaTest.deleteMany({
-        where: { registro_test_id: registroId }
-      }),
       prisma.registroTest.delete({
         where: { id: registroId }
       })

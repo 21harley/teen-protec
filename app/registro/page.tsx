@@ -5,8 +5,8 @@ import useUserStore from "../store/store";
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react";
 import { UsuarioInfo } from "./../../app/types/user"
-
-export default function Alert() {
+import RegistroPsicologo from "@/components/registroPsicologo/registroPsicologo";
+export default function Registro() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const storeUser = useUserStore((state) => state.user);
@@ -60,12 +60,11 @@ export default function Alert() {
           <h1>Admin registro</h1>
         </LayoutPage>
       );
-    case "usuario":
-    case "adolecente":
     case "psicologo":
       return (
         <LayoutPage>
-         <h1>Registro</h1>
+         <h1>Registro Psicologico</h1>
+         <RegistroPsicologo usuario={user} />
         </LayoutPage>
       );
     case "secretaria":
@@ -74,6 +73,9 @@ export default function Alert() {
           <h1>Registro secretaria</h1>
         </LayoutPage>
       )
+      
+    case "usuario":
+    case "adolecente":  
     default:
       router.push("/");
       return null;

@@ -543,7 +543,6 @@ export async function POST(request: Request) {
       sameSite: 'strict' as const
     };
 
-    // Manejo correcto de cookies con Next.js 13+
     const cookieStore = await cookies();
     cookieStore.set({
       name: 'auth-token',
@@ -690,7 +689,6 @@ export async function POST(request: Request) {
       psicologo_id: null,
       tests_ids: [],
       total_tests: 0,
-      avg_notas: 0
     });
     
 

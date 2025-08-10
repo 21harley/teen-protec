@@ -24,7 +24,6 @@ interface RegistroUsuarioData {
   tests_ids?: number[] | null;
   tests_evaluados?: TestEvaluado[] | null;
   total_tests?: number;
-  avg_notas?: number | null;
 }
 
 export async function GET(request: Request) {
@@ -153,7 +152,6 @@ interface RegistroUsuarioData {
   tests_ids?: number[] | null;
   tests_evaluados?: TestEvaluado[] | null;
   total_tests?: number;
-  avg_notas?: number | null;
 }
 
 export async function POST(request: Request) {
@@ -213,18 +211,20 @@ export async function POST(request: Request) {
     }
 
     // Preparar datos para creación con el tipo correcto para campos JSON
-    const datosCreacion = {
+    const datosCreacion: any = {
       usuario_id: registroData.usuario_id,
-      sexo: registroData.sexo ?? null,
       edad: registroData.edad ?? null,
       tipo_usuario: registroData.tipo_usuario,
       psicologo_id: registroData.psicologo_id ?? null,
-      tests_ids: registroData.tests_ids ,
+      tests_ids: registroData.tests_ids,
       tests_evaluados: registroData.tests_evaluados,
       total_tests: registroData.total_tests ?? 0,
-      avg_notas: registroData.avg_notas ?? null,
       fecha_registro: new Date()
     };
+
+    if (registroData.sexo !== undefined && registroData.sexo !== null) {
+      datosCreacion.sexo = registroData.sexo.toString();
+    }
 
     const nuevoRegistro = await prisma.registroUsuario.create({
       data: datosCreacion,
@@ -308,9 +308,6 @@ export async function PATCH(request: Request) {
     // Campos numéricos
     if (restoDatos.total_tests !== undefined) {
       updateData.total_tests = restoDatos.total_tests;
-    }
-    if (restoDatos.avg_notas !== undefined) {
-      updateData.avg_notas = restoDatos.avg_notas;
     }
 
     const registroActualizado = await prisma.registroUsuario.update({

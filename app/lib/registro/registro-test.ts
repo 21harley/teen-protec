@@ -1,10 +1,9 @@
 import { PrismaClient } from "../../generated/prisma";
 import {
   RegistroTest,
-  RegistroMetricaTest,
   EstadoTestRegistro,
   PesoPreguntaTipo 
-} from "./../../types/registros";
+} from "../../types/registros";
 
 const prisma = new PrismaClient();
 
@@ -21,7 +20,6 @@ export type CreateRegistroTestInput = {
   nota_psicologo?: number | null;
   evaluado?: boolean;
   fecha_evaluacion?: Date | null;
-  ponderacion_usada: string;
 };
 
 export type UpdateRegistroTestInput = Partial<CreateRegistroTestInput>;
@@ -69,22 +67,9 @@ function toRegistroTest(prismaData: any): RegistroTest {
     nota_psicologo: prismaData.nota_psicologo ?? null,
     evaluado: prismaData.evaluado ?? false,
     fecha_evaluacion: prismaData.fecha_evaluacion ?? null,
-    ponderacion_usada: prismaData.ponderacion_usada,
-    metricas: prismaData.metricas?.map((m: any) => toRegistroMetricaTest(m)) ?? []
   };
 }
 
-function toRegistroMetricaTest(prismaData: any): RegistroMetricaTest {
-  return {
-    id: prismaData.id,
-    registro_test_id: prismaData.registro_test_id,
-    fecha: prismaData.fecha,
-    tiempo_respuesta: prismaData.tiempo_respuesta ?? null,
-    preguntas_contestadas: prismaData.preguntas_contestadas,
-    preguntas_totales: prismaData.preguntas_totales,
-    nota_psicologo: prismaData.nota_psicologo ?? null
-  };
-}
 
 class RegistroTestService {
   /**
@@ -127,7 +112,6 @@ class RegistroTestService {
           nota_psicologo: data.nota_psicologo ?? null,
           evaluado: data.evaluado ?? false,
           fecha_evaluacion: data.fecha_evaluacion ?? null,
-          ponderacion_usada: data.ponderacion_usada as PesoPreguntaTipo,
         },
       });
 
@@ -151,9 +135,6 @@ class RegistroTestService {
     try {
       const registro = await prisma.registroTest.findUnique({
         where: { id },
-        include: includeRelations ? {
-          metricas: true,
-        } : undefined,
       });
 
       return registro ? toRegistroTest(registro) : null;
@@ -177,12 +158,12 @@ class RegistroTestService {
         orderBy: options?.orderBy || { fecha_creacion: "desc" },
         skip: options?.skip,
         take: options?.take,
-        include: {
-          metricas: {
-            orderBy: { fecha: "desc" },
-            take: 5,
-          },
-        },
+        // include: {
+        //   metricas: {
+        //     orderBy: { fecha: "desc" },
+        //     take: 5,
+        //   },
+        // },
       });
 
       return registros.map(toRegistroTest);
@@ -233,7 +214,6 @@ class RegistroTestService {
           nota_psicologo: data.nota_psicologo === undefined ? undefined : data.nota_psicologo,
           evaluado: data.evaluado === undefined ? undefined : data.evaluado,
           fecha_evaluacion: data.fecha_evaluacion === undefined ? undefined : data.fecha_evaluacion,
-          ponderacion_usada: data.ponderacion_usada as PesoPreguntaTipo,
         },
       });
 
@@ -251,8 +231,6 @@ class RegistroTestService {
    */
   async deleteRegistroTest(id: number): Promise<RegistroTest> {
     try {
-      // Eliminar relaciones primero
-      await this.deleteRelatedRecords(id);
       
       const registro = await prisma.registroTest.delete({
         where: { id },
@@ -265,33 +243,6 @@ class RegistroTestService {
     }
   }
 
-  /**
-   * Obtiene las métricas históricas de un test
-   * @param testId ID del test
-   * @param limit Límite de resultados (default: 10)
-   * @returns Lista de métricas ordenadas por fecha
-   */
-  async getMetricasTest(
-    testId: number,
-    limit: number = 10
-  ): Promise<RegistroMetricaTest[]> {
-    try {
-      const registros = await prisma.registroTest.findMany({
-        where: { test_id: testId },
-        select: {
-          metricas: {
-            orderBy: { fecha: "desc" },
-            take: limit,
-          },
-        },
-      });
-
-      return registros.flatMap(r => r.metricas.map(toRegistroMetricaTest));
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Error desconocido';
-      throw new Error(`Error al obtener métricas de test: ${message}`);
-    }
-  }
 
   /**
    * Obtiene los tests de un usuario
@@ -309,12 +260,6 @@ class RegistroTestService {
         orderBy: options?.orderBy || { fecha_creacion: "desc" },
         skip: options?.skip,
         take: options?.take,
-        include: {
-          metricas: {
-            orderBy: { fecha: "desc" },
-            take: 5,
-          },
-        },
       });
 
       return registros.map(toRegistroTest);
@@ -340,12 +285,6 @@ class RegistroTestService {
         orderBy: options?.orderBy || { fecha_evaluacion: "desc" },
         skip: options?.skip,
         take: options?.take,
-        include: {
-          metricas: {
-            orderBy: { fecha: "desc" },
-            take: 5,
-          },
-        },
       });
 
       return registros.map(toRegistroTest);
@@ -428,12 +367,154 @@ class RegistroTestService {
     }
   }
 
-  // Métodos auxiliares privados
-  private async deleteRelatedRecords(registroId: number): Promise<void> {
-    await prisma.registroMetricaTest.deleteMany({
-      where: { registro_test_id: registroId },
+  /**
+ * Obtiene el ID del registro de un test específico
+ * @param testId ID del test original
+ * @returns ID del registro o null si no existe
+ */
+async getRegistroIdByTestId(testId: number): Promise<number | null> {
+  try {
+    const registro = await prisma.registroTest.findFirst({
+      where: { test_id: testId },
+      select: { id: true }
     });
+
+    return registro ? registro.id : null;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    throw new Error(`Error al obtener ID de registro por test ID: ${message}`);
   }
+}
+
+/**
+ * Actualiza un registro de test basado en el ID del test original
+ * @param testId ID del test original
+ * @param data Datos a actualizar
+ * @returns RegistroTest actualizado
+ */
+async updateRegistroByTestId(
+  testId: number,
+  data: UpdateRegistroTestInput
+): Promise<RegistroTest> {
+  try {
+    // Primero encontrar el registro por test_id
+    const registro = await prisma.registroTest.findFirst({
+      where: { test_id: testId }
+    });
+
+    if (!registro) {
+      throw new Error("No se encontró un registro para este test");
+    }
+
+    // Validar psicólogo si se proporciona
+    if (data.psicologo_id !== undefined && data.psicologo_id !== null) {
+      const psicologoExists = await prisma.usuario.findUnique({
+        where: { id: data.psicologo_id },
+      });
+
+      if (!psicologoExists) {
+        throw new Error("El psicólogo referenciado no existe");
+      }
+    }
+
+    // Actualizar el registro encontrado
+    const registroActualizado = await prisma.registroTest.update({
+      where: { id: registro.id },
+      data: {
+        estado: data.estado,
+        fecha_completado: data.fecha_completado === undefined ? undefined : data.fecha_completado,
+        nombre_test: data.nombre_test === undefined ? undefined : data.nombre_test,
+        valor_total: data.valor_total === undefined ? undefined : data.valor_total,
+        nota_psicologo: data.nota_psicologo === undefined ? undefined : data.nota_psicologo,
+        evaluado: data.evaluado === undefined ? undefined : data.evaluado,
+        fecha_evaluacion: data.fecha_evaluacion === undefined ? undefined : data.fecha_evaluacion,
+      },
+    });
+
+    return toRegistroTest(registroActualizado);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    throw new Error(`Error al actualizar registro por test ID: ${message}`);
+  }
+}
+
+/**
+ * Actualiza un registro de test basado en el ID del test original, o lo crea si no existe
+ * @param testId ID del test original
+ * @param data Datos para actualizar o crear el registro
+ * @returns RegistroTest actualizado o creado
+ */
+async upsertRegistroByTestId(
+  testId: number,
+  data: CreateRegistroTestInput
+): Promise<RegistroTest> {
+  try {
+    // Primero intentar encontrar el registro por test_id
+    const registroExistente = await prisma.registroTest.findFirst({
+      where: { test_id: testId }
+    });
+
+    if (registroExistente) {
+      // Si existe, actualizarlo
+      const registroActualizado = await prisma.registroTest.update({
+        where: { id: registroExistente.id },
+        data: {
+          estado: data.estado,
+          fecha_completado: data.fecha_completado ?? registroExistente.fecha_completado,
+          nombre_test: data.nombre_test ?? registroExistente.nombre_test,
+          valor_total: data.valor_total ?? registroExistente.valor_total,
+          nota_psicologo: data.nota_psicologo ?? registroExistente.nota_psicologo,
+          evaluado: data.evaluado ?? registroExistente.evaluado,
+          fecha_evaluacion: data.fecha_evaluacion ?? registroExistente.fecha_evaluacion,
+        },
+      });
+      return toRegistroTest(registroActualizado);
+    } else {
+      // Si no existe, crearlo
+      // Validar que el test existe
+      const testExists = await prisma.test.findUnique({
+        where: { id: testId },
+      });
+
+      if (!testExists) {
+        throw new Error("El test referenciado no existe");
+      }
+
+      // Validar psicólogo si se proporciona
+      if (data.psicologo_id) {
+        const psicologoExists = await prisma.usuario.findUnique({
+          where: { id: data.psicologo_id },
+        });
+
+        if (!psicologoExists) {
+          throw new Error("El psicólogo referenciado no existe");
+        }
+      }
+
+      // Crear nuevo registro
+      const nuevoRegistro = await prisma.registroTest.create({
+        data: {
+          test_id: testId,
+          usuario_id: data.usuario_id ?? null,
+          psicologo_id: data.psicologo_id ?? null,
+          fecha_creacion: data.fecha_creacion ?? new Date(),
+          fecha_completado: data.fecha_completado ?? null,
+          estado: data.estado,
+          nombre_test: data.nombre_test ?? null,
+          valor_total: data.valor_total ?? null,
+          nota_psicologo: data.nota_psicologo ?? null,
+          evaluado: data.evaluado ?? false,
+          fecha_evaluacion: data.fecha_evaluacion ?? null,
+        },
+      });
+      return toRegistroTest(nuevoRegistro);
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    throw new Error(`Error en upsertRegistroByTestId: ${message}`);
+  }
+}
+
 
   private buildWhereClause(options?: FilterRegistroTestOptions): any {
     const where: any = {};

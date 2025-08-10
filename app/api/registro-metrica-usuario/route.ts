@@ -8,7 +8,6 @@ interface RegistroMetricaUsuarioData {
   tests_asignados: number;
   tests_completados: number;
   tests_evaluados: number;       
-  avg_notas?: number | null; 
   sesiones_totales: number;
 }
 
@@ -17,13 +16,16 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const registroUsuarioId = searchParams.get('registroUsuarioId');
+    const userId = searchParams.get('userId');
     const fechaDesde = searchParams.get('fechaDesde');
     const fechaHasta = searchParams.get('fechaHasta');
+    const generateMetrics = searchParams.get('generateMetrics') === 'true';
 
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const skip = (page - 1) * pageSize;
 
+    // Lógica para obtener métrica específica por ID
     if (id) {
       const metrica = await prisma.registroMetricaUsuario.findUnique({
         where: { id: parseInt(id) },
@@ -48,9 +50,89 @@ export async function GET(request: Request) {
       });
     }
 
+    // Lógica para generar nuevas métricas
+    if (userId && generateMetrics) {
+      const numericUserId = parseInt(userId);
+
+      // Obtener el registro de usuario
+      const registroUsuario = await prisma.registroUsuario.findFirst({
+        where: { usuario_id: numericUserId },
+        include: {
+          trazabilidades: true,
+          sesiones: true,
+          metricas: true
+        }
+      });
+
+      if (!registroUsuario) {
+        return NextResponse.json(
+          { error: 'Registro de usuario no encontrado' },
+          { status: 404 }
+        );
+      }
+
+      // Calcular métricas
+      const testsAsignados = await prisma.test.count({
+        where: { id_usuario: numericUserId }
+      });
+
+      const testsCompletados = await prisma.test.count({
+        where: { 
+          id_usuario: numericUserId,
+          estado: 'COMPLETADO'
+        }
+      });
+
+      const testsEvaluados = await prisma.test.count({
+        where: { 
+          id_usuario: numericUserId,
+          evaluado: true
+        }
+      });
+
+      const sesionesTotales = await prisma.registroSesion.count({
+        where: { registro_usuario_id: registroUsuario.id }
+      });
+
+      // Crear nueva métrica
+      const nuevaMetrica = await prisma.registroMetricaUsuario.create({
+        data: {
+          registro_usuario_id: registroUsuario.id,
+          fecha: new Date(),
+          tests_asignados: testsAsignados,
+          tests_completados: testsCompletados,
+          tests_evaluados: testsEvaluados,
+          sesiones_totales: sesionesTotales
+        },
+        include: {
+          usuario: true
+        }
+      });
+
+      return NextResponse.json({
+        data: [nuevaMetrica],
+        total: 1,
+        page: 1,
+        pageSize: 1,
+        totalPages: 1
+      }, { status: 201 });
+    }
+
+    // Lógica original para búsqueda filtrada
     let whereClause: any = {};
 
     if (registroUsuarioId) whereClause.registro_usuario_id = parseInt(registroUsuarioId);
+    
+    // Si se proporciona userId pero no generateMetrics, buscar por usuario_id
+    if (userId && !generateMetrics) {
+      const registroUsuario = await prisma.registroUsuario.findFirst({
+        where: { usuario_id: parseInt(userId) }
+      });
+      
+      if (registroUsuario) {
+        whereClause.registro_usuario_id = registroUsuario.id;
+      }
+    }
 
     if (fechaDesde || fechaHasta) {
       whereClause.fecha = {};
@@ -131,7 +213,6 @@ export async function POST(request: Request) {
         tests_asignados: metricaData.tests_asignados,
         tests_completados: metricaData.tests_completados,
         tests_evaluados: metricaData.tests_evaluados,
-        avg_notas: metricaData.avg_notas || null,
         sesiones_totales: metricaData.sesiones_totales
       },
       include: {

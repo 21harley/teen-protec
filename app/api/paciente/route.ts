@@ -3,6 +3,10 @@ import { PrismaClient } from "../../../app/generated/prisma";
 import { calcularProgreso } from '../../../app/api/helpers/testHelpers'
 import { cookies } from 'next/headers';
 import { create_alarma_email,create_alarma } from '@/app/lib/alertas';
+import { setImmediate } from 'timers/promises';
+import RegistroUsuarioService from "../../lib/registro/registro-usuario"
+import RegistroTestService,{CreateRegistroTestInput} from "../../lib/registro/registro-test"
+import { EstadoTestRegistro } from '@/app/types/registros';
 
 const prisma = new PrismaClient();
 
@@ -282,7 +286,18 @@ export async function POST(request: Request) {
           }
         }
       });
-      
+     //registro de asignacion de psicologo 
+     setImmediate().then(async () => {
+         try {
+          console.log(data.id_paciente,idPsicologo);
+          const cambioPsicologo = await RegistroUsuarioService.cambiarPsicologo(data.id_paciente,idPsicologo);  
+          console.log('cambioPsicologo registro:', cambioPsicologo);
+        } catch (error) {
+          console.error('Error al crear registro:', error);
+        }     
+     });
+      //creo email asignacion psicologo
+      setImmediate().then(async () => {
       const result_email = await  create_alarma_email({
         id_usuario: usuarioActualizado.id ,
         id_tipo_alerta: 1,
@@ -302,6 +317,7 @@ export async function POST(request: Request) {
       });
       
       if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
+      });
 
       return NextResponse.json(
         { 
@@ -414,25 +430,59 @@ export async function POST(request: Request) {
 
         if( psicologoExistente){
         console.log("crea alarma de test");
-        const result_email = await  create_alarma_email({
-        id_usuario: paciente.id ,
-        id_tipo_alerta: 1,
-        mensaje: `Tiene asignado un test.`,
-        vista: false,
-        correo_enviado: true,
-        emailParams: {
-          to: paciente.email,
-          subject: "Tienes una nueva alerta",
-          template: "test_asignado",
-          props: {
-            name: paciente.nombre,
-            psicologo_name:psicologoExistente.nombre,
-            alertMessage: `El psicologo ${psicologoExistente.nombre}, te a enviado un test.`
-          }
+        //creo email
+        setImmediate().then(async () => {
+           const result_email = await  create_alarma_email({
+           id_usuario: paciente.id,
+           id_tipo_alerta: 8,
+           mensaje: "Registro completado con exito",
+           vista: false,
+           correo_enviado: true,
+           emailParams: {
+             to: paciente.email,
+             subject: "Tienes una nueva alerta",
+             template: "welcome",
+             props: {
+               name:paciente.nombre,
+               alertMessage: "¡Bienvenido al PsicoTest!"
+             }
+           }
+           });
+        
+           if (!result_email.emailSent) console.error('Error creando usuario',result_email); 
+        });
+        //creo registro nuevo test registro-usuario
+        setImmediate().then(async ()=>{
+        try {
+          const updateRegistro = await RegistroUsuarioService.agregarTestARegistroUsuario(paciente.id,nuevoTest.id);  
+          console.log('Update a registro:', updateRegistro);
+        } catch (error) {
+          console.error('Error al crear registro:', error);
         }
-      });
-      
-      if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
+        });
+        //crear registro de test
+        setImmediate().then(async () => {
+          try {
+            const test:CreateRegistroTestInput = {
+              test_id: nuevoTest.id,
+              usuario_id: nuevoTest.id_usuario!,
+              psicologo_id: nuevoTest.id_psicologo,
+              fecha_creacion: nuevoTest.fecha_creacion,
+              fecha_completado: nuevoTest.fecha_ultima_respuesta,
+              estado: nuevoTest.estado as unknown as EstadoTestRegistro ?? undefined,
+              nombre_test: nuevoTest.nombre ?? undefined,
+              valor_total: nuevoTest.valor_total ?? undefined,
+              nota_psicologo: nuevoTest.ponderacion_final ?? undefined, 
+              evaluado: nuevoTest.evaluado,
+              fecha_evaluacion: nuevoTest.fecha_evaluacion,
+            }         
+            const nuevoRegistro = await RegistroTestService.createRegistroTest(test)
+
+             console.log('Registro test creado:', nuevoRegistro);
+             } catch (error) {
+               console.error('Error al crear registro test:', error);
+             }
+        });        
       }
     }
     
@@ -648,7 +698,8 @@ export async function DELETE(request: Request) {
       where: { id: parseInt(id_paciente) },
       data: { id_psicologo: null }
     });
-
+    //alarma
+    setImmediate().then(async ()=>{
       const result_email = await  create_alarma({
         id_usuario: paciente.id ,
         id_tipo_alerta: null,
@@ -658,7 +709,17 @@ export async function DELETE(request: Request) {
       });
       
     if (!result_email) console.error('Error al enviar email, test.',result_email); 
+    });
 
+    //update registro dar alta
+    setImmediate().then(async ()=>{
+    try {
+      const updateRegistro = await RegistroUsuarioService.cambiarPsicologo(paciente.id,null);  
+      console.log('Update a registro:', updateRegistro);
+    } catch (error) {
+      console.error('Error al crear registro:', error);
+    }
+    });  
     return NextResponse.json(
       { 
         message: 'Paciente desasignado correctamente',

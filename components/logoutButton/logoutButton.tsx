@@ -1,5 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { UsuarioInfo } from "./../../app/types/user"
+import { StorageManager } from "@/app/lib/storageManager"
 
 export function LogoutButton() {
   const router = useRouter();
@@ -8,13 +10,15 @@ export function LogoutButton() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
+      const storageManager = new StorageManager('local');
+      const data = storageManager.load<UsuarioInfo>('userData');
       // Eliminar datos de almacenamiento local
       localStorage.removeItem('userData');
       sessionStorage.removeItem('tempData');
 
       try {
-        const response = await fetch('/api/auth/logout', {
-          method: 'POST'
+        const response = await fetch(`/api/auth/logout?id=${data?.id}`, {
+          method: 'POST',
         });
         if (response.ok) {
           // Redirigir o actualizar el estado de la UI

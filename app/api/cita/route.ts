@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient,EstadoCita } from "../../generated/prisma";
+import { setImmediate } from 'timers/promises';
+import { registroCitaService,CreateRegistroCitaInput } from "../../lib/registro/registro-cita"
+
 // Configuración de Prisma
 const prisma = new PrismaClient()
 
@@ -37,10 +40,11 @@ export async function GET(request: Request) {
     const fechaFin = searchParams.get('fechaFin');
     const tipoCitaId = searchParams.get('tipoCitaId');
     const search = searchParams.get('search');
+    const all = searchParams.get('all') === 'true'; // Nuevo parámetro para obtener todos los resultados
     
-    // Parámetros de paginación
-    const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    // Parámetros de paginación (solo se usan si all es false)
+    const page = all ? 1 : parseInt(searchParams.get('page') || '1');
+    const pageSize = all ? Number.MAX_SAFE_INTEGER : parseInt(searchParams.get('pageSize') || '10');
     
     if (id) {
       // Obtener una cita específica por ID (sin paginación)
@@ -110,6 +114,14 @@ export async function GET(request: Request) {
         }
       });
 
+      if (all) {
+        // Si all es true, devolvemos todos los resultados sin paginación
+        return NextResponse.json({
+          data: citas,
+          total: citas.length
+        });
+      }
+
       // Obtener el total de citas que coinciden con la búsqueda
       const total = citas.length;
 
@@ -130,7 +142,7 @@ export async function GET(request: Request) {
 
       return NextResponse.json(paginatedResponse);
     } else {
-      // Resto del código original sin cambios...
+      // Resto del código original con soporte para all
       let whereClause: any = {};
       
       if (psicologoId) {
@@ -168,8 +180,6 @@ export async function GET(request: Request) {
         where: whereClause
       });
 
-      const totalPages = Math.ceil(total / pageSize);
-
       const citas = await prisma.cita.findMany({
         where: whereClause,
         include: {
@@ -181,9 +191,19 @@ export async function GET(request: Request) {
         orderBy: {
           fecha_inicio: 'asc'
         },
-        skip: (page - 1) * pageSize,
-        take: pageSize
+        skip: all ? 0 : (page - 1) * pageSize,
+        take: all ? undefined : pageSize
       });
+
+      if (all) {
+        // Si all es true, devolvemos todos los resultados sin paginación
+        return NextResponse.json({
+          data: citas,
+          total
+        });
+      }
+
+      const totalPages = Math.ceil(total / pageSize);
 
       const paginatedResponse: PaginatedResponse = {
         data: citas,
@@ -208,7 +228,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { 
+    let { 
       titulo, 
       descripcion, 
       fecha_inicio, 
@@ -336,6 +356,36 @@ export async function POST(request: Request) {
         tipo: true
       }
     });
+    setImmediate().then(async () => {
+      if(!id_paciente) return
+      const paciente = await prisma.usuario.findUnique({
+        where: { id: id_paciente }
+      });
+      try {
+        const nuevaCitaObj:CreateRegistroCitaInput = {
+          cita_id: nuevaCita.id,
+          id_psicologo: nuevaCita.id_psicologo,
+          nombre_psicologo: psicologo.nombre,
+          id_paciente: nuevaCita.id_paciente,
+          nombre_paciente: paciente?.nombre,
+          fecha_cita: nuevaCita.fecha_inicio,
+          duracion_planeada: nuevaCita.duracion_real ?? 1,
+          duracion_real: nuevaCita.duracion_real,
+          estado: nuevaCita.estado, // EstadoCita enum
+          tipo_cita: nuevaCita.tipo?.nombre ?? null,
+          color_calendario: nuevaCita.tipo?.color_calendario,
+          tiempo_confirmacion:  null,
+          cancelado_por:  null,
+          motivo_cancelacion:  null,
+          registro_usuario_id: null
+        }
+        const cita = await registroCitaService.createRegistroCita(nuevaCitaObj)       
+        console.log('Registro cita creada:', cita);
+      } catch (error) {
+        console.error('Error al crear registro test:', error);
+      }
+    })
+
 
     return NextResponse.json(nuevaCita, { status: 201 });
 
@@ -361,7 +411,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const { 
+    let { 
       id,
       titulo, 
       descripcion, 
@@ -374,6 +424,10 @@ export async function PUT(request: Request) {
       duracion_real,
       notas_psicologo
     }: CitaData & { id: number } = await request.json();
+    
+    if(typeof duracion_real == "string"){
+      duracion_real = parseInt(duracion_real);
+    }
 
     // Validación básica
     if (!id) {
@@ -510,6 +564,43 @@ export async function PUT(request: Request) {
         recordatorios: true
       }
     });
+
+    setImmediate().then(async () => {
+      if(!id_paciente){console.log("No existe id_paciente"); return}
+      const paciente = await prisma.usuario.findUnique({
+        where: { id: id_paciente }
+      });
+        if(!id_psicologo){console.log("No existe id_psicologo"); return}
+      const psicologo = await prisma.usuario.findUnique({
+        where: { id: id_psicologo }
+      });
+      if(!psicologo){console.log("No existe paciente"); return}
+      if(!paciente){console.log("No existe psicologo"); return}
+
+      try {
+        const nuevaCitaObj:CreateRegistroCitaInput = {
+          cita_id: citaActualizada.id,
+          id_psicologo: citaActualizada.id_psicologo,
+          nombre_psicologo: psicologo.nombre,
+          id_paciente: citaActualizada .id_paciente,
+          nombre_paciente: paciente?.nombre,
+          fecha_cita: citaActualizada .fecha_inicio,
+          duracion_planeada: citaActualizada .duracion_real ?? 1,
+          duracion_real: citaActualizada .duracion_real,
+          estado: citaActualizada .estado, // EstadoCita enum
+          tipo_cita: citaActualizada .tipo?.nombre ?? null,
+          color_calendario: citaActualizada.tipo?.color_calendario,
+          tiempo_confirmacion:  null,
+          cancelado_por:  null,
+          motivo_cancelacion:  null,
+          registro_usuario_id: null
+        }
+        const cita = await registroCitaService.upsertRegistroByCitaId(citaActualizada.id,nuevaCitaObj);    
+        console.log('Registro cita creada:', cita);
+      } catch (error) {
+        console.error('Error al crear registro test:', error);
+      }
+    })
 
     return NextResponse.json(citaActualizada);
 

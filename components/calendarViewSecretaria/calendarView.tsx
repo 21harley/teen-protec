@@ -242,6 +242,8 @@ const CalendarView = () => {
   };
 
   const handleFormSubmit = async () => {
+    let response;
+    let result;
     try {
       const values = await form.validateFields();
       const formattedValues = {
@@ -274,8 +276,9 @@ const CalendarView = () => {
         });
       }
 
+      result = await response.json();
       if (!response.ok) throw new Error('Error al guardar la cita');
-
+      console.log(response,"Hola");
       message.success(currentEvent ? 'Cita actualizada' : 'Cita creada');
 
       // Refrescar eventos
@@ -284,8 +287,10 @@ const CalendarView = () => {
       formatEvents(citasData.data);
       setIsModalVisible(false);
     } catch (error) {
-      console.error('Error submitting form:', error);
-      message.error('Error al guardar la cita');
+      console.log(result);
+      if(result.error) alert(result.error)
+      //console.error('Error submitting form:', error);
+      //message.error('Error al guardar la cita');
     }
     limpiarSearch();
   };

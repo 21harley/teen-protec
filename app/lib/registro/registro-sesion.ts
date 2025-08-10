@@ -1,153 +1,132 @@
 import { PrismaClient } from "../../generated/prisma";
-import { RegistroSesion } from "../../types/registros/index";
+import {
+  RegistroUsuario,
+  RegistroTrazabilidad,
+  RegistroMetricaUsuario,
+  RegistroSesion,
+  RegistroTest,
+  Sexo,
+  EstadoTestRegistro
+} from "../../types/registros/index";
 
 const prisma = new PrismaClient();
 
-// Tipos para inputs y filtros
+// Tipos para inputs y filtros (actualizados)
 export type CreateRegistroSesionInput = {
-  registro_usuario_id: number;
-  psicologo_id: number;
-  fecha: Date;
-  duracion?: number | null;
-  tests_revisados?: string | null;
-};
-
-export type UpdateRegistroSesionInput = Partial<CreateRegistroSesionInput>;
-
-export type OrderByOptions = {
-  fecha?: "asc" | "desc";
-  duracion?: "asc" | "desc";
-};
-
-export type FilterRegistroSesionOptions = {
   registro_usuario_id?: number;
-  psicologo_id?: number;
-  fechaDesde?: Date;
-  fechaHasta?: Date;
-  minDuracion?: number;
-  maxDuracion?: number;
-  skip?: number;
-  take?: number;
-  orderBy?: OrderByOptions;
+  usuario_id?: number;  
+  ip_address?: string;
+  user_agent?: string;
 };
 
-// Función para transformar los datos de Prisma al tipo RegistroSesion
+export type UpdateRegistroSesionInput = {
+  fecha_fin?: Date;
+  duracion?: number;
+};
+
+// Función transformadora actualizada para RegistroSesion
 function toRegistroSesion(prismaData: any): RegistroSesion {
   return {
     id: prismaData.id,
     registro_usuario_id: prismaData.registro_usuario_id,
-    psicologo_id: prismaData.psicologo_id,
-    fecha: prismaData.fecha,
-    duracion: prismaData.duracion ?? null,
-    tests_revisados: prismaData.tests_revisados ?? null,
-    usuario: prismaData.usuario ? toRegistroUsuario(prismaData.usuario) : undefined
-  };
-}
-
-// Función auxiliar para transformar usuario si es necesario
-function toRegistroUsuario(prismaData: any): any {
-  return {
-    id: prismaData.id,
-    usuario_id: prismaData.usuario_id,
-    // ... otras propiedades del usuario si son necesarias
+    fecha_inicio: prismaData.fecha_inicio,
+    fecha_fin: prismaData.fecha_fin ?? undefined,
+    duracion: prismaData.duracion ?? undefined,
+    ip_address: prismaData.ip_address ?? undefined,
+    user_agent: prismaData.user_agent ?? undefined,
+    usuario: prismaData.usuario ?? undefined
   };
 }
 
 class RegistroSesionService {
   /**
    * Crea un nuevo registro de sesión
-   * @param data Datos del registro de sesión
+   * @param data Datos de la sesión
    * @returns RegistroSesion creado
    */
-  async createRegistroSesion(data: CreateRegistroSesionInput): Promise<RegistroSesion> {
-    try {
-      // Validar que el registro de usuario existe
-      const registroUsuarioExists = await prisma.registroUsuario.findUnique({
+async createRegistroSesion(data: CreateRegistroSesionInput): Promise<RegistroSesion> {
+  try {
+    // Validación básica
+    if (!data.registro_usuario_id && !data.usuario_id) {
+      throw new Error("Se requiere registro_usuario_id o usuario_id");
+    }
+
+    let registroUsuarioId: number;
+
+    // Caso 1: Si se proporciona registro_usuario_id directamente
+    if (data.registro_usuario_id) {
+      const registroExistente = await prisma.registroUsuario.findUnique({
         where: { id: data.registro_usuario_id },
       });
 
-      if (!registroUsuarioExists) {
+      if (!registroExistente) {
         throw new Error("El registro de usuario referenciado no existe");
       }
-
-      // Validar que el psicólogo existe
-      const psicologoExists = await prisma.usuario.findUnique({
-        where: { id: data.psicologo_id },
+      registroUsuarioId = data.registro_usuario_id;
+    } 
+    // Caso 2: Buscar/crear registro basado en usuario_id
+    else if (data.usuario_id) {
+      // Buscar si ya existe un registro para este usuario
+      const registroExistente = await prisma.registroUsuario.findFirst({
+        where: { usuario_id: data.usuario_id },
       });
 
-      if (!psicologoExists) {
-        throw new Error("El psicólogo referenciado no existe");
+      if (registroExistente) {
+        registroUsuarioId = registroExistente.id;
+      } else {
+        // Crear nuevo registro de usuario
+        const usuario = await prisma.usuario.findUnique({
+          where: { id: data.usuario_id },
+          include: {
+            tipo_usuario: true,
+            psicologoPacientes: true
+          }
+        });
+
+        if (!usuario) {
+          throw new Error("El usuario referenciado no existe");
+        }
+
+        const nuevoRegistro = await prisma.registroUsuario.create({
+          data: {
+            usuario_id: usuario.id,
+            sexo: usuario.sexo || "OTRO",
+            fecha_nacimiento: usuario.fecha_nacimiento,
+            tipo_usuario: usuario.tipo_usuario.nombre,
+            psicologo_id: usuario.id_psicologo || null,
+            total_tests: 0 // Valor por defecto
+          }
+        });
+
+        registroUsuarioId = nuevoRegistro.id;
       }
-
-      const registro = await prisma.registroSesion.create({
-        data: {
-          registro_usuario_id: data.registro_usuario_id,
-          psicologo_id: data.psicologo_id,
-          fecha: data.fecha,
-          duracion: data.duracion ?? null,
-          tests_revisados: data.tests_revisados ?? null,
-        },
-      });
-
-      return toRegistroSesion(registro);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Error desconocido';
-      throw new Error(`Error al crear registro de sesión: ${message}`);
+    } else {
+      throw new Error("No se pudo determinar el registro de usuario");
     }
+
+    // Crear la sesión con el ID obtenido
+    const registro = await prisma.registroSesion.create({
+      data: {
+        registro_usuario_id: registroUsuarioId,
+        ip_address: data.ip_address,
+        user_agent: data.user_agent,
+        fecha_inicio: new Date()
+      },
+      include: {
+        usuario: true
+      }
+    });
+
+    return toRegistroSesion(registro);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    throw new Error(`Error al crear registro de sesión: ${message}`);
   }
+}
 
   /**
-   * Obtiene un registro de sesión por su ID
-   * @param id ID del registro
-   * @param includeUsuario Incluir datos del usuario (opcional)
-   * @returns RegistroSesion encontrado o null
-   */
-  async getRegistroSesionById(
-    id: number,
-    includeUsuario: boolean = false
-  ): Promise<RegistroSesion | null> {
-    try {
-      const registro = await prisma.registroSesion.findUnique({
-        where: { id },
-        include: includeUsuario ? { usuario: true } : undefined,
-      });
-
-      return registro ? toRegistroSesion(registro) : null;
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Error desconocido';
-      throw new Error(`Error al obtener registro de sesión por ID: ${message}`);
-    }
-  }
-
-  /**
-   * Obtiene registros de sesión con filtros opcionales
-   * @param options Opciones de filtrado
-   * @returns Lista de RegistroSesion que coinciden con los filtros
-   */
-  async getRegistrosSesiones(
-    options?: FilterRegistroSesionOptions
-  ): Promise<RegistroSesion[]> {
-    try {
-      const registros = await prisma.registroSesion.findMany({
-        where: this.buildWhereClause(options),
-        orderBy: options?.orderBy || { fecha: "desc" },
-        skip: options?.skip,
-        take: options?.take,
-        include: {
-          usuario: options?.registro_usuario_id ? true : false,
-        },
-      });
-
-      return registros.map(toRegistroSesion);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Error desconocido';
-      throw new Error(`Error al obtener registros de sesión: ${message}`);
-    }
-  }
-
-  /**
-   * Actualiza un registro de sesión
-   * @param id ID del registro a actualizar
+   * Actualiza un registro de sesión (normalmente al cerrar sesión)
+   * @param id ID de la sesión
    * @param data Datos a actualizar
    * @returns RegistroSesion actualizado
    */
@@ -156,43 +135,32 @@ class RegistroSesionService {
     data: UpdateRegistroSesionInput
   ): Promise<RegistroSesion> {
     try {
-      // Validar que el registro existe
-      const registroExists = await prisma.registroSesion.findUnique({
-        where: { id },
+      // Si no se proporciona fecha_fin, usar la actual
+      const fechaFin = data.fecha_fin || new Date();
+      
+      // Obtener la sesión para calcular la duración
+      const sesion = await prisma.registroSesion.findUnique({
+        where: { id }
       });
 
-      if (!registroExists) {
-        throw new Error("Registro de sesión no encontrado");
+      if (!sesion) {
+        throw new Error("Sesión no encontrada");
       }
 
-      // Validaciones adicionales si se actualizan estos campos
-      if (data.registro_usuario_id !== undefined) {
-        const registroUsuarioExists = await prisma.registroUsuario.findUnique({
-          where: { id: data.registro_usuario_id },
-        });
-        if (!registroUsuarioExists) {
-          throw new Error("El registro de usuario referenciado no existe");
-        }
-      }
-
-      if (data.psicologo_id !== undefined) {
-        const psicologoExists = await prisma.usuario.findUnique({
-          where: { id: data.psicologo_id },
-        });
-        if (!psicologoExists) {
-          throw new Error("El psicólogo referenciado no existe");
-        }
-      }
+      // Calcular duración en minutos
+      const duracionMs = fechaFin.getTime() - sesion.fecha_inicio.getTime();
+      const duracionMinutos = Math.floor(duracionMs / (1000 * 60));
 
       const registro = await prisma.registroSesion.update({
         where: { id },
         data: {
-          registro_usuario_id: data.registro_usuario_id,
-          psicologo_id: data.psicologo_id,
-          fecha: data.fecha,
-          duracion: data.duracion === undefined ? undefined : data.duracion,
-          tests_revisados: data.tests_revisados === undefined ? undefined : data.tests_revisados,
+          fecha_fin: fechaFin,
+          duracion: duracionMinutos,
+          ...data
         },
+        include: {
+          usuario: true
+        }
       });
 
       return toRegistroSesion(registro);
@@ -203,27 +171,61 @@ class RegistroSesionService {
   }
 
   /**
-   * Elimina un registro de sesión
-   * @param id ID del registro a eliminar
-   * @returns RegistroSesion eliminado
+   * Cierra todas las sesiones activas de un usuario
+   * @param usuarioId ID dele usuario
+   * @returns Número de sesiones cerradas
    */
-  async deleteRegistroSesion(id: number): Promise<RegistroSesion> {
+async cerrarSesionesActivas(usuarioId: number): Promise<number> {
     try {
-      const registro = await prisma.registroSesion.delete({
-        where: { id },
+      const registro_usuario = await prisma.registroUsuario.findMany({
+        where: {
+          usuario_id: usuarioId,
+        }
       });
+      
+      // 1. Buscar sesiones activas
+      const sesionesActivas = await prisma.registroSesion.findMany({
+        where: {
+          registro_usuario_id: { in: registro_usuario.map(r => r.id) },
+          fecha_fin: null
+        }
+      });
+      if (sesionesActivas.length === 0) {
+        return 0; // No hay sesiones activas para cerrar
+      }
 
-      return toRegistroSesion(registro);
+      // 2. Preparar fecha actual para el cierre
+      const ahora = new Date();
+
+      // 3. Actualizar cada sesión con fecha_fin y duración calculada
+      const resultados = await Promise.all(
+        sesionesActivas.map(sesion => {
+          // Calcular duración en minutos
+          const fechaInicio = new Date(sesion.fecha_inicio);
+          const duracionMs = ahora.getTime() - fechaInicio.getTime();
+          const duracionMinutos = Math.floor(duracionMs / (1000 * 60));
+
+          return prisma.registroSesion.update({
+            where: { id: sesion.id },
+            data: {
+              fecha_fin: ahora,
+              duracion: duracionMinutos
+            }
+          });
+        })
+      );
+
+      return resultados.length;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Error desconocido';
-      throw new Error(`Error al eliminar registro de sesión: ${message}`);
+      throw new Error(`Error al cerrar sesiones activas: ${message}`);
     }
-  }
+}
 
   /**
-   * Obtiene las sesiones de un usuario específico
+   * Obtiene las sesiones de un usuario
    * @param registroUsuarioId ID del registro de usuario
-   * @param limit Límite de resultados (default: 10)
+   * @param limit Límite de resultados
    * @returns Lista de sesiones ordenadas por fecha
    */
   async getSesionesByUsuario(
@@ -233,63 +235,80 @@ class RegistroSesionService {
     try {
       const sesiones = await prisma.registroSesion.findMany({
         where: { registro_usuario_id: registroUsuarioId },
-        orderBy: { fecha: "desc" },
+        orderBy: { fecha_inicio: "desc" },
         take: limit,
+        include: {
+          usuario: true
+        }
       });
 
       return sesiones.map(toRegistroSesion);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Error desconocido';
-      throw new Error(`Error al obtener sesiones por usuario: ${message}`);
+      throw new Error(`Error al obtener sesiones de usuario: ${message}`);
     }
   }
 
   /**
-   * Obtiene las sesiones realizadas por un psicólogo específico
-   * @param psicologoId ID del psicólogo
-   * @param limit Límite de resultados (default: 10)
-   * @returns Lista de sesiones ordenadas por fecha
+   * Obtiene la última sesión activa de un usuario
+   * @param registroUsuarioId ID del registro de usuario
+   * @returns Última RegistroSesion activa o null
    */
-  async getSesionesByPsicologo(
-    psicologoId: number,
-    limit: number = 10
-  ): Promise<RegistroSesion[]> {
+  async getUltimaSesionActiva(
+    registroUsuarioId: number
+  ): Promise<RegistroSesion | null> {
     try {
-      const sesiones = await prisma.registroSesion.findMany({
-        where: { psicologo_id: psicologoId },
-        orderBy: { fecha: "desc" },
-        take: limit,
+      const sesion = await prisma.registroSesion.findFirst({
+        where: {
+          registro_usuario_id: registroUsuarioId,
+          fecha_fin: null
+        },
+        orderBy: { fecha_inicio: "desc" },
+        include: {
+          usuario: true
+        }
       });
 
-      return sesiones.map(toRegistroSesion);
+      return sesion ? toRegistroSesion(sesion) : null;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Error desconocido';
-      throw new Error(`Error al obtener sesiones por psicólogo: ${message}`);
+      throw new Error(`Error al obtener última sesión activa: ${message}`);
     }
   }
 
-  // Métodos auxiliares privados
-  private buildWhereClause(options?: FilterRegistroSesionOptions): any {
-    const where: any = {};
+  /**
+   * Obtiene estadísticas de sesiones para un usuario
+   * @param registroUsuarioId ID del registro de usuario
+   * @returns Estadísticas de sesiones
+   */
+  async getEstadisticasSesiones(
+    registroUsuarioId: number
+  ): Promise<{
+    totalSesiones: number;
+    tiempoPromedio: number;
+  }> {
+    try {
+      const [sesiones] = await Promise.all([
+        prisma.registroSesion.findMany({
+          where: { registro_usuario_id: registroUsuarioId }
+        }),
 
-    if (options?.registro_usuario_id) where.registro_usuario_id = options.registro_usuario_id;
-    if (options?.psicologo_id) where.psicologo_id = options.psicologo_id;
-    
-    // Filtros de fecha
-    if (options?.fechaDesde || options?.fechaHasta) {
-      where.fecha = {};
-      if (options.fechaDesde) where.fecha.gte = options.fechaDesde;
-      if (options.fechaHasta) where.fecha.lte = options.fechaHasta;
-    }
-    
-    // Filtros de duración
-    if (options?.minDuracion || options?.maxDuracion) {
-      where.duracion = {};
-      if (options.minDuracion) where.duracion.gte = options.minDuracion;
-      if (options.maxDuracion) where.duracion.lte = options.maxDuracion;
-    }
+      ]);
 
-    return where;
+      const totalSesiones = sesiones.length;
+      const sesionesConDuracion = sesiones.filter(s => s.duracion !== null);
+      const tiempoPromedio = sesionesConDuracion.length > 0 
+        ? sesionesConDuracion.reduce((sum, s) => sum + (s.duracion || 0), 0) / sesionesConDuracion.length
+        : 0;
+
+      return {
+        totalSesiones,
+        tiempoPromedio: Math.round(tiempoPromedio),
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      throw new Error(`Error al obtener estadísticas de sesiones: ${message}`);
+    }
   }
 }
 

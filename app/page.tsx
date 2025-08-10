@@ -40,7 +40,7 @@ export default function Home() {
       <div>
       <Cart_Home  /> 
           <Link 
-            href={initUser ? "/test" : "/iniciar-sesion"}
+            href={initUser ? "/test" : "/auth/login"}
             className={`_color_seven block  p-3 px-4 text-center rounded transition m-auto mt-2 max-w-[200px]`}
           >
             {initUser ? "Hacer Test" : "Iniciar sesión"}

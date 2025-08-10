@@ -1,4 +1,4 @@
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient, EstadoCita } from "../app/generated/prisma";
 import { encriptar } from "@/app/lib/crytoManager";
 
 const prisma = new PrismaClient();
@@ -53,6 +53,7 @@ const tipoUsuarioData = [
       { path: "/usuarios", name: "Usuarios", icon: "people" },
       { path: "/cita", name: "Cita", icon: "cita" },
       { path: "/test", name: "Test", icon: "quiz" },
+      { path: "/registro", name: "registro", icon: "registro" },
       { path: "/", name: "Sobre nosotros", icon: "info" }
     ]
   },
@@ -64,6 +65,7 @@ const tipoUsuarioData = [
       { path: "/pacientes", name: "Pacientes", icon: "medical_services" },
       { path: "/cita", name: "Cita", icon: "cita" },
       { path: "/test", name: "Test", icon: "quiz" },
+      { path: "/registro", name: "registro", icon: "registro" },
       { path: "/", name: "Sobre nosotros", icon: "info" }
     ]
   },
@@ -93,7 +95,7 @@ const tipoUsuarioData = [
       { path: "/alertas", name: "Alertas", icon: "notifications" },
       { path: "/perfil", name: "Perfil", icon: "person" },
       { path: "/cita", name: "Cita", icon: "cita" },
-      { path: "/registros", name: "Sobre nosotros", icon: "info" },
+      { path: "/registro", name: "registro", icon: "registro" },
       { path: "/", name: "Sobre nosotros", icon: "info" }
     ]
   }
@@ -192,7 +194,7 @@ function generarCitasDeEjemplo() {
       descripcion: `Sesión regular #${i} con el paciente`,
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin,
-      estado: i % 2 === 0 ? 'COMPLETADA' : 'CANCELADA',
+      estado: i % 2 === 0 ? EstadoCita.COMPLETADA : EstadoCita.CANCELADA,
       id_psicologo: 2, // Psicólogo 1
       id_paciente: 4,  // Adolescente 1
       id_tipo_cita: 2, // Seguimiento
@@ -223,7 +225,7 @@ function generarCitasDeEjemplo() {
       descripcion: `Descripción de la cita ${i}`,
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin,
-      estado: 'PENDIENTE',
+      estado: EstadoCita.PENDIENTE,
       id_psicologo: psicologoId,
       id_paciente: pacienteId,
       id_tipo_cita: (i % 5) + 1, // Rotar entre los tipos de cita
@@ -506,7 +508,7 @@ const preguntasTest = [
 ];
 
 async function main() {
-  console.log("🧹 Eliminando datos existentes...");
+  console.log("eliminando datos existentes...");
   // Eliminar datos existentes en el orden correcto para evitar violaciones de FK
   await prisma.respuesta.deleteMany({});
   await prisma.opcion.deleteMany({});
@@ -528,10 +530,10 @@ async function main() {
   await prisma.cita.deleteMany({});
   await prisma.tipoCita.deleteMany({});
 
-  console.log("✅ Todos los datos existentes eliminados");
+  console.log("todos los datos existentes eliminados");
 
   // 1. Primero crear tipos de usuario
-  console.log("🔧 Creando tipos de usuario...");
+  console.log("creando tipos de usuario...");
   for (const tipoUsuario of tipoUsuarioData) {
     await prisma.tipoUsuario.create({
       data: {
@@ -542,7 +544,7 @@ async function main() {
   }
 
   // 2. Luego crear tipos de alerta (que dependen de tipos de usuario)
-  console.log("🔔 Creando tipos de alerta...");
+  console.log("creando tipos de alerta...");
   for (const tipoAlerta of tipoAlertaData) {
     await prisma.tipoAlerta.create({
       data: {
@@ -554,7 +556,7 @@ async function main() {
   }
 
   // 3. Crear tipos de pregunta (no tienen dependencias)
-  console.log("❓ Creando tipos de pregunta...");
+  console.log("creando tipos de pregunta...");
   for (const tipoPregunta of tiposPreguntaData) {
     await prisma.tipoPregunta.create({
       data: {
@@ -566,7 +568,7 @@ async function main() {
   }
 
   // 4. Crear usuarios con sus relaciones
-  console.log("👥 Creando usuarios y relaciones...");
+  console.log("creando usuarios y relaciones...");
   for (const usuario of dataUsuarios) {
     await prisma.usuario.create({
       data: usuario
@@ -574,7 +576,7 @@ async function main() {
   }
 
   // 5. Actualizar relaciones psicólogo-paciente
-  console.log("👨‍⚕️ Actualizando relaciones psicólogo-paciente...");
+  console.log("actualizando relaciones psicólogo-paciente...");
   await prisma.usuario.update({
     where: { id: 4 }, // Adolescente 1
     data: {
@@ -604,7 +606,7 @@ async function main() {
   });
 
   // 6. Crear alarmas de prueba según los flujos descritos
-  console.log("🚨 Creando alarmas de prueba...");
+  console.log("creando alarmas de prueba...");
   await prisma.alarma.createMany({
     data: [
       // Test asignado (para adolescente)
@@ -667,7 +669,7 @@ async function main() {
   });
 
     // 7. Crear tipos de cita
-  console.log("📅 Creando tipos de cita...");
+  console.log("creando tipos de cita...");
   for (const tipoCita of tiposCitaData) {
     await prisma.tipoCita.create({
       data: tipoCita
@@ -675,7 +677,7 @@ async function main() {
   }
 
   // 8. Crear citas de ejemplo
-  console.log("🗓️ Creando citas de ejemplo...");
+  console.log("creando citas de ejemplo...");
   const citasEjemplo = generarCitasDeEjemplo();
   
   for (const cita of citasEjemplo) {
@@ -685,99 +687,107 @@ async function main() {
   }
 
   // Función para crear tests con preguntas y opciones
-  async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, estado: 'NO_INICIADO' | 'EN_PROGRESO' | 'COMPLETADO', pesoPreguntas: 'SIN_VALOR' | 'IGUAL_VALOR' | 'BAREMO') {
-    const test = await prisma.test.create({
-      data: {
-        nombre: `Test de evaluación psicológica - ${new Date().toLocaleDateString()}`,
-        estado: estado,
-        peso_preguntas: pesoPreguntas,
-        config_baremo: pesoPreguntas === 'BAREMO' ? {
-          niveles: [
-            { min: 0, max: 10, resultado: "Bajo riesgo" },
-            { min: 11, max: 20, resultado: "Riesgo moderado" },
-            { min: 21, max: 30, resultado: "Alto riesgo" }
-          ]
-        } : undefined,
-        valor_total: pesoPreguntas !== 'SIN_VALOR' ? 5.0 : null,
-        id_psicologo: idPsicologo,
-        id_usuario: idUsuario,
-        preguntas: {
-          create: preguntasTest.map(pregunta => ({
-            texto_pregunta: pregunta.texto_pregunta,
-            id_tipo: pregunta.id_tipo,
-            orden: pregunta.orden,
-            obligatoria: pregunta.obligatoria,
-            peso: pesoPreguntas !== 'SIN_VALOR' ? pregunta.peso : null,
-            baremo_detalle: pesoPreguntas === 'BAREMO' ? {
-              valor: pregunta.peso,
-              descripcion: "Peso según baremo"
-            } : null,
-            placeholder: pregunta.placeholder,
-            min: pregunta.min,
-            max: pregunta.max,
-            paso: pregunta.paso,
-            eva_psi: pregunta.eva_psi,
-            opciones: pregunta.opciones ? {
-              create: pregunta.opciones.map(opcion => ({
-                texto: opcion.texto,
-                valor: opcion.valor,
-                orden: opcion.orden,
-                es_otro: false
-              }))
-            } : undefined
-          }))
+async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, estado: 'NO_INICIADO' | 'EN_PROGRESO' | 'COMPLETADO', pesoPreguntas: 'SIN_VALOR' | 'IGUAL_VALOR' | 'BAREMO') {
+  const createdTest = await prisma.test.create({
+    data: {
+      nombre: `Test de evaluación psicológica - ${new Date().toLocaleDateString()}`,
+      estado: estado,
+      peso_preguntas: pesoPreguntas,
+      config_baremo: pesoPreguntas === 'BAREMO' ? {
+        niveles: [
+          { min: 0, max: 10, resultado: "Bajo riesgo" },
+          { min: 11, max: 20, resultado: "Riesgo moderado" },
+          { min: 21, max: 30, resultado: "Alto riesgo" }
+        ]
+      } : undefined,
+      valor_total: pesoPreguntas !== 'SIN_VALOR' ? 5.0 : null,
+      id_psicologo: idPsicologo,
+      id_usuario: idUsuario,
+      preguntas: {
+        create: preguntasTest.map(pregunta => ({
+          texto_pregunta: pregunta.texto_pregunta,
+          tipo: { connect: { id: pregunta.id_tipo } }, 
+          orden: pregunta.orden,
+          obligatoria: pregunta.obligatoria,
+          peso: pesoPreguntas !== 'SIN_VALOR' ? pregunta.peso : null,
+          baremo_detalle: pesoPreguntas === 'BAREMO' ? {
+            valor: pregunta.peso,
+            descripcion: "Peso según baremo"
+          } : undefined,
+          placeholder: pregunta.placeholder,
+          min: pregunta.min,
+          max: pregunta.max,
+          paso: pregunta.paso,
+          eva_psi: pregunta.eva_psi,
+          opciones: pregunta.opciones ? {
+            create: pregunta.opciones.map(opcion => ({
+              texto: opcion.texto,
+              valor: opcion.valor,
+              orden: opcion.orden,
+              es_otro: false
+            }))
+          } : undefined
+        }))
+      }
+    },
+    include: {
+      preguntas: {
+        include: {
+          opciones: true
         }
-      },
-      include: {
-        preguntas: {
-          include: {
-            opciones: true
+      }
+    }
+  });
+
+  const test = createdTest as unknown as { 
+    preguntas: Array<{ 
+      id: number; 
+      id_tipo: number; 
+      opciones: Array<{ id: number }> 
+    }> 
+  } & typeof createdTest;
+
+  if (estado !== 'NO_INICIADO') {
+    const fechaUltimaRespuesta = new Date();
+    
+    for (const pregunta of test.preguntas) {
+      if (pregunta.opciones.length > 0) {
+        const opcionSeleccionada = pregunta.opciones[Math.floor(Math.random() * pregunta.opciones.length)];
+        
+        await prisma.respuesta.create({
+          data: {
+            id_test: test.id,
+            id_pregunta: pregunta.id,
+            id_usuario: idUsuario,
+            id_opcion: opcionSeleccionada.id,
+            texto_respuesta: pregunta.id_tipo === 2 ? "Otra información" : null,
+            valor_rango: pregunta.id_tipo === 5 ? Math.floor(Math.random() * 10) + 1 : null,
+            fecha: fechaUltimaRespuesta
           }
-        }
+        });
+      } else if (pregunta.id_tipo === 3) {
+        await prisma.respuesta.create({
+          data: {
+            id_test: test.id,
+            id_pregunta: pregunta.id,
+            id_usuario: idUsuario,
+            texto_respuesta: "Esta es una respuesta de ejemplo para la pregunta de texto.",
+            fecha: fechaUltimaRespuesta
+          }
+        });
       }
-    });
-
-    if (estado !== 'NO_INICIADO') {
-      const fechaUltimaRespuesta = new Date();
-      
-      for (const pregunta of test.preguntas) {
-        if (pregunta.opciones.length > 0) {
-          const opcionSeleccionada = pregunta.opciones[Math.floor(Math.random() * pregunta.opciones.length)];
-          
-          await prisma.respuesta.create({
-            data: {
-              id_test: test.id,
-              id_pregunta: pregunta.id,
-              id_usuario: idUsuario,
-              id_opcion: opcionSeleccionada.id,
-              texto_respuesta: pregunta.id_tipo === 2 ? "Otra información" : null,
-              valor_rango: pregunta.id_tipo === 5 ? Math.floor(Math.random() * 10) + 1 : null,
-              fecha: fechaUltimaRespuesta
-            }
-          });
-        } else if (pregunta.id_tipo === 3) {
-          await prisma.respuesta.create({
-            data: {
-              id_test: test.id,
-              id_pregunta: pregunta.id,
-              id_usuario: idUsuario,
-              texto_respuesta: "Esta es una respuesta de ejemplo para la pregunta de texto.",
-              fecha: fechaUltimaRespuesta
-            }
-          });
-        }
-      }
-
-      await prisma.test.update({
-        where: { id: test.id },
-        data: {
-          fecha_ultima_respuesta: fechaUltimaRespuesta
-        }
-      });
     }
 
-    return test;
+    await prisma.test.update({
+      where: { id: test.id },
+      data: {
+        fecha_ultima_respuesta: fechaUltimaRespuesta
+      }
+    });
   }
+
+  return test;
+}
 
   // Función para crear plantillas de tests
   async function crearPlantillaTest(idPsicologo: number) {
@@ -828,7 +838,7 @@ async function main() {
   }
 
   // Crear tests para diferentes usuarios
-  console.log("📝 Creando tests de ejemplo...");
+  console.log("creando tests de ejemplo...");
   
   await crearTestCompleto(2, 4, 'COMPLETADO', 'IGUAL_VALOR'); // Test completado para adolescente 1
   await crearTestCompleto(3, 5, 'EN_PROGRESO', 'IGUAL_VALOR'); // Test en progreso para adolescente 2
@@ -837,16 +847,16 @@ async function main() {
   await crearTestCompleto(null, 1, 'EN_PROGRESO', 'IGUAL_VALOR'); // Test en progreso para admin
 
   // Crear plantillas de tests para psicólogos
-  console.log("📋 Creando plantillas de tests...");
+  console.log("creando plantillas de tests...");
   await crearPlantillaTest(2); // Plantilla para psicólogo 1
   await crearPlantillaTest(3); // Plantilla para psicólogo 2
 
-  console.log("✅ Seed completado exitosamente!");
+  console.log("seed completado exitosamente!");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Error durante el seed:", e);
+    console.error("error durante el seed:", e);
     process.exit(1);
   })
   .finally(async () => {

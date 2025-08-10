@@ -31,7 +31,6 @@ export interface RegistroUsuario {
   psicologo_id?: number | null;
   tests_ids?: number[] | null; // Asumiendo que es array de números
   total_tests: number;
-  avg_notas?: number | null;
   
   // Relaciones (opcionales si no siempre se cargan)
   trazabilidades?: RegistroTrazabilidad[];
@@ -52,9 +51,6 @@ export interface RegistroTestUsuario {
   nota_psicologo?: number | null;
   evaluado: boolean;
   fecha_evaluacion?: Date | null;
-  ponderacion_usada: PesoPreguntaTipo;
-  
-  metricas?: RegistroMetricaTest[];
 }
 
 export interface RegistroTrazabilidad {
@@ -75,33 +71,22 @@ export interface RegistroMetricaUsuario {
   tests_asignados: number;
   tests_completados: number;
   tests_evaluados: number;
-  avg_notas?: number | null;
   sesiones_totales: number;
   
   usuario?: RegistroUsuario; // Opcional
 }
 
-export interface RegistroMetricaTest {
-  id: number;
-  registro_test_id: number;
-  fecha: Date;
-  tiempo_respuesta?: number | null;
-  preguntas_contestadas: number;
-  preguntas_totales: number;
-  nota_psicologo?: number | null;
-  
-  test?: RegistroTest; // Opcional
-}
-
 export interface RegistroSesion {
   id: number;
   registro_usuario_id: number;
-  psicologo_id: number;
-  fecha: Date;
+  fecha_inicio: Date;
+  fecha_fin?: Date | null;
   duracion?: number | null;
-  tests_revisados?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
   
-  usuario?: RegistroUsuario; // Opcional
+  // Relación opcional
+  usuario?: RegistroUsuario;
 }
 
 export interface RegistroReporte {
@@ -126,15 +111,6 @@ export interface RegistroProblema {
 */
 
 // Tipos para los registros
-export interface RegistroMetricaTest {
-  id: number;
-  registro_test_id: number;
-  fecha: Date;
-  tiempo_respuesta?: number | null;
-  preguntas_contestadas: number;
-  preguntas_totales: number;
-  nota_psicologo?: number | null;
-}
 
 export interface RegistroTest {
   id: number;
@@ -149,8 +125,6 @@ export interface RegistroTest {
   nota_psicologo?: number | null;
   evaluado: boolean;
   fecha_evaluacion?: Date | null;
-  ponderacion_usada: string;
-  metricas: RegistroMetricaTest[];
 }
 
 // Tipos para inputs (pueden ir en otro archivo si lo prefieres)
@@ -166,7 +140,6 @@ export type CreateRegistroTestInput = {
   nota_psicologo?: number | null;
   evaluado?: boolean;
   fecha_evaluacion?: Date | null;
-  ponderacion_usada: string;
 };
 
 export type UpdateRegistroTestInput = Partial<CreateRegistroTestInput>;

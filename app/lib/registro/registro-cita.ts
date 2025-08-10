@@ -113,49 +113,91 @@ class RegistroCitaService {
    * @param data Datos del registro de cita
    * @returns RegistroCita creado
    */
-  async createRegistroCita(data: CreateRegistroCitaInput): Promise<RegistroCita> {
-    try {
-      // Validaciones básicas
-      if (data.duracion_planeada <= 0) {
-        throw new Error("La duración planeada debe ser mayor a 0");
-      }
+  /**
+ * Crea un nuevo registro de cita verificando primero si existe un registro de usuario
+ * Si no existe, crea un registro de usuario antes de crear la cita
+ * @param data Datos del registro de cita
+ * @returns RegistroCita creado
+ */
+async createRegistroCita(data: CreateRegistroCitaInput): Promise<RegistroCita> {
+  console.log(data,"cita-data-createRegistroCita");
+  try {
+    // Validaciones básicas
+    if (data.duracion_planeada <= 0) {
+      throw new Error("La duración planeada debe ser mayor a 0");
+    }
 
-      if (data.registro_usuario_id) {
-        const registroUsuarioExists = await prisma.registroUsuario.findUnique({
-          where: { id: data.registro_usuario_id },
-        });
-
-        if (!registroUsuarioExists) {
-          throw new Error("El registro de usuario referenciado no existe");
-        }
-      }
-
-      const registro = await prisma.registroCita.create({
-        data: {
-          cita_id: data.cita_id,
-          id_psicologo: data.id_psicologo,
-          nombre_psicologo: data.nombre_psicologo,
-          id_paciente: data.id_paciente ?? null,
-          nombre_paciente: data.nombre_paciente ?? null,
-          fecha_cita: data.fecha_cita,
-          duracion_planeada: data.duracion_planeada,
-          duracion_real: data.duracion_real ?? null,
-          estado: data.estado as EstadoCita,
-          tipo_cita: data.tipo_cita ?? null,
-          color_calendario: data.color_calendario ?? null,
-          tiempo_confirmacion: data.tiempo_confirmacion ?? null,
-          cancelado_por: data.cancelado_por ?? null,
-          motivo_cancelacion: data.motivo_cancelacion ?? null,
-          registro_usuario_id: data.registro_usuario_id ?? null,
-        },
+    // Verificar si se proporcionó un ID de paciente
+    if (data.id_paciente) {
+      // Verificar si existe un registro de usuario para este paciente
+      let registroUsuario = await prisma.registroUsuario.findUnique({
+        where: { id: data.id_paciente },
+      });
+      const usuarioExistente = await prisma.usuario.findUnique({
+        where: { id: data.id_paciente }
       });
 
-      return toRegistroCita(registro);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Error desconocido';
-      throw new Error(`Error al crear registro de cita: ${message}`);
+      // Si no existe, crear un nuevo registro de usuario
+      if (!registroUsuario ) {
+      if(usuarioExistente){
+          registroUsuario = await prisma.registroUsuario.create({
+          data: {
+            usuario_id: usuarioExistente.id,
+            sexo: usuarioExistente.sexo ?? "",
+            fecha_nacimiento: usuarioExistente.fecha_nacimiento,
+            tipo_usuario: String(usuarioExistente.id_tipo_usuario),
+            psicologo_id: usuarioExistente.id_psicologo,
+            tests_ids: [],
+            total_tests: 0,
+          },
+        });
+        data.registro_usuario_id = registroUsuario.id;
+      }
+      }
+
+      // Asignar el ID del registro de usuario a la cita
+      
     }
+
+    // Si se proporcionó un registro_usuario_id, validar que exista
+    if (data.registro_usuario_id) {
+      const registroUsuarioExists = await prisma.registroUsuario.findUnique({
+        where: { id: data.registro_usuario_id },
+      });
+
+      if (!registroUsuarioExists) {
+        throw new Error("El registro de usuario referenciado no existe");
+      }
+    }
+
+    // Crear el registro de la cita
+    console.log(data,"cita");
+    const registro = await prisma.registroCita.create({
+      data: {
+        cita_id: data.cita_id,
+        id_psicologo: data.id_psicologo,
+        nombre_psicologo: data.nombre_psicologo,
+        id_paciente: data.id_paciente ?? null,
+        nombre_paciente: data.nombre_paciente ?? null,
+        fecha_cita: data.fecha_cita,
+        duracion_planeada: 1,
+        duracion_real:1,
+        estado: data.estado as EstadoCita,
+        tipo_cita: data.tipo_cita ?? null,
+        color_calendario: data.color_calendario ?? null,
+        tiempo_confirmacion: data.tiempo_confirmacion ?? null,
+        cancelado_por: data.cancelado_por ?? null,
+        motivo_cancelacion: data.motivo_cancelacion ?? null,
+        registro_usuario_id: data.registro_usuario_id ?? null,
+      },
+    });
+
+    return toRegistroCita(registro);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    throw new Error(`Error al crear registro de cita: ${message}`);
   }
+}
 
   /**
    * Obtiene un registro de cita por su ID
@@ -231,6 +273,8 @@ class RegistroCitaService {
       if (data.duracion_real !== undefined  && data.duracion_real !== null) {
         if(data.duracion_real <= 0) throw new Error("La duración real debe ser mayor a 0");
       }
+      let auxDuracionPlaneada = parseInt(String(data.duracion_planeada) || "1");
+      let auxDuracionReal = parseInt(String(data.duracion_real) || "1");
 
       const registro = await prisma.registroCita.update({
         where: { id },
@@ -240,8 +284,8 @@ class RegistroCitaService {
           id_paciente: data.id_paciente === undefined ? undefined : data.id_paciente,
           nombre_paciente: data.nombre_paciente === undefined ? undefined : data.nombre_paciente,
           fecha_cita: data.fecha_cita,
-          duracion_planeada: data.duracion_planeada,
-          duracion_real: data.duracion_real === undefined ? undefined : data.duracion_real,
+          duracion_planeada: auxDuracionPlaneada,
+          duracion_real: auxDuracionReal,
           estado: data.estado as EstadoCita,
           tipo_cita: data.tipo_cita === undefined ? undefined : data.tipo_cita,
           color_calendario: data.color_calendario === undefined ? undefined : data.color_calendario,
@@ -387,6 +431,38 @@ class RegistroCitaService {
     }
   }
 
+     /**
+   * Busca un registro por ID de cita y lo actualiza si existe, o crea uno nuevo si no existe
+   * @param citaId ID de la cita
+   * @param citaData Datos de la cita para crear/actualizar
+   * @returns El registro creado o actualizado
+   */
+  async upsertRegistroByCitaId(
+    citaId: number,
+    citaData: CreateRegistroCitaInput
+  ): Promise<RegistroCita> {
+    try {
+      // Verificar si ya existe un registro para esta cita
+      const registroExistente = await prisma.registroCita.findFirst({
+        where: { cita_id: citaId },
+      });
+      if (registroExistente) {
+        citaData.registro_usuario_id = registroExistente.id
+        // Si existe, actualizamos el registro
+        return await this.updateRegistroCita(registroExistente.id, citaData);
+      } else {
+        // Si no existe, creamos un nuevo registro
+        return await this.createRegistroCita({
+          ...citaData,
+          cita_id: citaId, // Aseguramos que el cita_id sea el correcto
+        });
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      throw new Error(`Error al hacer upsert del registro de cita: ${message}`);
+    }
+  }
+
   // Métodos auxiliares privados
   private buildWhereClause(options?: FilterRegistroCitaOptions): any {
     const where: any = {};
@@ -424,6 +500,8 @@ class RegistroCitaService {
 }
 
 class RegistroMetricaCitasService {
+
+
   /**
    * Crea una nueva métrica de citas
    * @param data Datos de la métrica
@@ -459,7 +537,24 @@ class RegistroMetricaCitasService {
       throw new Error(`Error al crear métrica de citas: ${message}`);
     }
   }
+/**
+ * Obtiene el ID del registro de cita basado en el ID de la cita
+ * @param citaId ID de la cita
+ * @returns ID del registro o null si no se encuentra
+ */
+async getRegistroIdByCitaId(citaId: number): Promise<number | null> {
+  try {
+    const registro = await prisma.registroCita.findFirst({
+      where: { cita_id: citaId },
+      select: { id: true }
+    });
 
+    return registro ? registro.id : null;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    throw new Error(`Error al obtener ID de registro por ID de cita: ${message}`);
+  }
+}
   /**
    * Obtiene métricas de citas con filtros opcionales
    * @param options Opciones de filtrado
@@ -571,6 +666,7 @@ class RegistroMetricaCitasService {
     }
   }
 
+
   // Métodos auxiliares privados
   private buildWhereClause(options?: FilterMetricaCitasOptions): any {
     const where: any = {};
@@ -587,6 +683,7 @@ class RegistroMetricaCitasService {
 
     return where;
   }
+  
 }
 
 export const registroCitaService = new RegistroCitaService();
