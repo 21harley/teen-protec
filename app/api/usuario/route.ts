@@ -126,8 +126,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
     const id = searchParams.get('id');
+    const idsParam = searchParams.get('ids'); // Nuevo parámetro para múltiples IDs
     const tipo = searchParams.get('tipo');
-    const rol = searchParams.get('rol'); // Nuevo parámetro para filtrar por rol
+    const rol = searchParams.get('rol');
     const includePassword = searchParams.get('includePassword') === 'true';
     const nombre = searchParams.get('nombre');
     const email = searchParams.get('email');
@@ -140,6 +141,85 @@ export async function GET(request: Request) {
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const skip = (page - 1) * pageSize;
 
+    // 1. Manejo de búsqueda por múltiples IDs (nueva funcionalidad)
+    if (idsParam) {
+      const ids = idsParam.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      
+      if (ids.length === 0) {
+        return NextResponse.json({ error: 'IDs no válidos' }, { status: 400 });
+      }
+
+      const usuarios = await prisma.usuario.findMany({
+        where: { id: { in: ids } },
+        include: {
+          tipo_usuario: true,
+          adolecente: { include: { tutor: true } },
+          psicologo: { include: { redes_sociales: true } },
+          psicologoPacientes: {
+            include: {
+              psicologo: { include: { redes_sociales: true } }
+            }
+          }
+        },
+        orderBy: { id: 'asc' }
+      });
+
+      const safeUsers = usuarios.map(({ password, password_iv, authToken, authTokenExpiry, ...user }) => {
+        let adolecente: AdolecenteResponse | undefined = undefined;
+        if (user.adolecente) {
+          const { id_usuario, id_tutor, tutor } = user.adolecente;
+          adolecente = {
+            id_usuario,
+            id_tutor: id_tutor ?? undefined,
+            tutor: tutor
+              ? {
+                  id: tutor.id,
+                  cedula_tutor: tutor.cedula_tutor,
+                  nombre_tutor: tutor.nombre_tutor,
+                  profesion_tutor: tutor.profesion_tutor ?? undefined,
+                  telefono_contacto: tutor.telefono_contacto ?? undefined,
+                  correo_contacto: tutor.correo_contacto ?? undefined,
+                  sexo: tutor.sexo ?? undefined,
+                  parentesco: tutor.parentesco ?? undefined
+                }
+              : undefined
+          };
+        }
+
+        let psicologoPacientes = undefined;
+        if (user.psicologoPacientes) {
+          psicologoPacientes = {
+            id: user.psicologoPacientes.id,
+            nombre: user.psicologoPacientes.nombre,
+            email: user.psicologoPacientes.email,
+            psicologo: user.psicologoPacientes.psicologo ? {
+              id_usuario: user.psicologoPacientes.psicologo.id_usuario,
+              numero_de_titulo: user.psicologoPacientes.psicologo.numero_de_titulo ?? undefined,
+              nombre_universidad: user.psicologoPacientes.psicologo.nombre_universidad ?? undefined,
+              monto_consulta: user.psicologoPacientes.psicologo.monto_consulta ?? undefined,
+              telefono_trabajo: user.psicologoPacientes.psicologo.telefono_trabajo ?? undefined,
+              redes_sociales: user.psicologoPacientes.psicologo.redes_sociales?.map(red => ({
+                id: red.id,
+                nombre_red: red.nombre_red,
+                url_perfil: red.url_perfil
+              })) || []
+            } : undefined
+          };
+        }
+
+        return {
+          ...user,
+          ...(includePassword ? { password, password_iv } : {}),
+          adolecente,
+          psicologoPacientes,
+          id_psicologo: user.id_psicologo
+        } as UsuarioResponse;
+      });
+
+      return NextResponse.json(safeUsers);
+    }
+
+    // 2. Manejo de búsqueda por ID único (funcionalidad existente)
     if (id) {
       const usuario = await prisma.usuario.findUnique({
         where: { id: parseInt(id) },
@@ -212,7 +292,7 @@ export async function GET(request: Request) {
       } as UsuarioResponse);
     }
 
-    // Construcción dinámica del filtro
+    // 3. Construcción dinámica del filtro para consultas generales
     let whereClause: any = {};
 
     // Filtro por rol (prioriza 'rol' sobre 'tipo' si ambos están presentes)
@@ -248,6 +328,7 @@ export async function GET(request: Request) {
     if (cedula) whereClause.cedula = { contains: cedula };
     if (telefono) whereClause.telefono = { contains: telefono };
 
+    // 4. Manejo de resultados paginados
     if (paginated) {
       const total = await prisma.usuario.count({ where: whereClause });
       const totalPages = Math.ceil(total / pageSize);
@@ -329,7 +410,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // No paginado
+    // 5. Manejo de resultados no paginados
     const usuarios = await prisma.usuario.findMany({
       where: whereClause,
       include: {

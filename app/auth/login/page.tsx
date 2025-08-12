@@ -1,21 +1,48 @@
 'use client'
+
 import Header from "@/components/header/header"
 import Footer from "@/components/footer/footer"
 import Image from "next/image"
 import svg from "./../../public/logos/logo_texto.svg"
 import Link from "next/link"
-import { useState } from "react"
 import { apiPost } from './../../lib/apiClient';
 import { StorageManager } from "@/app/lib/storageManager"
 import useUserStore from "./../../../app/store/store"
 import { LoginRequest } from "./../../types/user/index"
 import { useRouter } from "next/navigation"
-import {UsuarioInfo,LoginResponse} from "./../../types/user"
+import { UsuarioInfo, LoginResponse } from "./../../types/user"
+import { useEffect, useState } from "react";
 
 export default function Login() {
-  const { login } = useUserStore();
+  const { login, user: storeUser } = useUserStore();
   const router = useRouter();
-  
+  const [loading, setLoading] = useState(true); // Para evitar render prematuro
+
+  // ========== VERIFICAR SESIÓN ACTIVA ========== //
+  useEffect(() => {
+    const checkActiveSession = () => {
+      // Si hay usuario en Zustand, redirige
+      if (storeUser) {
+        router.push("/");
+        return;
+      }
+
+      // Si hay datos en localStorage, redirige
+      const storageManager = new StorageManager('local');
+      const userData = storageManager.load<UsuarioInfo>('userData');
+      if (userData) {
+        router.push("/");
+        return;
+      }
+
+      // Si no hay sesión, permite mostrar el login
+      setLoading(false);
+    };
+
+    checkActiveSession();
+  }, [storeUser, router]);
+
+  // ========== ESTADOS DEL FORMULARIO ========== //
   const [loginData, setLoginData] = useState<LoginRequest>({
     email: '',
     password: ''
@@ -29,6 +56,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // ========== MANEJADORES DEL FORMULARIO ========== //
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLoginData(prev => ({
@@ -89,7 +117,8 @@ export default function Login() {
       if (!response) {
         throw new Error('Invalid server response');
       }
-     console.log(response);
+      console.log(response);
+
       // Guardar en localStorage
       const storage = new StorageManager('local');
       storage.save<UsuarioInfo>("userData", response.user ?? {});
@@ -100,10 +129,9 @@ export default function Login() {
             : response.user.tokenExpiry;
       login(
         response.user,
-         '',
+        '',
         expiryDate
       );
-      // setIsAuthenticated(true); // Removed because setIsAuthenticated does not exist
 
       // Redireccionar
       router.push('/');
@@ -114,6 +142,16 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+
+  // ========== RENDERIZADO ========== //
+  // Evita renderizar el formulario hasta verificar la sesión
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[80dvh]">
+        <p>Cargando...</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -220,5 +258,5 @@ export default function Login() {
       </main>
       <Footer />
     </>
-  )
+  );
 }

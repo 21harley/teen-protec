@@ -101,25 +101,36 @@ export async function GET(request: Request) {
     // Construcción de filtros
     let whereClause: any = {};
 
-    if (id_psicologo) whereClause.id_psicologo = parseInt(id_psicologo);
-    if (estado) whereClause.estado = estado;
-    if (peso_preguntas) whereClause.peso_preguntas = peso_preguntas;
+    // Modificación clave: incluir plantillas globales cuando se filtra por psicólogo
+    if (id_psicologo) {
+      whereClause = {
+        OR: [
+          { id_psicologo: parseInt(id_psicologo) },
+          { es_global: true }
+        ]
+      };
+    } else {
+      // Filtros normales cuando no se busca por psicólogo
+      if (estado) whereClause.estado = estado;
+      if (peso_preguntas) whereClause.peso_preguntas = peso_preguntas;
+    }
 
+    // Filtros adicionales que aplican a ambos casos
     if (fecha_inicio || fecha_fin) {
       whereClause.fecha_creacion = {};
       if (fecha_inicio) whereClause.fecha_creacion.gte = new Date(fecha_inicio);
       if (fecha_fin) whereClause.fecha_creacion.lte = new Date(fecha_fin);
     }
 
-    // Búsqueda textual y por nombre
+    // Búsqueda textual
     if (search || nombre) {
       const loweredSearch = search?.toLowerCase();
       const loweredNombre = nombre?.toLowerCase();
 
-      const orConditions = [];
+      const searchConditions = [];
 
       if (loweredSearch) {
-        orConditions.push(
+        searchConditions.push(
           { nombre: { contains: loweredSearch } },
           {
             psicologo: {
@@ -142,10 +153,14 @@ export async function GET(request: Request) {
       }
 
       if (loweredNombre) {
-        orConditions.push({ nombre: { contains: loweredNombre } });
+        searchConditions.push({ nombre: { contains: loweredNombre } });
       }
 
-      whereClause.OR = orConditions;
+      // Asegurarse de combinar correctamente con los filtros existentes
+      whereClause.AND = [
+        ...(whereClause.AND || []),
+        { OR: searchConditions }
+      ];
     }
 
     const total = await prisma.testPlantilla.count({ where: whereClause });

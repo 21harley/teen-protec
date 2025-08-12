@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from "../../../app/generated/prisma";
+import { GrupoPreguntaPlantilla, PrismaClient } from "../../../app/generated/prisma";
 import { calcularProgreso } from '../../../app/api/helpers/testHelpers'
 import { cookies } from 'next/headers';
 import { create_alarma_email,create_alarma } from '@/app/lib/alertas';
@@ -100,13 +100,21 @@ export async function GET(request: Request) {
     if (conTests) {
       includeOptions.tests = {
         include: {
-        preguntas: true,
-        respuestas: {
-          include: {
-            pregunta: true,
-            opcion: true
+          preguntas: {
+            include: {
+              grupoPregunta: true
+            }
+          },
+          respuestas: {
+            include: {
+              pregunta: {
+                include: {
+                  grupoPregunta: true
+                }
+              },
+              opcion: true
+            }
           }
-        }
         }
       };
     }
@@ -162,15 +170,57 @@ export async function GET(request: Request) {
         ...usuarioSafe 
       } = usuario;
       
+      // Procesar tests para incluir información de grupos de manera eficiente
+      const testsProcesados = conTests ? usuario.tests?.map((test: any) => {
+        // Crear un mapa de grupos para referencia rápida
+        const gruposMap: Record<number, any> = {};
+        
+        // Primero recolectamos todos los grupos únicos
+        test.preguntas.forEach((pregunta: any) => {
+          if (pregunta.id_gru_pre && pregunta.grupoPregunta && !gruposMap[pregunta.id_gru_pre]) {
+            gruposMap[pregunta.id_gru_pre] = pregunta.grupoPregunta;
+          }
+        });
+
+        // Procesar preguntas sin duplicar info de grupo
+        const preguntasProcesadas = test.preguntas.map((pregunta: any) => {
+          const { grupoPregunta, ...preguntaSafe } = pregunta;
+          return {
+            ...preguntaSafe,
+            id_grupo: pregunta.id_gru_pre // Solo mantener referencia al ID
+          };
+        });
+
+        // Procesar respuestas para mantener consistencia
+        const respuestasProcesadas = test.respuestas?.map((respuesta: any) => {
+          const { pregunta, ...respuestaSafe } = respuesta;
+          return {
+            ...respuestaSafe,
+            pregunta: {
+              id: pregunta.id,
+              id_grupo: pregunta.id_gru_pre, // Solo referencia al ID
+              texto_pregunta: pregunta.texto_pregunta,
+              id_tipo: pregunta.id_tipo,
+              orden: pregunta.orden
+            }
+          };
+        });
+
+        return {
+          ...test,
+          grupos: Object.values(gruposMap), // Array de grupos únicos
+          preguntas: preguntasProcesadas,
+          respuestas: respuestasProcesadas,
+          progreso: calcularProgreso(test.id, test.id_usuario ?? undefined)
+        };
+      }) : undefined;
+
       return {
         ...usuarioSafe,
         esAdolescente: usuario.tipo_usuario.nombre === 'adolecente',
-        esPsicologo: false, // Ya están filtrados
+        esPsicologo: false,
         tienePsicologo: !!usuario.id_psicologo,
-        tests: conTests ? usuario.tests?.map((t: any) => ({
-          ...t,
-          progreso: calcularProgreso(t.id, t.id_usuario ?? undefined)
-        })) : undefined
+        tests: testsProcesados
       };
     });
 
@@ -286,37 +336,38 @@ export async function POST(request: Request) {
           }
         }
       });
-     //registro de asignacion de psicologo 
-     setImmediate().then(async () => {
-         try {
-          console.log(data.id_paciente,idPsicologo);
-          const cambioPsicologo = await RegistroUsuarioService.cambiarPsicologo(data.id_paciente,idPsicologo);  
+
+      // Registro de asignación de psicólogo
+      setImmediate(async () => {
+        try {
+          const cambioPsicologo = await RegistroUsuarioService.cambiarPsicologo(data.id_paciente, idPsicologo);  
           console.log('cambioPsicologo registro:', cambioPsicologo);
         } catch (error) {
           console.error('Error al crear registro:', error);
         }     
-     });
-      //creo email asignacion psicologo
-      setImmediate().then(async () => {
-      const result_email = await  create_alarma_email({
-        id_usuario: usuarioActualizado.id ,
-        id_tipo_alerta: 1,
-        mensaje: `El psicolog,${usuarioAutenticado.nombre} te atendera protamente.`,
-        vista: false,
-        correo_enviado: true,
-        emailParams: {
-          to: usuarioActualizado.email,
-          subject: "Tienes una nueva alerta",
-          template: "test_asignado",
-          props: {
-            name: usuarioActualizado.nombre,
-            psicologo_name:usuarioAutenticado.nombre,
-            alertMessage: `El psicolog,${usuarioAutenticado.nombre} te atendera protamente.`
-          }
-        }
       });
-      
-      if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
+
+      // Crear email asignación psicólogo
+      setImmediate(async () => {
+        const result_email = await create_alarma_email({
+          id_usuario: usuarioActualizado.id,
+          id_tipo_alerta: 1,
+          mensaje: `El psicólogo ${usuarioAutenticado.nombre} te atenderá próximamente.`,
+          vista: false,
+          correo_enviado: true,
+          emailParams: {
+            to: usuarioActualizado.email,
+            subject: "Tienes una nueva alerta",
+            template: "test_asignado",
+            props: {
+              name: usuarioActualizado.nombre,
+              psicologo_name: usuarioAutenticado.nombre,
+              alertMessage: `El psicólogo ${usuarioAutenticado.nombre} te atenderá próximamente.`
+            }
+          }
+        });
+        
+        if (!result_email.emailSent) console.error('Error al enviar email, test.', result_email); 
       });
 
       return NextResponse.json(
@@ -344,14 +395,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verificar que la plantilla existe y pertenece al psicólogo
+    // Verificar que la plantilla existe y (pertenece al psicólogo O es global)
     const plantilla = await prisma.testPlantilla.findUnique({
       where: { id: data.id_plantilla },
       include: {
         preguntas: {
           include: {
             opciones: true,
-            tipo: true
+            tipo: true,
+            grupoPreguntaPlantilla: true
           },
           orderBy: { orden: 'asc' }
         }
@@ -365,14 +417,52 @@ export async function POST(request: Request) {
       );
     }
 
-    if (plantilla.id_psicologo !== idPsicologo) {
+    // Validar permisos sobre la plantilla
+    if (plantilla.id_psicologo && plantilla.id_psicologo !== idPsicologo && !plantilla.es_global) {
       return NextResponse.json(
-        { error: 'La plantilla no pertenece a este psicólogo' },
+        { 
+          error: 'La plantilla no pertenece a este psicólogo',
+          details: plantilla.es_global ? 
+            'Las plantillas globales pueden ser usadas por cualquier psicólogo' :
+            'Solo el dueño de la plantilla puede usarla'
+        },
         { status: 403 }
       );
     }
 
-    // Crear el nuevo test basado en la plantilla (usando el enfoque unchecked)
+    // Obtener grupos únicos de la plantilla
+    const gruposUnicos = new Map<number, typeof plantilla.preguntas[0]['grupoPreguntaPlantilla']>();
+    plantilla.preguntas.forEach(pregunta => {
+      if (pregunta.grupoPreguntaPlantilla && !gruposUnicos.has(pregunta.grupoPreguntaPlantilla.id)) {
+        gruposUnicos.set(pregunta.grupoPreguntaPlantilla.id, pregunta.grupoPreguntaPlantilla);
+      }
+    });
+
+    // Crear los grupos de preguntas para el test real
+    const gruposCreados = [];
+    for (const [id, grupoPlantilla] of gruposUnicos) {
+      if (!grupoPlantilla) continue;
+      
+      const grupo = await prisma.grupoPregunta.create({
+        data: {
+          nombre: grupoPlantilla.nombre,
+          total_resp_valida: grupoPlantilla.total_resp_valida,
+          total_resp: grupoPlantilla.total_resp
+        }
+      });
+      gruposCreados.push({
+        id: grupo.id,
+        idOriginal: id
+      });
+    }
+
+    // Mapear IDs de grupos originales a nuevos
+    const gruposMap = new Map();
+    gruposCreados.forEach(grupo => {
+      gruposMap.set(grupo.idOriginal, grupo.id);
+    });
+
+    // Crear el nuevo test basado en la plantilla
     const nuevoTest = await prisma.test.create({
       data: {
         nombre: data.nombre || plantilla.nombre,
@@ -395,6 +485,8 @@ export async function POST(request: Request) {
             max: preguntaPlantilla.max,
             paso: preguntaPlantilla.paso,
             eva_psi: preguntaPlantilla.eva_psi,
+            id_gru_pre: preguntaPlantilla.grupoPreguntaPlantilla?.id ? 
+              gruposMap.get(preguntaPlantilla.grupoPreguntaPlantilla.id) : undefined,
             opciones: {
               create: preguntaPlantilla.opciones.map(opcionPlantilla => ({
                 texto: opcionPlantilla.texto,
@@ -410,7 +502,8 @@ export async function POST(request: Request) {
         preguntas: {
           include: {
             opciones: true,
-            tipo: true
+            tipo: true,
+            grupoPregunta: true
           }
         }
       }
@@ -419,71 +512,66 @@ export async function POST(request: Request) {
     // Calcular el progreso del test
     const testConProgreso = {
       ...nuevoTest,
-      progreso: calcularProgreso(nuevoTest.id, nuevoTest.id_usuario ?? undefined)
+      progreso: await calcularProgreso(nuevoTest.id, nuevoTest.id_usuario ?? undefined)
     };
 
+    // Notificaciones y registros
     if (usuarioAutenticado && paciente) {
-        console.log("consulta usuario");
-        const psicologoExistente = await prisma.usuario.findUnique({
-          where: { id: usuarioAutenticado.id }
+      // Crear email de notificación
+      setImmediate(async () => {
+        const result_email = await create_alarma_email({
+          id_usuario: paciente.id,
+          id_tipo_alerta: 8,
+          mensaje: "Tienes un nuevo test asignado",
+          vista: false,
+          correo_enviado: true,
+          emailParams: {
+            to: paciente.email,
+            subject: "Tienes una nueva alerta",
+            template: "test_asignado",
+            props: {
+              name: paciente.nombre,
+              psicologo_name: usuarioAutenticado.nombre,
+              alertMessage: `El psicólogo ${usuarioAutenticado.nombre} te ha asignado un nuevo test: ${nuevoTest.nombre}`
+            }
+          }
         });
+      
+        if (!result_email.emailSent) console.error('Error enviando email de notificación', result_email); 
+      });
 
-        if( psicologoExistente){
-        console.log("crea alarma de test");
-        //creo email
-        setImmediate().then(async () => {
-           const result_email = await  create_alarma_email({
-           id_usuario: paciente.id,
-           id_tipo_alerta: 8,
-           mensaje: "Registro completado con exito",
-           vista: false,
-           correo_enviado: true,
-           emailParams: {
-             to: paciente.email,
-             subject: "Tienes una nueva alerta",
-             template: "welcome",
-             props: {
-               name:paciente.nombre,
-               alertMessage: "¡Bienvenido al PsicoTest!"
-             }
-           }
-           });
-        
-           if (!result_email.emailSent) console.error('Error creando usuario',result_email); 
-        });
-        //creo registro nuevo test registro-usuario
-        setImmediate().then(async ()=>{
+      // Crear registro en registro-usuario
+      setImmediate(async () => {
         try {
-          const updateRegistro = await RegistroUsuarioService.agregarTestARegistroUsuario(paciente.id,nuevoTest.id);  
-          console.log('Update a registro:', updateRegistro);
+          const updateRegistro = await RegistroUsuarioService.agregarTestARegistroUsuario(
+            paciente.id, 
+            nuevoTest.id
+          );  
+          console.log('Test agregado a registro usuario:', updateRegistro);
         } catch (error) {
           console.error('Error al crear registro:', error);
         }
-        });
-        //crear registro de test
-        setImmediate().then(async () => {
-          try {
-            const test:CreateRegistroTestInput = {
-              test_id: nuevoTest.id,
-              usuario_id: nuevoTest.id_usuario!,
-              psicologo_id: nuevoTest.id_psicologo,
-              fecha_creacion: nuevoTest.fecha_creacion,
-              fecha_completado: nuevoTest.fecha_ultima_respuesta,
-              estado: nuevoTest.estado as unknown as EstadoTestRegistro ?? undefined,
-              nombre_test: nuevoTest.nombre ?? undefined,
-              valor_total: nuevoTest.valor_total ?? undefined,
-              nota_psicologo: nuevoTest.ponderacion_final ?? undefined, 
-              evaluado: nuevoTest.evaluado,
-              fecha_evaluacion: nuevoTest.fecha_evaluacion,
-            }         
-            const nuevoRegistro = await RegistroTestService.createRegistroTest(test)
+      });
 
-             console.log('Registro test creado:', nuevoRegistro);
-             } catch (error) {
-               console.error('Error al crear registro test:', error);
-             }
-        });        
-      }
+      // Crear registro de test
+      setImmediate(async () => {
+        try {
+          const testData = {
+            test_id: nuevoTest.id,
+            usuario_id: nuevoTest.id_usuario!,
+            psicologo_id: nuevoTest.id_psicologo,
+            fecha_creacion: nuevoTest.fecha_creacion,
+            estado: nuevoTest.estado as EstadoTestRegistro,
+            nombre_test: nuevoTest.nombre || undefined,
+            valor_total: nuevoTest.valor_total || undefined
+          };
+          
+          const nuevoRegistro = await RegistroTestService.createRegistroTest(testData);
+          console.log('Registro test creado:', nuevoRegistro);
+        } catch (error) {
+          console.error('Error al crear registro test:', error);
+        }
+      });
     }
     
     return NextResponse.json(

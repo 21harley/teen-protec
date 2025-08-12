@@ -7,8 +7,6 @@ import Image from "next/image"
 import svgAzul from "./../../app/public/logos/fondo_azul_logo_celda.svg"
 import svgBlanco from "./../../app/public/logos/fondo_blanco_logo_celda.svg"
 
-
-
 interface CeldaTestProps extends FullTestData {
   onTestUpdated?: (nuevoEstado?: TestStatus) => Promise<void>;
 }
@@ -29,7 +27,9 @@ export default function CeldaTest({
   const [showRespuestasModal, setShowRespuestasModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const bgColor = estado === TestStatus.COMPLETADO ? 'bg-white' : 'bg-[#6DC7E4]'
+  const bgColor = estado === TestStatus.COMPLETADO || estado === TestStatus.EVALUADO 
+    ? 'bg-white' 
+    : 'bg-[#6DC7E4]'
   const borderStyle = respuestas.length === 0 ? 'border-l-4 border-blue-500' : ''
 
   const nombrePsicologo = psicologo?.usuario?.nombre || "Psicólogo no asignado"
@@ -106,7 +106,7 @@ export default function CeldaTest({
         <div className="relative">
           <Image
             className="absolute w-[200px] h-[200px] right-0 button-[10px]"
-            src={estado === TestStatus.COMPLETADO ? svgBlanco : svgAzul}
+            src={estado === TestStatus.COMPLETADO || estado === TestStatus.EVALUADO ? svgBlanco : svgAzul}
             width={180}
             height={90}
             alt="Logo"
@@ -124,13 +124,14 @@ export default function CeldaTest({
             </p>
           </div>
           <span className={`px-2 py-1 text-xs rounded-full ${
-            estado === TestStatus.COMPLETADO
+            estado === TestStatus.COMPLETADO || estado === TestStatus.EVALUADO
               ? 'bg-green-100 text-green-800' 
               : estado === TestStatus.EN_PROGRESO
                 ? 'bg-yellow-100 text-yellow-800' 
                 : 'bg-blue-100 text-blue-800'
           }`}>
             {estado === TestStatus.COMPLETADO ? 'Completado' : 
+             estado === TestStatus.EVALUADO ? 'Evaluado' :
              estado === TestStatus.EN_PROGRESO ? 'En progreso' : 'No iniciado'}
           </span>
         </div>
@@ -151,7 +152,7 @@ export default function CeldaTest({
         )}
 
         <div className="flex justify-center mt-3 p-2">
-          {estado === TestStatus.COMPLETADO ? (
+          {estado === TestStatus.COMPLETADO || estado === TestStatus.EVALUADO ? (
             <button
               onClick={() => setShowRespuestasModal(true)}
               className="cursor-pointer p-2 px-10 text-black-700 border border-black text-sm rounded-md transition hover:bg-gray-100"

@@ -20,7 +20,6 @@ enum PesoPreguntaTipo {
   SIN_VALOR
   IGUAL_VALOR
   BAREMO
-  //MODULO
 }
 
 // ====================== MODELOS PRINCIPALES ======================
@@ -106,6 +105,7 @@ model Pregunta {
   id             Int          @id @default(autoincrement())
   id_test        Int
   id_tipo        Int
+  id_gru_pre     Int? //sopoerte de modulo
   texto_pregunta String
   orden          Int
   obligatoria    Boolean      @default(false)
@@ -120,25 +120,39 @@ model Pregunta {
   // Relaciones
   test           Test         @relation(fields: [id_test], references: [id])
   tipo           TipoPregunta @relation(fields: [id_tipo], references: [id])
+  grupoPregunta  GrupoPregunta? @relation(fields: [id_gru_pre], references: [id], name: "GrupoPreguntaAPreguntas")
+
   opciones       Opcion[]
   respuestas     Respuesta[]
 
   @@index([id_test])
 }
 
+model GrupoPregunta{
+  id                Int          @id @default(autoincrement())
+  nombre            String
+  total_resp_valida Int?
+  total_resp        Int?
+  interpretacion    String?
+  preguntas      Pregunta[]   @relation("GrupoPreguntaAPreguntas")
+}
+
+
+
 // ====================== MODELOS SECUNDARIOS ======================
 model TestPlantilla {
   id                  Int              @id @default(autoincrement())
-  id_psicologo        Int
+  id_psicologo        Int?
   nombre              String
   estado              TestStatus       @default(NO_INICIADO)
   peso_preguntas      PesoPreguntaTipo @default(SIN_VALOR)
   config_baremo       Json?
   valor_total         Float?
   fecha_creacion      DateTime         @default(now())
+  es_global           Boolean?        @default(false)
 
   // Relaciones
-  psicologo           Psicologo        @relation(fields: [id_psicologo], references: [id_usuario])
+  psicologo           Psicologo?        @relation(fields: [id_psicologo], references: [id_usuario])
   preguntas           PreguntaPlantilla[]
 
   @@index([id_psicologo])
@@ -148,6 +162,7 @@ model PreguntaPlantilla {
   id             Int          @id @default(autoincrement())
   id_test        Int
   id_tipo        Int
+  id_gru_pre     Int? //sopoerte de modulo
   texto_pregunta String
   orden          Int
   obligatoria    Boolean      @default(false)
@@ -163,9 +178,20 @@ model PreguntaPlantilla {
   test           TestPlantilla @relation(fields: [id_test], references: [id])
   tipo           TipoPregunta  @relation(fields: [id_tipo], references: [id])
   opciones       OpcionPlantilla[]
+  grupoPreguntaPlantilla  GrupoPreguntaPlantilla? @relation(fields: [id_gru_pre], references: [id], name: "GrupoPreguntaAPreguntasPlantilla")
 
   @@index([id_test])
 }
+
+model GrupoPreguntaPlantilla{
+  id                Int          @id @default(autoincrement())
+  nombre            String
+  total_resp_valida Int?
+  total_resp        Int?
+  interpretacion    String?
+  preguntasPlantilla      PreguntaPlantilla[]   @relation("GrupoPreguntaAPreguntasPlantilla")
+}
+
 
 // ====================== MODELOS SIN CAMBIOS ======================
 model TipoUsuario {
@@ -232,8 +258,7 @@ model Psicologo {
   usuario            Usuario              @relation(fields: [id_usuario], references: [id])
   redes_sociales     RedSocialPsicologo[]
   tests              Test[]               @relation("TestPsicologo")
-  plantillas         TestPlantilla[]
-
+  plantillas         TestPlantilla[]     
   // Índices
   @@index([numero_de_titulo])
 }

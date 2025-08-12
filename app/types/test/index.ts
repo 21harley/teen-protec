@@ -56,6 +56,7 @@ export interface PreguntaData {
   id_test?: number;
   texto_pregunta: string;
   id_tipo: number;
+  id_grupo?: number;
   orden: number;
   obligatoria?: boolean;
   peso?: number | null;

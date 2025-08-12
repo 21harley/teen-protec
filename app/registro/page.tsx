@@ -63,7 +63,6 @@ export default function Registro() {
     case "psicologo":
       return (
         <LayoutPage>
-         <h1>Registro Psicologico</h1>
          <RegistroPsicologo usuario={user} />
         </LayoutPage>
       );

@@ -217,7 +217,7 @@ const ModalGestionTestPacientes: React.FC<ModalGestionTestPacientesProps> = ({
               {success}
             </div>
           )}
-
+       {/*
           <div className="flex justify-between mb-4">
             <div className="flex w-full justify-end space-x-2">
               <button
@@ -228,7 +228,8 @@ const ModalGestionTestPacientes: React.FC<ModalGestionTestPacientesProps> = ({
               </button>
               
             </div>
-          </div>
+          </div>       
+       */}
 
 <div className="border rounded-lg overflow-hidden flex-grow flex flex-col" style={{ maxHeight: '500px' }}> {/* Ajusta la altura máxima según necesites */}
   {loading && plantillas.length === 0 ? (
@@ -266,9 +267,8 @@ const ModalGestionTestPacientes: React.FC<ModalGestionTestPacientesProps> = ({
                   title='Asignar test usuario'
                 />
               </div>
-              
-              {/* Botón Editar */}
-              <button
+              {/*
+                            <button
                 onClick={() => {
                   setPlantillaToEdit(plantilla);
                   setShowEditModal(true);
@@ -286,7 +286,6 @@ const ModalGestionTestPacientes: React.FC<ModalGestionTestPacientesProps> = ({
                 />
               </button>
               
-              {/* Botón Eliminar */}
               <button
                 onClick={() => handleDeletePlantilla(plantilla.id)}
                 className="p-2 rounded hover:bg-gray-100 transition-colors cursor-pointer"
@@ -301,6 +300,7 @@ const ModalGestionTestPacientes: React.FC<ModalGestionTestPacientesProps> = ({
                   className="w-5 h-5"
                 />
               </button>
+              */}
             </div>
           </div>
         </li>

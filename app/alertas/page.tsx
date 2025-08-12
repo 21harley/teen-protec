@@ -11,6 +11,7 @@ import { UsuarioInfo } from "./../../app/types/user"
 export default function Alert() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  
   const storeUser = useUserStore((state) => state.user);
   const [user, setUser] = useState<UsuarioInfo | null>(null);
 

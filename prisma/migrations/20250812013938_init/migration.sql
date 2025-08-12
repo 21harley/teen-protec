@@ -56,6 +56,7 @@ CREATE TABLE "Pregunta" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "id_test" INTEGER NOT NULL,
     "id_tipo" INTEGER NOT NULL,
+    "id_gru_pre" INTEGER,
     "texto_pregunta" TEXT NOT NULL,
     "orden" INTEGER NOT NULL,
     "obligatoria" BOOLEAN NOT NULL DEFAULT false,
@@ -67,20 +68,31 @@ CREATE TABLE "Pregunta" (
     "paso" INTEGER,
     "eva_psi" INTEGER,
     CONSTRAINT "Pregunta_id_test_fkey" FOREIGN KEY ("id_test") REFERENCES "Test" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "Pregunta_id_tipo_fkey" FOREIGN KEY ("id_tipo") REFERENCES "TipoPregunta" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "Pregunta_id_tipo_fkey" FOREIGN KEY ("id_tipo") REFERENCES "TipoPregunta" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "Pregunta_id_gru_pre_fkey" FOREIGN KEY ("id_gru_pre") REFERENCES "GrupoPregunta" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "GrupoPregunta" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "nombre" TEXT NOT NULL,
+    "total_resp_valida" INTEGER,
+    "total_resp" INTEGER,
+    "interpretacion" TEXT
 );
 
 -- CreateTable
 CREATE TABLE "TestPlantilla" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "id_psicologo" INTEGER NOT NULL,
+    "id_psicologo" INTEGER,
     "nombre" TEXT NOT NULL,
     "estado" TEXT NOT NULL DEFAULT 'NO_INICIADO',
     "peso_preguntas" TEXT NOT NULL DEFAULT 'SIN_VALOR',
     "config_baremo" JSONB,
     "valor_total" REAL,
     "fecha_creacion" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "TestPlantilla_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Psicologo" ("id_usuario") ON DELETE RESTRICT ON UPDATE CASCADE
+    "es_global" BOOLEAN DEFAULT false,
+    CONSTRAINT "TestPlantilla_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Psicologo" ("id_usuario") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -88,6 +100,7 @@ CREATE TABLE "PreguntaPlantilla" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "id_test" INTEGER NOT NULL,
     "id_tipo" INTEGER NOT NULL,
+    "id_gru_pre" INTEGER,
     "texto_pregunta" TEXT NOT NULL,
     "orden" INTEGER NOT NULL,
     "obligatoria" BOOLEAN NOT NULL DEFAULT false,
@@ -99,7 +112,17 @@ CREATE TABLE "PreguntaPlantilla" (
     "paso" INTEGER,
     "eva_psi" INTEGER,
     CONSTRAINT "PreguntaPlantilla_id_test_fkey" FOREIGN KEY ("id_test") REFERENCES "TestPlantilla" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "PreguntaPlantilla_id_tipo_fkey" FOREIGN KEY ("id_tipo") REFERENCES "TipoPregunta" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "PreguntaPlantilla_id_tipo_fkey" FOREIGN KEY ("id_tipo") REFERENCES "TipoPregunta" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "PreguntaPlantilla_id_gru_pre_fkey" FOREIGN KEY ("id_gru_pre") REFERENCES "GrupoPreguntaPlantilla" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "GrupoPreguntaPlantilla" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "nombre" TEXT NOT NULL,
+    "total_resp_valida" INTEGER,
+    "total_resp" INTEGER,
+    "interpretacion" TEXT
 );
 
 -- CreateTable

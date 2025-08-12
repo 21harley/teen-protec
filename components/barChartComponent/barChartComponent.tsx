@@ -23,6 +23,7 @@ export type BarChartProps = {
   width?: number | string;
   height?: number | string;
   barColors?: [string, string]; // Para barras múltiples
+  name?:string;
 };
 
 const BarChartComponent: React.FC<BarChartProps> = ({
@@ -30,6 +31,7 @@ const BarChartComponent: React.FC<BarChartProps> = ({
   width = '100%',
   height = 400,
   barColors = ['#8884d8', '#82ca9d'],
+  name="ventas",
 }) => {
   return (
     <div style={{ width, height }}>
@@ -46,7 +48,7 @@ const BarChartComponent: React.FC<BarChartProps> = ({
           <Bar 
             dataKey="value" 
             fill={barColors[0]} 
-            name="Ventas Primarias" 
+            name={name}
             animationDuration={1500}
           />
           {data.some((item) => item.secondaryValue !== undefined) && (

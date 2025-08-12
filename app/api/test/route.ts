@@ -5,6 +5,7 @@ import { setImmediate } from 'timers/promises';
 import RegistroUsuarioService from "../../lib/registro/registro-usuario"
 import RegistroTestService,{CreateRegistroTestInput} from "../../lib/registro/registro-test"
 import { EstadoTestRegistro } from '@/app/types/registros';
+import { validateTestAndUpdateGroups } from '@/app/lib/modulo_test/test_brown';
 
 const prisma = new PrismaClient()
 
@@ -60,6 +61,7 @@ interface PreguntaData {
   obligatoria?: boolean;
   peso?: number;
   baremo_detalle?: any;
+  id_gru_pre?: number; 
   placeholder?: string;
   min?: number;
   max?: number;
@@ -960,7 +962,8 @@ export async function PUT(request: Request) {
         preguntas: {
           include: {
             tipo: true,
-            opciones: true
+            opciones: true,
+            grupoPregunta: true
           }
         }
       }
@@ -1012,14 +1015,6 @@ export async function PUT(request: Request) {
       }
     }
 
-    // Validar peso_preguntas si se proporciona
-    if (peso_preguntas && !Object.values(PesoPreguntaTipo).includes(peso_preguntas)) {
-      return NextResponse.json(
-        { error: 'Tipo de peso de pregunta no válido' },
-        { status: 400 }
-      );
-    }
-
     if(evaluado && fecha_evaluacion ){
       console.log("EVALUANDO");  
       const { test: testEvaluado } = await handleEvaluacionPsicologo(
@@ -1032,14 +1027,15 @@ export async function PUT(request: Request) {
         id_usuario,
         preguntas
       );
-      const testCompleto = await obtenerTestCompleto(testId, id_usuario)
-       setImmediate().then(async () => {
-      if(!testCompleto){
-        console.log('Error al obtener el testCompleto al Registro test.');
-        return
-      }
-      try {
-          const test:CreateRegistroTestInput = {
+      const testCompleto = await obtenerTestCompleto(testId, id_usuario);
+      
+      setImmediate().then(async () => {
+        if(!testCompleto){
+          console.log('Error al obtener el testCompleto al Registro test.');
+          return;
+        }
+        try {
+          const test: CreateRegistroTestInput = {
             test_id: testCompleto.id,
             usuario_id: testCompleto.id_usuario!,
             psicologo_id: testCompleto.id_psicologo,
@@ -1051,14 +1047,13 @@ export async function PUT(request: Request) {
             nota_psicologo: testCompleto.ponderacion_final ?? undefined, 
             evaluado: testCompleto.evaluado,
             fecha_evaluacion: testCompleto.fecha_evaluacion,
-          }         
-          const nuevoRegistro = await RegistroTestService.upsertRegistroByTestId(testCompleto.id,test);
-
-           console.log('Registro test creado:', nuevoRegistro);
-         } catch (error) {
-           console.error('Error al crear registro test:', error);
-         }
-       });
+          };         
+          const nuevoRegistro = await RegistroTestService.upsertRegistroByTestId(testCompleto.id, test);
+          console.log('Registro test creado:', nuevoRegistro);
+        } catch (error) {
+          console.error('Error al crear registro test:', error);
+        }
+      });
       return NextResponse.json(await obtenerTestCompleto(testId, id_usuario));
     }
 
@@ -1112,7 +1107,7 @@ export async function PUT(request: Request) {
           if (!tipoPregunta) {
             throw new Error(`Tipo de pregunta con ID ${preguntaData.id_tipo} no encontrado`);
           }
-
+        
           const preguntaCreada = await prisma.pregunta.create({
             data: {
               id_test: testId,
@@ -1125,8 +1120,9 @@ export async function PUT(request: Request) {
               placeholder: preguntaData.placeholder,
               min: preguntaData.min,
               max: preguntaData.max,
-              paso:preguntaData.paso,
-              eva_psi: preguntaData.eva_psi
+              paso: preguntaData.paso,
+              eva_psi: preguntaData.eva_psi,
+              id_gru_pre: preguntaData.id_gru_pre || null
             }
           });
 
@@ -1177,7 +1173,10 @@ export async function PUT(request: Request) {
         if (!preguntasActuales) {
           const preguntasFromDB = await prisma.pregunta.findMany({
             where: { id_test: testId },
-            include: { tipo: true }
+            include: { 
+              tipo: true,
+              grupoPregunta: true 
+            }
           });
           
           preguntasActuales = preguntasFromDB.map(p => ({
@@ -1192,7 +1191,8 @@ export async function PUT(request: Request) {
             min: p.min || undefined,
             max: p.max || undefined,
             paso: p.paso || undefined,
-            eva_psi: p.eva_psi || undefined
+            eva_psi: p.eva_psi || undefined,
+            id_gru_pre: p.id_gru_pre || undefined
           }));
         }
 
@@ -1204,31 +1204,40 @@ export async function PUT(request: Request) {
           respuestas
         );
         
+        let estadoActualizado = determinarEstado(completado);
+        
         // Actualizar estado y fecha de última respuesta
         await prisma.test.update({
           where: { id: testId },
           data: {
-            estado: determinarEstado(completado),
+            estado: estadoActualizado,
             fecha_ultima_respuesta: new Date()
           }
         });
-
       }
 
       return test;
     });
-            
-    if(testActualizado.estado=="COMPLETADO" &&  id_usuario){
+    
+    const validacionGrupos = await validateTestAndUpdateGroups(testId);
+    
+    if (validacionGrupos.success) {
+      console.log('Validación de grupos exitosa:', validacionGrupos.results);
+    } else {
+      console.error('Error en validación de grupos:', validacionGrupos.message);
+    }
+
+    if(testActualizado.estado === "COMPLETADO" && id_usuario){
         const usuarioExistente = await prisma.usuario.findUnique({
           where: { id: id_usuario }
         });
         if(usuarioExistente?.id_psicologo){
          const psicologoExistente = await prisma.usuario.findUnique({
-           where: { id: usuarioExistente?.id_psicologo }
+           where: { id: usuarioExistente.id_psicologo }
          });
          if(psicologoExistente && usuarioExistente){
           setImmediate().then(async () => {
-           const result_email = await  create_alarma_email({
+           const result_email = await create_alarma_email({
              id_usuario: psicologoExistente.id,
             id_tipo_alerta: 2,
             mensaje: `El paciente ${usuarioExistente.nombre}, completo el test.`,
@@ -1240,16 +1249,18 @@ export async function PUT(request: Request) {
               template: "test_completado",
               props: {
                 name: psicologoExistente.nombre,
-                user_name:usuarioExistente.nombre,
+                user_name: usuarioExistente.nombre,
                 alertMessage: `El paciente ${usuarioExistente.nombre}, completo el test.`
               }
             }
-             });
+           });
              
-            if (!result_email.emailSent) console.error('Error al enviar email, test.',result_email); 
+            if (!result_email.emailSent) {
+              console.error('Error al enviar email, test.', result_email); 
+            }
           });
-         }else{
-          console.log("No se envio correo, el usuario no tiene.");
+         } else {
+          console.log("No se envio correo, el usuario no tiene psicólogo asignado.");
          }
         }
     }
@@ -1272,7 +1283,8 @@ export async function PUT(request: Request) {
               orderBy: {
                 orden: 'asc'
               }
-            }
+            },
+            grupoPregunta: true
           },
           orderBy: {
             orden: 'asc'
@@ -1289,14 +1301,14 @@ export async function PUT(request: Request) {
       }
     });
     
-    //update registro de test
+    // Update registro de test
     setImmediate().then(async () => {
       if(!testCompleto){
         console.log('Error al obtener el testCompleto al Registro test.');
-        return
+        return;
       }
       try {
-          const test:CreateRegistroTestInput = {
+          const test: CreateRegistroTestInput = {
             test_id: testCompleto.id,
             usuario_id: testCompleto.id_usuario!,
             psicologo_id: testCompleto.id_psicologo,
@@ -1308,14 +1320,14 @@ export async function PUT(request: Request) {
             nota_psicologo: testCompleto.ponderacion_final ?? undefined, 
             evaluado: testCompleto.evaluado,
             fecha_evaluacion: testCompleto.fecha_evaluacion,
-          }         
-          const nuevoRegistro = await RegistroTestService.upsertRegistroByTestId(testCompleto.id,test)
-
-           console.log('Registro test creado:', nuevoRegistro);
-         } catch (error) {
-           console.error('Error al crear registro test:', error);
-         }
+          };         
+          const nuevoRegistro = await RegistroTestService.upsertRegistroByTestId(testCompleto.id, test);
+          console.log('Registro test creado:', nuevoRegistro);
+      } catch (error) {
+        console.error('Error al crear registro test:', error);
+      }
     });
+    
     return NextResponse.json(testCompleto);
 
   } catch (error: any) {
@@ -1354,13 +1366,18 @@ export async function DELETE(request: Request) {
 
     const testId = parseInt(id);
 
-    // Verificar si el test existe
+    // Verificar si el test existe con sus relaciones completas
     const testExistente = await prisma.test.findUnique({
       where: { id: testId },
       include: {
         preguntas: {
           include: {
-            opciones: true
+            opciones: true,
+            grupoPregunta: {
+              include: {
+                preguntas: true // Necesario para verificar si el grupo queda sin preguntas
+              }
+            }
           }
         },
         respuestas: true
@@ -1374,43 +1391,70 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Usar transacción para eliminar relaciones primero
+    // Usar transacción para eliminar todo de manera atómica
     await prisma.$transaction(async (prisma) => {
-      // Eliminar opciones de preguntas asociadas
+      // 1. Eliminar opciones de preguntas asociadas
       const preguntaIds = testExistente.preguntas.map(p => p.id);
       await prisma.opcion.deleteMany({
         where: { id_pregunta: { in: preguntaIds } }
       });
 
-      // Eliminar respuestas asociadas
+      // 2. Eliminar respuestas asociadas
       await prisma.respuesta.deleteMany({
         where: { id_test: testId }
       });
 
-      // Eliminar preguntas asociadas
+      // 3. Identificar grupos de preguntas que serán huérfanos después de eliminar
+      const gruposAEliminar: number[] = [];
+      
+      for (const pregunta of testExistente.preguntas) {
+        if (pregunta.grupoPregunta) {
+          // Verificar cuántas preguntas tiene el grupo (incluyendo las de otros tests)
+          const countPreguntas = await prisma.pregunta.count({
+            where: { id_gru_pre: pregunta.grupoPregunta.id }
+          });
+          
+          // Si solo tiene esta pregunta (la que estamos por eliminar)
+          if (countPreguntas <= 1) {
+            gruposAEliminar.push(pregunta.grupoPregunta.id);
+          }
+        }
+      }
+
+      // 4. Eliminar preguntas asociadas
       await prisma.pregunta.deleteMany({
         where: { id_test: testId }
       });
 
-      // Finalmente eliminar el test
+      // 5. Eliminar grupos huérfanos
+      if (gruposAEliminar.length > 0) {
+        await prisma.grupoPregunta.deleteMany({
+          where: { id: { in: gruposAEliminar } }
+        });
+      }
+
+      // 6. Finalmente eliminar el test
       await prisma.test.delete({
         where: { id: testId }
       });
     });
 
-    //atualizo registro test-usuario
-    setImmediate().then(async ()=>{
-    if(!testExistente.id_usuario) return 
-    try {
-      const eliminarRegistroTest = await RegistroUsuarioService.removerTestDeRegistroUsuario(testExistente.id_usuario,testExistente.id)  
-      console.log('Eliminar a registro-test-usuario:', eliminarRegistroTest);
-    } catch (error) {
-      console.error('Error al crear registro:', error);
-    }
+    // Actualizar registro test-usuario de manera asíncrona
+    setImmediate(async () => {
+      if (!testExistente.id_usuario) return;
+      try {
+        const eliminarRegistroTest = await RegistroUsuarioService.removerTestDeRegistroUsuario(
+          testExistente.id_usuario,
+          testExistente.id
+        );  
+        console.log('Test eliminado de registro usuario:', eliminarRegistroTest);
+      } catch (error) {
+        console.error('Error al eliminar registro:', error);
+      }
     });  
     
     return NextResponse.json(
-      { message: 'Test eliminado correctamente' },
+      { message: 'Test y sus relaciones eliminados correctamente' },
       { status: 200 }
     );
 
@@ -1427,4 +1471,3 @@ export async function DELETE(request: Request) {
     await prisma.$disconnect();
   }
 }
-

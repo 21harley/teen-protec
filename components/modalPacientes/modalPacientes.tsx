@@ -21,8 +21,17 @@ interface TestAsignado {
   peso_preguntas?: PesoPreguntaTipo
   id_usuario?: number
   id_psicologo?: number
+  grupos?: GrupoData[] | undefined
 }
 
+
+interface GrupoData {
+  id: number;
+  nombre: string;
+  total_resp_valida: number;
+  total_resp: number;
+  interpretacion: string;
+}
 interface ModalPacienteProps {
   paciente: UsuarioCompleto
   psicologoId: number
@@ -441,6 +450,7 @@ export default function ModalPaciente({
           pesoPreguntas={selectedTest.peso_preguntas ?? PesoPreguntaTipo.SIN_VALOR}
           onClose={() => setShowTestModal(false)}
           onEvaluar={handleEvaluarTest}
+          grupos={selectedTest.grupos ? selectedTest.grupos :  undefined}
         />
       )}
 

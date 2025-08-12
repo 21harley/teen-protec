@@ -6,6 +6,7 @@ import { UsuarioCompleto } from './../../app/types/gestionPaciente/index';
 import IconPacienteAddTest from "./../../app/public/logos/logo_asignar_test.svg";
 import IconCardPacientes from "./../../app/public/logos/logo_card_pacientes.svg";
 import IconAssignUser from "./../../app/public/logos/logo_asignar_test.svg";
+import { TestStatus } from './../../app/types/test';
 
 interface PacienteCellProps {
   paciente: UsuarioCompleto;
@@ -24,13 +25,11 @@ const PacienteCell: React.FC<PacienteCellProps> = ({
   const [showTestsModal, setShowTestsModal] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   
-  // Safe age calculation
   const calcularEdad = (fechaNacimiento: string | Date | null): string => {
     if (!fechaNacimiento) return 'No disponible';
     
     try {
       const fechaNac = new Date(fechaNacimiento);
-      // Handle invalid dates
       if (isNaN(fechaNac.getTime())) return 'No disponible';
       
       const hoy = new Date();
@@ -48,7 +47,6 @@ const PacienteCell: React.FC<PacienteCellProps> = ({
     }
   };
 
-  // Safe test extraction
   const getUltimoTest = () => {
     try {
       if (!paciente?.tests || !Array.isArray(paciente.tests) || paciente.tests.length === 0) {
@@ -104,16 +102,14 @@ const PacienteCell: React.FC<PacienteCellProps> = ({
     }
   };
 
-  // Safely get patient name
   const getPatientName = () => {
     if (typeof paciente?.nombre === 'string') return paciente.nombre;
     if (paciente?.nombre && typeof paciente.nombre === 'object') {
-      return JSON.stringify(paciente.nombre); // Fallback for unexpected object
+      return JSON.stringify(paciente.nombre);
     }
     return 'Nombre no disponible';
   };
 
-  // Safely get test status display
   const getTestStatusDisplay = (test: any) => {
     if (!test) return null;
     
@@ -124,12 +120,19 @@ const PacienteCell: React.FC<PacienteCellProps> = ({
       <p className="text-sm text-black mt-1">
         Último test: <span className="font-medium">{testName}</span> - 
         <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
-          status === 'completado' ? 'bg-green-100 text-green-800' :
-          status === 'en_progreso' ? 'bg-yellow-100 text-yellow-800' :
-          'bg-gray-100 text-gray-800'
+          status === TestStatus.COMPLETADO || status === TestStatus.EVALUADO
+            ? 'bg-green-100 text-green-800' :
+          status === TestStatus.EN_PROGRESO 
+            ? 'bg-yellow-100 text-yellow-800' :
+            'bg-gray-100 text-gray-800'
         }`}>
-          {status === 'completado' ? 'Completado' : 
-           status === 'en_progreso' ? 'En progreso' : 'No iniciado'}
+          {status === TestStatus.COMPLETADO 
+            ? 'Completado' : 
+           status === TestStatus.EVALUADO
+            ? 'Evaluado' :
+           status === TestStatus.EN_PROGRESO 
+            ? 'En progreso' : 
+            'No iniciado'}
         </span>
       </p>
     );
@@ -193,7 +196,7 @@ const PacienteCell: React.FC<PacienteCellProps> = ({
         </div>
       </div>
 
-      {/* Modals with additional checks */}
+      {/* Modals */}
       {showDetailsModal && paciente && (
         <ModalPaciente
           paciente={paciente}

@@ -53,7 +53,7 @@ const tipoUsuarioData = [
       { path: "/usuarios", name: "Usuarios", icon: "people" },
       { path: "/cita", name: "Cita", icon: "cita" },
       { path: "/test", name: "Test", icon: "quiz" },
-      { path: "/registro", name: "registro", icon: "registro" },
+      { path: "/registro", name: "Registro", icon: "registro" },
       { path: "/", name: "Sobre nosotros", icon: "info" }
     ]
   },
@@ -64,8 +64,7 @@ const tipoUsuarioData = [
       { path: "/perfil", name: "Perfil", icon: "person" },
       { path: "/pacientes", name: "Pacientes", icon: "medical_services" },
       { path: "/cita", name: "Cita", icon: "cita" },
-      { path: "/test", name: "Test", icon: "quiz" },
-      { path: "/registro", name: "registro", icon: "registro" },
+      { path: "/registro", name: "Registro", icon: "registro" },
       { path: "/", name: "Sobre nosotros", icon: "info" }
     ]
   },
@@ -95,7 +94,7 @@ const tipoUsuarioData = [
       { path: "/alertas", name: "Alertas", icon: "notifications" },
       { path: "/perfil", name: "Perfil", icon: "person" },
       { path: "/cita", name: "Cita", icon: "cita" },
-      { path: "/registro", name: "registro", icon: "registro" },
+      { path: "/registro", name: "Registro", icon: "registro" },
       { path: "/", name: "Sobre nosotros", icon: "info" }
     ]
   }
@@ -442,70 +441,169 @@ const dataUsuarios = [
   }
 ];
 
-// Datos de preguntas y opciones para tests
-const preguntasTest = [
-  {
-    texto_pregunta: "¿Cómo te has sentido durante la última semana?",
-    id_tipo: 1, // radio
-    orden: 1,
-    obligatoria: true,
-    peso: 1.0,
-    opciones: [
-      { texto: "Muy bien", valor: "muy_bien", orden: 1 },
-      { texto: "Bien", valor: "bien", orden: 2 },
-      { texto: "Regular", valor: "regular", orden: 3 },
-      { texto: "Mal", valor: "mal", orden: 4 },
-      { texto: "Muy mal", valor: "muy_mal", orden: 5 }
-    ]
-  },
-  {
-    texto_pregunta: "¿Qué emociones has experimentado recientemente? (Selecciona todas las que apliquen)",
-    id_tipo: 2, // checkbox
-    orden: 2,
-    obligatoria: false,
-    peso: 0.8,
-    opciones: [
-      { texto: "Alegría", valor: "alegria", orden: 1 },
-      { texto: "Tristeza", valor: "tristeza", orden: 2 },
-      { texto: "Enojo", valor: "enojo", orden: 3 },
-      { texto: "Miedo", valor: "miedo", orden: 4 },
-      { texto: "Ansiedad", valor: "ansiedad", orden: 5 }
-    ]
-  },
-  {
-    texto_pregunta: "Describe cómo ha sido tu día hoy",
-    id_tipo: 3, // text
-    orden: 3,
-    obligatoria: false,
-    peso: 0.5,
-    placeholder: "Escribe aquí tu respuesta..."
-  },
-  {
-    texto_pregunta: "¿Cómo calificarías tu nivel de estrés actual?",
-    id_tipo: 5, // range
-    orden: 4,
-    obligatoria: true,
-    peso: 1.2,
-    min: 1,
-    max: 10,
-    paso:1,
-    eva_psi:null
-  },
-  {
-    texto_pregunta: "¿Con qué frecuencia te sientes abrumado/a?",
-    id_tipo: 4, // select
-    orden: 5,
-    obligatoria: true,
-    peso: 1.0,
-    opciones: [
-      { texto: "Nunca", valor: "nunca", orden: 1 },
-      { texto: "Rara vez", valor: "rara_vez", orden: 2 },
-      { texto: "A veces", valor: "a_veces", orden: 3 },
-      { texto: "Frecuentemente", valor: "frecuentemente", orden: 4 },
-      { texto: "Siempre", valor: "siempre", orden: 5 }
-    ]
+
+// Datos para el test de Habilidades de Estudio
+const habilidadesEstudioData = {
+  nombre: "ENCUESTA SOBRE LAS HABILIDADES DE ESTUDIO (BROWN, 1978)",
+  instrucciones: `La presente encuesta está formada por tres breves cuestionarios, en los cuales puedes indicar los problemas referentes a organización, técnicas y motivación al estudio, que quizás perjudican tu rendimiento académico. Si contestas todas las preguntas con sinceridad y reflexión, podrás identificar mucho de tus actuales defectos al estudiar. Cada cuestionario contiene veinte preguntas, a las que se contestará con "SÍ" o "NO". No hay respuestas correctas o incorrectas, ya que queremos conocer tu modo de actuar y tus actitudes personales con respecto al estudio. Responde tan rápido como puedas, sin dedicar demasiado tiempo a una sola pregunta. No omitas ninguna de ellas.`,
+  secciones: [
+    {
+      nombre: "Organización de estudio",
+      preguntas: [
+        "¿Sueles dejar para último momento la preparación de tus trabajos?",
+        "¿Crees que el sueño o el cansancio te impiden estudiar eficazmente en muchas ocasiones?",
+        "¿Es frecuente que no termines tus tareas escolares a tiempo?",
+        "¿Tiendes a emplear tiempo en leer revistas, ver televisión o charlas cuando deberías dedicarlo a estudiar?",
+        "Tus actividades sociales o deportivas ¿te llevan a descuidar a menudo tus tareas escolares?",
+        "¿Sueles dejar pasar un día o más antes de repasar los apuntes tomados en clase?",
+        "¿Sueles dedicar tu tiempo libre, entre ocho de la mañana y cuatro de la tarde, a otras actividades que no sea estudiar?",
+        "¿Descubres algunas veces de súbito que debes entregar una tarea antes de lo que creías?",
+        "¿Te retrasas con frecuencia en una materia debido a que tienes que estudiar otra?",
+        "¿Te parece que tu rendimiento es muy bajo en relación con el tiempo que dedicas al estudio?",
+        "¿Está situado tu escritorio directamente frente a una ventana, puerta u otra fuente de distracción?",
+        "¿Sueles tener fotografías, trofeos o recuerdos sobre tu mesa de escritorio?",
+        "¿Sueles estudiar recostado en la cama o arrellanado en un asiento cómodo?",
+        "¿Produce resplandor la lámpara que utilizas al estudiar?",
+        "Tu mesa de estudio ¿está tan desordenada y llena de objetos que no dispones de sitio suficiente para estudiar con eficacia?",
+        "¿Suelen interrumpir tu estudio personas que vienen a visitarte?",
+        "¿Estudias con frecuencia mientras tienes puesta la televisión, la radio o un equipo de sonido?",
+        "En el lugar donde estudias ¿se pueden ver con facilidad revistas, fotos o materiales pertenecientes a tu afición?",
+        "¿Con frecuencia interrumpen tu estudio actividades o ruidos que provienen del exterior?",
+        "¿Suele hacerse lento tu estudio debido a que no tienes a la mano los libros y materiales necesarios?"
+      ]
+    },
+    {
+      nombre: "Técnicas de estudio",
+      preguntas: [
+        "¿Tiendes a comenzar la lectura de un libro de texto sin hojear previamente los subtítulos y las ilustraciones?",
+        "¿Te saltas por lo general las figuras, gráficos y tablas cuando estudias un tema?",
+        "¿Suele serte difícil seleccionar los puntos más importantes de los temas de estudio?",
+        "¿Te sorprendes con cierta frecuencia pensando en algo que no tiene nada que ver con lo que estudias?",
+        "¿Sueles tener dificultad en entender tus apuntes de clase cuando tratas de repasarlos después de cierto tiempo?",
+        "Al tomar notas ¿Te sueles quedar retrasado con frecuencia debido a que no puedes escribir con suficiente rapidez?",
+        "Poco después de comenzar un curso ¿sueles encontrarte con que tus apuntes están desordenados y no los entiendes?",
+        "¿Tomas normalmente tus apuntes tratando de escribir las palabras exactas del profesor?",
+        "Cuando tomas notas de un libro ¿tienes la costumbre de copiar el material necesario, palabra por palabra?",
+        "¿Te es difícil en general seleccionar un tema apropiado para un ensayo o informe?",
+        "¿Sueles tener problemas para organizar el contenido de un ensayo o informe?",
+        "¿Sueles preparar el esquema de un trabajo de ese tipo después de haberlo redactado?",
+        "¿Te preparas a veces para un examen memorizando fórmulas, definiciones o reglas que no entiendes con claridad?",
+        "¿Te resulta difícil decidir qué estudiar y cómo estudiarlo cuando preparas un examen de opción múltiple?",
+        "¿Sueles tener dificultades para organizar en un orden lógico las materias que debes estudiar por unidades?",
+        "Al preparar exámenes ¿sueles estudiar toda la asignatura en el último momento?",
+        "¿Sueles entregar tus exámenes sin revisarlos detenidamente para ver si tienen algún error cometido por descuido?",
+        "¿Te es imposible con frecuencia terminar la exposición de un tema en el tiempo prescrito?",
+        "¿Sueles perder puntos en exámenes con preguntas de 'verdadero-falso' debido a que no las lees detenidamente?",
+        "¿Empleas normalmente mucho tiempo en contestar la primera mitad de la prueba y tienes que apresurarte en la segunda?"
+      ]
+    },
+    {
+      nombre: "Motivación para el estudio",
+      preguntas: [
+        "Después de los primeros días o semanas del curso ¿tiendes a perder interés por el estudio?",
+        "¿Crees que en general basta estudiar lo necesario para obtener un 'aprobado' en las asignaturas?",
+        "¿Te sientes frecuentemente confuso e indeciso sobre cuáles deben ser tus metas formativas y profesionales?",
+        "¿Sueles pensar que no vale la pena el tiempo y el esfuerzo que son necesarios para lograr una educación universitaria?",
+        "¿Crees que es más importante divertirte y disfrutar de la vida que estudiar?",
+        "¿Sueles pasar el tiempo en clase en divagaciones o soñando despierto en lugar de atender al profesor?",
+        "¿Te sientes habitualmente incapaz de concentrarte en tus estudios debido a que estás inquieto, aburrido o de mal humor?",
+        "¿Piensas con frecuencia que las materias que estudias tienen poco valor práctico para ti?",
+        "¿Sientes frecuentes deseos de abandonar la universidad y conseguir trabajo?",
+        "¿Sueles tener la sensación de que lo que se enseña en los centros docentes no te prepara para afrontar los problemas de la vida adulta?",
+        "¿Sueles dedicarte a estudiar de modo casual, según el estado de ánimo en que te encuentres?",
+        "¿Te horroriza estudiar libros de texto porque son aburridos?",
+        "¿Esperas normalmente a que se te fije la fecha de un examen para comenzar a estudiar los libros de texto o a repasar tus apuntes de clase?",
+        "¿Sueles pensar que los exámenes son pruebas penosas de las que no se puede escapar y respecto a las cuales lo que debe hacerse es sobrevivir del modo que sea?",
+        "¿Sientes con frecuencia que tus profesores no comprenden las necesidades e intereses de los estudiantes?",
+        "¿Tienes normalmente la sensación de que tus profesores exigen demasiadas horas de estudio fuera de clase?",
+        "¿Dudas por lo general en pedir ayuda a tus profesores en tareas que te son difíciles?",
+        "¿Sueles pensar que tus profesores no tienen contacto con los temas y sucesos de actualidad?",
+        "¿Te sientes reacio por lo general a hablar con tus profesores de tus proyectos futuros, de estudio o profesionales?",
+        "¿Criticas con frecuencia a tus profesores cuando charlan con sus compañeros?"
+      ]
+    }
+  ]
+};
+
+async function crearPlantillaHabilidadesEstudioGlobal() {
+  console.log("Creando plantilla global de Habilidades de Estudio...");
+
+  try {
+    // 1. Primero creamos la plantilla base
+    const plantilla = await prisma.testPlantilla.create({
+      data: {
+        nombre: habilidadesEstudioData.nombre,
+        estado: "COMPLETADO",
+        peso_preguntas: "SIN_VALOR",
+        es_global: true,
+        id_psicologo: null,
+      }
+    });
+
+    console.log(`Plantilla base creada con ID: ${plantilla.id}`);
+
+    // 2. Creamos los grupos de preguntas para cada sección
+    const gruposCreados = [];
+    for (const [seccionIndex, seccion] of habilidadesEstudioData.secciones.entries()) {
+      const grupo = await prisma.grupoPreguntaPlantilla.create({
+        data: {
+          nombre: seccion.nombre,
+          // No hay relación directa con testPlantilla en el modelo
+        }
+      });
+      gruposCreados.push(grupo);
+      console.log(`Grupo creado: ${grupo.nombre} (ID: ${grupo.id})`);
+    }
+
+    // 3. Creamos las preguntas con sus opciones y las asociamos a los grupos
+    for (const [seccionIndex, seccion] of habilidadesEstudioData.secciones.entries()) {
+      const grupo = gruposCreados[seccionIndex];
+      
+      for (const [preguntaIndex, preguntaTexto] of seccion.preguntas.entries()) {
+        const orden = (seccionIndex * 20) + preguntaIndex + 1;
+        
+        await prisma.preguntaPlantilla.create({
+          data: {
+            id_test: plantilla.id,
+            id_gru_pre: grupo.id,
+            texto_pregunta: preguntaTexto,
+            id_tipo: 1, // Tipo radio (Sí/No)
+            orden: orden,
+            obligatoria: true,
+            opciones: {
+              create: [
+                { texto: "Sí", valor: "si", orden: 1 },
+                { texto: "No", valor: "no", orden: 2 }
+              ]
+            }
+          }
+        });
+        console.log(`Pregunta ${orden} creada en grupo ${grupo.nombre}`);
+      }
+    }
+
+    // 4. Obtenemos la plantilla completa con toda su estructura
+    const plantillaCompleta = await prisma.testPlantilla.findUnique({
+      where: { id: plantilla.id },
+      include: {
+        preguntas: {
+          include: {
+            opciones: true,
+            grupoPreguntaPlantilla: true
+          },
+          orderBy: { orden: 'asc' }
+        },
+      }
+    });
+
+    console.log(`Plantilla global creada exitosamente con ID: ${plantilla.id}`);
+    return plantillaCompleta;
+
+  } catch (error) {
+    console.error("Error al crear la plantilla:", error);
+    throw error;
   }
-];
+}
 
 async function main() {
   console.log("eliminando datos existentes...");
@@ -686,170 +784,12 @@ async function main() {
     });
   }
 
-  // Función para crear tests con preguntas y opciones
-async function crearTestCompleto(idPsicologo: number | null, idUsuario: number, estado: 'NO_INICIADO' | 'EN_PROGRESO' | 'COMPLETADO', pesoPreguntas: 'SIN_VALOR' | 'IGUAL_VALOR' | 'BAREMO') {
-  const createdTest = await prisma.test.create({
-    data: {
-      nombre: `Test de evaluación psicológica - ${new Date().toLocaleDateString()}`,
-      estado: estado,
-      peso_preguntas: pesoPreguntas,
-      config_baremo: pesoPreguntas === 'BAREMO' ? {
-        niveles: [
-          { min: 0, max: 10, resultado: "Bajo riesgo" },
-          { min: 11, max: 20, resultado: "Riesgo moderado" },
-          { min: 21, max: 30, resultado: "Alto riesgo" }
-        ]
-      } : undefined,
-      valor_total: pesoPreguntas !== 'SIN_VALOR' ? 5.0 : null,
-      id_psicologo: idPsicologo,
-      id_usuario: idUsuario,
-      preguntas: {
-        create: preguntasTest.map(pregunta => ({
-          texto_pregunta: pregunta.texto_pregunta,
-          tipo: { connect: { id: pregunta.id_tipo } }, 
-          orden: pregunta.orden,
-          obligatoria: pregunta.obligatoria,
-          peso: pesoPreguntas !== 'SIN_VALOR' ? pregunta.peso : null,
-          baremo_detalle: pesoPreguntas === 'BAREMO' ? {
-            valor: pregunta.peso,
-            descripcion: "Peso según baremo"
-          } : undefined,
-          placeholder: pregunta.placeholder,
-          min: pregunta.min,
-          max: pregunta.max,
-          paso: pregunta.paso,
-          eva_psi: pregunta.eva_psi,
-          opciones: pregunta.opciones ? {
-            create: pregunta.opciones.map(opcion => ({
-              texto: opcion.texto,
-              valor: opcion.valor,
-              orden: opcion.orden,
-              es_otro: false
-            }))
-          } : undefined
-        }))
-      }
-    },
-    include: {
-      preguntas: {
-        include: {
-          opciones: true
-        }
-      }
-    }
-  });
 
-  const test = createdTest as unknown as { 
-    preguntas: Array<{ 
-      id: number; 
-      id_tipo: number; 
-      opciones: Array<{ id: number }> 
-    }> 
-  } & typeof createdTest;
-
-  if (estado !== 'NO_INICIADO') {
-    const fechaUltimaRespuesta = new Date();
-    
-    for (const pregunta of test.preguntas) {
-      if (pregunta.opciones.length > 0) {
-        const opcionSeleccionada = pregunta.opciones[Math.floor(Math.random() * pregunta.opciones.length)];
-        
-        await prisma.respuesta.create({
-          data: {
-            id_test: test.id,
-            id_pregunta: pregunta.id,
-            id_usuario: idUsuario,
-            id_opcion: opcionSeleccionada.id,
-            texto_respuesta: pregunta.id_tipo === 2 ? "Otra información" : null,
-            valor_rango: pregunta.id_tipo === 5 ? Math.floor(Math.random() * 10) + 1 : null,
-            fecha: fechaUltimaRespuesta
-          }
-        });
-      } else if (pregunta.id_tipo === 3) {
-        await prisma.respuesta.create({
-          data: {
-            id_test: test.id,
-            id_pregunta: pregunta.id,
-            id_usuario: idUsuario,
-            texto_respuesta: "Esta es una respuesta de ejemplo para la pregunta de texto.",
-            fecha: fechaUltimaRespuesta
-          }
-        });
-      }
-    }
-
-    await prisma.test.update({
-      where: { id: test.id },
-      data: {
-        fecha_ultima_respuesta: fechaUltimaRespuesta
-      }
-    });
-  }
-
-  return test;
-}
-
-  // Función para crear plantillas de tests
-  async function crearPlantillaTest(idPsicologo: number) {
-    const plantilla = await prisma.testPlantilla.create({
-      data: {
-        nombre: "Plantilla de evaluación estándar",
-        estado: "COMPLETADO",
-        peso_preguntas: "IGUAL_VALOR",
-        config_baremo: {
-          niveles: [
-            { min: 0, max: 10, resultado: "Bajo riesgo" },
-            { min: 11, max: 20, resultado: "Riesgo moderado" },
-            { min: 21, max: 30, resultado: "Alto riesgo" }
-          ]
-        },
-        valor_total: 5.0,
-        id_psicologo: idPsicologo,
-        preguntas: {
-          create: preguntasTest.map(pregunta => ({
-            texto_pregunta: pregunta.texto_pregunta,
-            id_tipo: pregunta.id_tipo,
-            orden: pregunta.orden,
-            obligatoria: pregunta.obligatoria,
-            peso: pregunta.peso,
-            baremo_detalle: {
-              valor: pregunta.peso,
-              descripcion: "Peso según baremo"
-            },
-            placeholder: pregunta.placeholder,
-            min: pregunta.min,
-            max: pregunta.max,
-            paso: pregunta.paso,
-            eva_psi: pregunta.eva_psi,
-            opciones: pregunta.opciones ? {
-              create: pregunta.opciones.map(opcion => ({
-                texto: opcion.texto,
-                valor: opcion.valor,
-                orden: opcion.orden,
-                es_otro: false
-              }))
-            } : undefined
-          }))
-        }
-      }
-    });
-
-    return plantilla;
-  }
-
-  // Crear tests para diferentes usuarios
-  console.log("creando tests de ejemplo...");
-  
-  await crearTestCompleto(2, 4, 'COMPLETADO', 'IGUAL_VALOR'); // Test completado para adolescente 1
-  await crearTestCompleto(3, 5, 'EN_PROGRESO', 'IGUAL_VALOR'); // Test en progreso para adolescente 2
-  await crearTestCompleto(2, 6, 'NO_INICIADO', 'SIN_VALOR'); // Test no iniciado para adolescente 3
-  await crearTestCompleto(3, 7, 'COMPLETADO', 'SIN_VALOR'); // Test completado para usuario adulto
-  await crearTestCompleto(null, 1, 'EN_PROGRESO', 'IGUAL_VALOR'); // Test en progreso para admin
 
   // Crear plantillas de tests para psicólogos
-  console.log("creando plantillas de tests...");
-  await crearPlantillaTest(2); // Plantilla para psicólogo 1
-  await crearPlantillaTest(3); // Plantilla para psicólogo 2
+  console.log("creando plantilla de tests...");
+
+await crearPlantillaHabilidadesEstudioGlobal();
 
   console.log("seed completado exitosamente!");
 }

@@ -51,7 +51,6 @@ export async function GET(request: Request) {
             take: 5
           },
           sesiones: {
-            orderBy: { fecha: 'desc' },
             take: 5
           }
         }
@@ -104,7 +103,6 @@ export async function GET(request: Request) {
           take: 5
         },
         sesiones: {
-          orderBy: { fecha: 'desc' },
           take: 5
         }
       },
