@@ -125,8 +125,9 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
 
+    // Extracción de parámetros
     const id = searchParams.get('id');
-    const idsParam = searchParams.get('ids'); // Nuevo parámetro para múltiples IDs
+    const idsParam = searchParams.get('ids');
     const tipo = searchParams.get('tipo');
     const rol = searchParams.get('rol');
     const includePassword = searchParams.get('includePassword') === 'true';
@@ -135,13 +136,13 @@ export async function GET(request: Request) {
     const cedula = searchParams.get('cedula');
     const telefono = searchParams.get('telefono');
     const id_psicologo = searchParams.get('id_psicologo');
-
+    const searchNombreCedula = searchParams.get('searchNombreCedula');
     const paginated = searchParams.get('paginated') === 'true';
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const skip = (page - 1) * pageSize;
 
-    // 1. Manejo de búsqueda por múltiples IDs (nueva funcionalidad)
+    // 1. Búsqueda por múltiples IDs
     if (idsParam) {
       const ids = idsParam.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
       
@@ -164,62 +165,18 @@ export async function GET(request: Request) {
         orderBy: { id: 'asc' }
       });
 
-      const safeUsers = usuarios.map(({ password, password_iv, authToken, authTokenExpiry, ...user }) => {
-        let adolecente: AdolecenteResponse | undefined = undefined;
-        if (user.adolecente) {
-          const { id_usuario, id_tutor, tutor } = user.adolecente;
-          adolecente = {
-            id_usuario,
-            id_tutor: id_tutor ?? undefined,
-            tutor: tutor
-              ? {
-                  id: tutor.id,
-                  cedula_tutor: tutor.cedula_tutor,
-                  nombre_tutor: tutor.nombre_tutor,
-                  profesion_tutor: tutor.profesion_tutor ?? undefined,
-                  telefono_contacto: tutor.telefono_contacto ?? undefined,
-                  correo_contacto: tutor.correo_contacto ?? undefined,
-                  sexo: tutor.sexo ?? undefined,
-                  parentesco: tutor.parentesco ?? undefined
-                }
-              : undefined
-          };
-        }
-
-        let psicologoPacientes = undefined;
-        if (user.psicologoPacientes) {
-          psicologoPacientes = {
-            id: user.psicologoPacientes.id,
-            nombre: user.psicologoPacientes.nombre,
-            email: user.psicologoPacientes.email,
-            psicologo: user.psicologoPacientes.psicologo ? {
-              id_usuario: user.psicologoPacientes.psicologo.id_usuario,
-              numero_de_titulo: user.psicologoPacientes.psicologo.numero_de_titulo ?? undefined,
-              nombre_universidad: user.psicologoPacientes.psicologo.nombre_universidad ?? undefined,
-              monto_consulta: user.psicologoPacientes.psicologo.monto_consulta ?? undefined,
-              telefono_trabajo: user.psicologoPacientes.psicologo.telefono_trabajo ?? undefined,
-              redes_sociales: user.psicologoPacientes.psicologo.redes_sociales?.map(red => ({
-                id: red.id,
-                nombre_red: red.nombre_red,
-                url_perfil: red.url_perfil
-              })) || []
-            } : undefined
-          };
-        }
-
+      const safeUsers = usuarios.map(usuario => {
+        const { password, password_iv, authToken, authTokenExpiry, ...safeUser } = usuario;
         return {
-          ...user,
-          ...(includePassword ? { password, password_iv } : {}),
-          adolecente,
-          psicologoPacientes,
-          id_psicologo: user.id_psicologo
-        } as UsuarioResponse;
+          ...safeUser,
+          ...(includePassword ? { password, password_iv } : {})
+        };
       });
 
       return NextResponse.json(safeUsers);
     }
 
-    // 2. Manejo de búsqueda por ID único (funcionalidad existente)
+    // 2. Búsqueda por ID único
     if (id) {
       const usuario = await prisma.usuario.findUnique({
         where: { id: parseInt(id) },
@@ -240,165 +197,76 @@ export async function GET(request: Request) {
       }
 
       const { password, password_iv, authToken, authTokenExpiry, ...safeUser } = usuario;
-
-      let adolecente: AdolecenteResponse | undefined = undefined;
-      if (usuario.adolecente) {
-        const { id_usuario, id_tutor, tutor } = usuario.adolecente;
-        adolecente = {
-          id_usuario,
-          id_tutor: id_tutor ?? undefined,
-          tutor: tutor
-            ? {
-                id: tutor.id,
-                cedula_tutor: tutor.cedula_tutor,
-                nombre_tutor: tutor.nombre_tutor,
-                profesion_tutor: tutor.profesion_tutor ?? undefined,
-                telefono_contacto: tutor.telefono_contacto ?? undefined,
-                correo_contacto: tutor.correo_contacto ?? undefined,
-                sexo: tutor.sexo ?? undefined,
-                parentesco: tutor.parentesco ?? undefined
-              }
-            : undefined
-        };
-      }
-
-      let psicologoPacientes = undefined;
-      if (usuario.psicologoPacientes) {
-        psicologoPacientes = {
-          id: usuario.psicologoPacientes.id,
-          nombre: usuario.psicologoPacientes.nombre,
-          email: usuario.psicologoPacientes.email,
-          psicologo: usuario.psicologoPacientes.psicologo ? {
-            id_usuario: usuario.psicologoPacientes.psicologo.id_usuario,
-            numero_de_titulo: usuario.psicologoPacientes.psicologo.numero_de_titulo ?? undefined,
-            nombre_universidad: usuario.psicologoPacientes.psicologo.nombre_universidad ?? undefined,
-            monto_consulta: usuario.psicologoPacientes.psicologo.monto_consulta ?? undefined,
-            telefono_trabajo: usuario.psicologoPacientes.psicologo.telefono_trabajo ?? undefined,
-            redes_sociales: usuario.psicologoPacientes.psicologo.redes_sociales?.map(red => ({
-              id: red.id,
-              nombre_red: red.nombre_red,
-              url_perfil: red.url_perfil
-            })) || []
-          } : undefined
-        };
-      }
-
       return NextResponse.json({
         ...safeUser,
-        ...(includePassword ? { password, password_iv } : {}),
-        adolecente,
-        psicologoPacientes,
-        id_psicologo: usuario.id_psicologo
-      } as UsuarioResponse);
+        ...(includePassword ? { password, password_iv } : {})
+      });
     }
 
-    // 3. Construcción dinámica del filtro para consultas generales
+    // 3. Construcción del filtro WHERE
     let whereClause: any = {};
 
-    // Filtro por rol (prioriza 'rol' sobre 'tipo' si ambos están presentes)
-    const filterType = rol || tipo;
-    
-    if (filterType) {
-      const filterTypeUpper = filterType.toUpperCase();
+    // Filtro por tipo/rol
+    if (rol || tipo ) {
+      const filterType = (rol || tipo).toUpperCase();
       
-      if (filterTypeUpper === 'ADOLESCENTE') {
+      if (filterType === 'ADOLESCENTE') {
         whereClause.adolecente = { isNot: null };
-      } else if (filterTypeUpper === 'PSICOLOGO') {
+      } else if (filterType === 'PSICOLOGO') {
         whereClause.psicologo = { isNot: null };
-      } else if (filterTypeUpper === 'USUARIO') {
+      } else if (filterType === 'USUARIO') {
         whereClause.AND = [
           { adolecente: { is: null } },
           { psicologo: { is: null } }
         ];
       } else {
-        // Filtra por tipo de usuario (rol) usando la relación con TipoUsuario
         whereClause.tipo_usuario = {
-          nombre: {
-            equals: filterType,
-            mode: 'insensitive'
-          }
+          nombre: filterType
         };
       }
     }
 
-    // Resto de los filtros
+    // Búsqueda combinada (corregida)
+    if (searchNombreCedula) {
+      whereClause.OR = [
+        { nombre: { contains: searchNombreCedula } }, // Eliminado mode: 'insensitive'
+        { cedula: { contains: searchNombreCedula } }
+      ];
+    } else {
+      if (nombre) whereClause.nombre = { contains: nombre };
+      if (cedula) whereClause.cedula = { contains: cedula };
+    }
+
+    // Otros filtros
     if (id_psicologo) whereClause.id_psicologo = parseInt(id_psicologo);
-    if (nombre) whereClause.nombre = { contains: nombre, mode: 'insensitive' };
-    if (email) whereClause.email = { contains: email, mode: 'insensitive' };
-    if (cedula) whereClause.cedula = { contains: cedula };
+    if (email) whereClause.email = { contains: email };
     if (telefono) whereClause.telefono = { contains: telefono };
 
-    // 4. Manejo de resultados paginados
+    // 4. Manejo de paginación
     if (paginated) {
-      const total = await prisma.usuario.count({ where: whereClause });
-      const totalPages = Math.ceil(total / pageSize);
-
-      const usuarios = await prisma.usuario.findMany({
-        where: whereClause,
-        include: {
-          tipo_usuario: true,
-          adolecente: { include: { tutor: true } },
-          psicologo: { include: { redes_sociales: true } },
-          psicologoPacientes: {
-            include: {
-              psicologo: { include: { redes_sociales: true } }
+      const [total, usuarios] = await Promise.all([
+        prisma.usuario.count({ where: whereClause }),
+        prisma.usuario.findMany({
+          where: whereClause,
+          include: {
+            tipo_usuario: true,
+            adolecente: { include: { tutor: true } },
+            psicologo: { include: { redes_sociales: true } },
+            psicologoPacientes: {
+              include: {
+                psicologo: { include: { redes_sociales: true } }
+              }
             }
-          }
-        },
-        orderBy: { id: 'asc' },
-        skip,
-        take: pageSize
-      });
+          },
+          orderBy: { id: 'asc' },
+          skip,
+          take: pageSize
+        })
+      ]);
 
-      const safeUsers = usuarios.map(({ password, password_iv, authToken, authTokenExpiry, ...user }) => {
-        let adolecente: AdolecenteResponse | undefined = undefined;
-        if (user.adolecente) {
-          const { id_usuario, id_tutor, tutor } = user.adolecente;
-          adolecente = {
-            id_usuario,
-            id_tutor: id_tutor ?? undefined,
-            tutor: tutor
-              ? {
-                  id: tutor.id,
-                  cedula_tutor: tutor.cedula_tutor,
-                  nombre_tutor: tutor.nombre_tutor,
-                  profesion_tutor: tutor.profesion_tutor ?? undefined,
-                  telefono_contacto: tutor.telefono_contacto ?? undefined,
-                  correo_contacto: tutor.correo_contacto ?? undefined,
-                  sexo: tutor.sexo ?? undefined,
-                  parentesco: tutor.parentesco ?? undefined
-                }
-              : undefined
-          };
-        }
-
-        let psicologoPacientes = undefined;
-        if (user.psicologoPacientes) {
-          psicologoPacientes = {
-            id: user.psicologoPacientes.id,
-            nombre: user.psicologoPacientes.nombre,
-            email: user.psicologoPacientes.email,
-            psicologo: user.psicologoPacientes.psicologo ? {
-              id_usuario: user.psicologoPacientes.psicologo.id_usuario,
-              numero_de_titulo: user.psicologoPacientes.psicologo.numero_de_titulo ?? undefined,
-              nombre_universidad: user.psicologoPacientes.psicologo.nombre_universidad ?? undefined,
-              monto_consulta: user.psicologoPacientes.psicologo.monto_consulta ?? undefined,
-              telefono_trabajo: user.psicologoPacientes.psicologo.telefono_trabajo ?? undefined,
-              redes_sociales: user.psicologoPacientes.psicologo.redes_sociales?.map(red => ({
-                id: red.id,
-                nombre_red: red.nombre_red,
-                url_perfil: red.url_perfil
-              })) || []
-            } : undefined
-          };
-        }
-
-        return {
-          ...user,
-          adolecente,
-          psicologoPacientes,
-          id_psicologo: user.id_psicologo
-        } as UsuarioResponse;
+      const safeUsers = usuarios.map(usuario => {
+        const { password, password_iv, authToken, authTokenExpiry, ...safeUser } = usuario;
+        return safeUser;
       });
 
       return NextResponse.json({
@@ -406,11 +274,11 @@ export async function GET(request: Request) {
         total,
         page,
         pageSize,
-        totalPages
+        totalPages: Math.ceil(total / pageSize)
       });
     }
 
-    // 5. Manejo de resultados no paginados
+    // 5. Consulta sin paginación
     const usuarios = await prisma.usuario.findMany({
       where: whereClause,
       include: {
@@ -426,55 +294,9 @@ export async function GET(request: Request) {
       orderBy: { id: 'asc' }
     });
 
-    const safeUsers = usuarios.map(({ password, password_iv, authToken, authTokenExpiry, ...user }) => {
-      let adolecente: AdolecenteResponse | undefined = undefined;
-      if (user.adolecente) {
-        const { id_usuario, id_tutor, tutor } = user.adolecente;
-        adolecente = {
-          id_usuario,
-          id_tutor: id_tutor ?? undefined,
-          tutor: tutor
-            ? {
-                id: tutor.id,
-                cedula_tutor: tutor.cedula_tutor,
-                nombre_tutor: tutor.nombre_tutor,
-                profesion_tutor: tutor.profesion_tutor ?? undefined,
-                telefono_contacto: tutor.telefono_contacto ?? undefined,
-                correo_contacto: tutor.correo_contacto ?? undefined,
-                sexo: tutor.sexo ?? undefined,
-                parentesco: tutor.parentesco ?? undefined
-              }
-            : undefined
-        };
-      }
-
-      let psicologoPacientes = undefined;
-      if (user.psicologoPacientes) {
-        psicologoPacientes = {
-          id: user.psicologoPacientes.id,
-          nombre: user.psicologoPacientes.nombre,
-          email: user.psicologoPacientes.email,
-          psicologo: user.psicologoPacientes.psicologo ? {
-            id_usuario: user.psicologoPacientes.psicologo.id_usuario,
-            numero_de_titulo: user.psicologoPacientes.psicologo.numero_de_titulo ?? undefined,
-            nombre_universidad: user.psicologoPacientes.psicologo.nombre_universidad ?? undefined,
-            monto_consulta: user.psicologoPacientes.psicologo.monto_consulta ?? undefined,
-            telefono_trabajo: user.psicologoPacientes.psicologo.telefono_trabajo ?? undefined,
-            redes_sociales: user.psicologoPacientes.psicologo.redes_sociales?.map(red => ({
-              id: red.id,
-              nombre_red: red.nombre_red,
-              url_perfil: red.url_perfil
-            })) || []
-          } : undefined
-        };
-      }
-
-      return {
-        ...user,
-        adolecente,
-        psicologoPacientes,
-        id_psicologo: user.id_psicologo
-      } as UsuarioResponse;
+    const safeUsers = usuarios.map(usuario => {
+      const { password, password_iv, authToken, authTokenExpiry, ...safeUser } = usuario;
+      return safeUser;
     });
 
     return NextResponse.json(safeUsers);

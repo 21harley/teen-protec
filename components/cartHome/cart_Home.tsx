@@ -14,12 +14,15 @@ export default function Cart_Home() {
         </div>
         <div className="flex flex-col items-center gap-4">
             <p className="indent-5">
-                 Sabemos que la adolescencia puede ser un torbellino de emociones y desafíos. Si sientes que la tristeza o la falta de motivación te están afectando, o si te preocupa tu bienestar emocional, has llegado al lugar indicado. 
+                Sabemos que el apoyo y los recursos son cruciales para tu práctica. Si buscas herramientas para mejorar la atención a pacientes y optimizar tu trabajo diario, nuestra plataforma está diseñada para ti.
             </p>
              <p className="indent-5"> 
-                     En TeenProtec te ofrecemos un espacio seguro y herramientas para comprender y gestionar tus emociones, y evaluar tu riesgo de depresión. No estás solo/a.
+                En PsicoTest te ofrecemos un espacio digital con recursos exclusivos y soporte para potenciar tu labor. Juntos, podemos marcar la diferencia.
             </p>
         </div>
     </div>
   )
 }
+
+
+

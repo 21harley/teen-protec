@@ -25,7 +25,7 @@ export default function Footer() {
           </ul>
           </div>
           <p className="mt-2 text-xs">
-            © 2025 TeenProtec. Todos los derechos reservados.
+            © 2025 PsicoTest. Todos los derechos reservados.
           </p>
         </div>
       </footer>

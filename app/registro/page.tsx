@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react";
 import { UsuarioInfo } from "./../../app/types/user"
 import RegistroPsicologo from "@/components/registroPsicologo/registroPsicologo";
+import RegistroAdmin from "@/components/registroAmin/registroAmin";
 export default function Registro() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -57,7 +58,7 @@ export default function Registro() {
     case "administrador":
       return (
         <LayoutPage>
-          <h1>Admin registro</h1>
+          <RegistroAdmin usuario={user}  />
         </LayoutPage>
       );
     case "psicologo":

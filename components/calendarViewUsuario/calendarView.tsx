@@ -113,7 +113,7 @@ const CalendarViewReadOnly: React.FC<CitaProps> = ({usuario}) => {
   };
 
   return (
-    <div style={{ padding: '20px', width: '80%' }}>
+      <div style={{ padding: '20px', width: '60%', margin:"auto" }}>
       <Card title="Calendario de Citas">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
