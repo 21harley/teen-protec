@@ -75,12 +75,14 @@ const CalendarViewReadOnly: React.FC<CitaProps> = ({usuario}) => {
 
   // Cargar datos iniciales
   useEffect(() => {
+    console.log("EFFECT")
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
         // Cargar citas
         const citas = await fetchData(`/api/cita?pacienteId=${usuario.id}`);
         formatEvents(citas.data);
+        if(events.length == 0) alert("No se tiene citas registradas");
       } catch (error) {
         console.error('Error loading initial data:', error);
       } finally {
@@ -89,6 +91,7 @@ const CalendarViewReadOnly: React.FC<CitaProps> = ({usuario}) => {
     };
 
     loadInitialData();
+    //if(events.length == 0) alert("No se tiene citas registradas");
   }, []);
 
   const formatEvents = (citas: Cita[]) => {
@@ -113,7 +116,7 @@ const CalendarViewReadOnly: React.FC<CitaProps> = ({usuario}) => {
   };
 
   return (
-      <div style={{ padding: '20px', width: '60%', margin:"auto" }}>
+      <div className="p-5 w-full sm:w-[90%] md:w-[80%] mx-auto">
       <Card title="Calendario de Citas">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />

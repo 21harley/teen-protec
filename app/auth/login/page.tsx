@@ -12,6 +12,7 @@ import { LoginRequest } from "./../../types/user/index"
 import { useRouter } from "next/navigation"
 import { UsuarioInfo, LoginResponse } from "./../../types/user"
 import { useEffect, useState } from "react";
+import PasswordField from "@/components/passwordField/passwordField" // Ajusta la ruta según tu estructura
 
 export default function Login() {
   const { login, user: storeUser } = useUserStore();
@@ -55,6 +56,7 @@ export default function Login() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
 
   // ========== MANEJADORES DEL FORMULARIO ========== //
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,6 +78,17 @@ export default function Login() {
     }
   };
 
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLoginData(prev => ({
+      ...prev,
+      password: e.target.value
+    }));
+  };
+
+  const handleValidityChange = (isValid: boolean) => {
+    setIsPasswordValid(isValid);
+  };
+
   const validateForm = () => {
     let valid = true;
     const newErrors = {
@@ -94,8 +107,8 @@ export default function Login() {
     if (!loginData.password) {
       newErrors.password = 'Este campo es requerido';
       valid = false;
-    } else if (loginData.password.length < 6) {
-      newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+    } else if (!isPasswordValid) {
+      newErrors.password = 'La contraseña no cumple con los requisitos';
       valid = false;
     }
 
@@ -173,12 +186,12 @@ export default function Login() {
             </div>
             
             {apiError && (
-              <div className="w-full max-w-[190px] text-red-500 text-sm text-center">
+              <div className="w-full max-w-[300px] text-red-500 text-sm text-center">
                 {apiError}
               </div>
             )}
             
-            <div className="w-full max-w-[190px]">
+            <div className="w-full max-w-[300px]">
               <label htmlFor="email" className="text-sm">Correo:</label>
               <input 
                 required 
@@ -195,27 +208,22 @@ export default function Login() {
               )}
             </div>
             
-            <div className="w-full max-w-[190px]">
-              <label htmlFor="password" className="text-sm">Contraseña:</label>
-              <input 
-                required 
-                type="password" 
-                name="password" 
-                id="password" 
-                value={loginData.password}
-                onChange={handleChange}
-                disabled={isLoading}
-                className={`w-full border ${errors.password ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2 disabled:opacity-75`}
-              />
-              {errors.password && (
-                <p className="text-red-500 text-xs mt-1">{errors.password}</p>
-              )}
-            </div>
-            
+            <PasswordField
+              value={loginData.password}
+              onChange={handlePasswordChange}
+              onValidityChange={handleValidityChange}
+              showRequirements={true}
+              requireValidation={true}
+              label="Contraseña"
+              error={errors.password}
+              name="password"
+              disabled={isLoading}
+            />
+
             <div className="w-full flex justify-center"> 
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !isPasswordValid}
                 className="bg-blue-300 cursor-pointer text-stone-50 text-center rounded transition max-w-[180px] w-full h-8 hover:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {isLoading ? (

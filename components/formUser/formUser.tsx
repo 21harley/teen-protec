@@ -9,6 +9,7 @@ import useUserStore from "./../../app/store/store"
 import { StorageManager } from "@/app/lib/storageManager"
 import { useRouter } from "next/navigation"
 import { UsuarioInfo } from "./../../app/types/user"
+import PasswordField from "@/components/passwordField/passwordField" // Ajusta la ruta según tu estructura
 
 type Errors = {
   confirmPassword?: string;
@@ -86,6 +87,8 @@ export default function FormUser({
   const [otherParentescoValue, setOtherParentescoValue] = useState('');
   const [showOtherSexoTutor, setShowOtherSexoTutor] = useState(false);
   const [otherSexoTutorValue, setOtherSexoTutorValue] = useState('');
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
+  const [isConfirmPasswordValid, setIsConfirmPasswordValid] = useState(false);
 
   useEffect(() => {
     if (user && isEdit) {
@@ -159,6 +162,22 @@ export default function FormUser({
     if (name === 'fecha_nacimiento') {
       validateAge(value);
     }
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUserData(prev => ({
+      ...prev,
+      password: e.target.value
+    }));
+  };
+
+  const handlePasswordValidityChange = (isValid: boolean) => {
+    setIsPasswordValid(isValid);
+  };
+
+  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setConfirmPassword(e.target.value);
+    setIsConfirmPasswordValid(e.target.value === userData.password);
   };
 
   const handleSexoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -562,35 +581,59 @@ export default function FormUser({
               />
             )}
           </div>
-          
+
+          <div className="w-full max-w-[190px]">
+            <label htmlFor="fecha_nacimiento" className="text-sm">Fecha de nacimiento:</label>
+            <input 
+              required 
+              type="date" 
+              name="fecha_nacimiento" 
+              id="fecha_nacimiento" 
+              value={formatDateForInput(userData.fecha_nacimiento ?? undefined)}
+              onChange={handleUserChange}
+              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+            />
+            {isMinor && !isEdit && (
+              <p className="text-yellow-600 text-xs mt-1">Se registrará como adolescente (requiere datos de tutor)</p>
+            )}
+          </div>          
+
           {!isEdit && (
             <>
+              {/* Componente de contraseña principal */}
               <div className="w-full max-w-[190px]">
-                <label htmlFor="password" className="text-sm">Contraseña:</label>
-                <input 
-                  required
-                  type="password" 
-                  name="password" 
-                  id="password" 
-                  value={userData.password}
-                  onChange={handleUserChange}
-                  className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+                <PasswordField
+                  value={userData.password ?? ''}
+                  onChange={handlePasswordChange}
+                  onValidityChange={handlePasswordValidityChange}
+                  showRequirements={true}
+                  requireValidation={true}
+                  label="Contraseña"
+                  name="password"
+                  disabled={isSubmitting}
                 />
               </div>
               
+              {/* Componente de confirmación de contraseña */}
               <div className="w-full max-w-[190px]">
                 <label htmlFor="confirmPassword" className="text-sm">Repetir contraseña:</label>
                 <input 
-                  required
-                  type="password" 
+                  required={!isEdit}
+                  type="password"
                   name="confirmPassword" 
                   id="confirmPassword" 
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={handleConfirmPasswordChange}
                   className={`max-w-[300px] w-full border ${errors.confirmPassword ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
                 />
                 {errors.confirmPassword && (
                   <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
+                )}
+                {confirmPassword && userData.password !== confirmPassword && (
+                  <p className="text-red-500 text-xs">Las contraseñas no coinciden</p>
+                )}
+                {confirmPassword && userData.password === confirmPassword && (
+                  <p className="text-green-500 text-xs">Las contraseñas coinciden</p>
                 )}
               </div>
             </>
@@ -627,21 +670,6 @@ export default function FormUser({
             </>
           )}
           
-          <div className="w-full max-w-[190px]">
-            <label htmlFor="fecha_nacimiento" className="text-sm">Fecha de nacimiento:</label>
-            <input 
-              required 
-              type="date" 
-              name="fecha_nacimiento" 
-              id="fecha_nacimiento" 
-              value={formatDateForInput(userData.fecha_nacimiento ?? undefined)}
-              onChange={handleUserChange}
-              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
-            />
-            {isMinor && !isEdit && (
-              <p className="text-yellow-600 text-xs mt-1">Se registrará como adolescente (requiere datos de tutor)</p>
-            )}
-          </div>
         </div>
         
         {/* Formulario del tutor - Mostrar si es adolescente */}
@@ -841,7 +869,7 @@ export default function FormUser({
       <div className="w-full max-w-[190px] flex justify-center mt-2 mb-5"> 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || (!isEdit && (!isPasswordValid || !isConfirmPasswordValid))}
           className="bg-blue-300 cursor-pointer text-stone-50 text-center rounded transition max-w-[180px] w-full h-8 hover:bg-blue-800 disabled:bg-gray-400"
         >
           {isSubmitting 
