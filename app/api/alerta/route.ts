@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from "./../../generated/prisma";
+import { emitNotification } from '@/app/lib/utils';
 
 const prisma = new PrismaClient();
 
@@ -20,6 +21,18 @@ export async function GET(request: Request) {
     const noVistas = searchParams.get('noVistas') === 'true';
     const correoNoEnviado = searchParams.get('correoNoEnviado') === 'true';
     const search = searchParams.get('search');
+    const countOnly = searchParams.get('countOnly') === 'true'; // Nueva opción
+
+    // Si solo se solicita el contador
+    if (countOnly && usuarioId) {
+      const count = await prisma.alarma.count({
+        where: {
+          id_usuario: parseInt(usuarioId),
+          vista: false
+        }
+      });
+      return NextResponse.json({ count });
+    }
 
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
@@ -62,11 +75,16 @@ export async function GET(request: Request) {
     if (search) {
       const [usuariosConNombre, tiposConNombre] = await Promise.all([
         prisma.usuario.findMany({
-          where: { nombre: { contains: search } },
+          where: { 
+            OR: [
+              { nombre: { contains: search} },
+              { email: { contains: search } }
+            ]
+          },
           select: { id: true }
         }),
         prisma.tipoAlerta.findMany({
-          where: { nombre: { contains: search } },
+          where: { nombre: { contains: search} },
           select: { id: true }
         })
       ]);
@@ -131,6 +149,16 @@ export async function GET(request: Request) {
   }
 }
 
+// Función auxiliar para obtener el contador de no leídas
+async function getUnreadCount(usuarioId: number): Promise<number> {
+  return await prisma.alarma.count({
+    where: {
+      id_usuario: usuarioId,
+      vista: false
+    }
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const alarmaData: AlarmaData = await request.json();
@@ -185,6 +213,12 @@ export async function POST(request: Request) {
         tipo_alerta: true
       }
     });
+
+    // Si la alarma está asociada a un usuario, emitir notificación
+    if (alarmaData.id_usuario) {
+      const unreadCount = await getUnreadCount(alarmaData.id_usuario);
+      emitNotification(alarmaData.id_usuario.toString(), unreadCount);
+    }
 
     return NextResponse.json(nuevaAlarma, { status: 201 });
 
@@ -257,6 +291,15 @@ export async function PATCH(request: Request) {
         tipo_alerta: true
       }
     });
+
+    // Si se marcó como leída o se cambió el usuario, emitir actualización
+    if (restoDatos.vista !== undefined || id_usuario) {
+      const userId = id_usuario || alarmaExistente.id_usuario;
+      if (userId) {
+        const unreadCount = await getUnreadCount(userId);
+        emitNotification(userId.toString(), unreadCount);
+      }
+    }
 
     return NextResponse.json(alarmaActualizada);
 

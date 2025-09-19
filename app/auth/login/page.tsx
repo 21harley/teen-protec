@@ -119,7 +119,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+   // if (!validateForm()) return;
     
     setIsLoading(true);
     setApiError(null);
@@ -223,7 +223,7 @@ export default function Login() {
             <div className="w-full flex justify-center"> 
               <button
                 type="submit"
-                disabled={isLoading || !isPasswordValid}
+                disabled={isLoading }
                 className="bg-blue-300 cursor-pointer text-stone-50 text-center rounded transition max-w-[180px] w-full h-8 hover:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {isLoading ? (

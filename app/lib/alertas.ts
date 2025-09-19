@@ -1,6 +1,7 @@
 import { PrismaClient } from "./../../app/generated/prisma";
 import { sendEmail } from "./email_template"; // Asegúrate de que este path sea correcto
 import Mailjet from 'node-mailjet';
+import { emitNotification } from '@/app/lib/utils';
 
 const prisma = new PrismaClient();
 
@@ -67,10 +68,9 @@ export async function create_alarma_email(params: AlarmaWithEmailParams): Promis
       vista: params.vista,
       correo_enviado: true
     });
-    
-    console.log("Alarmar creada",alarmaCreated);
-
+    console.log(alarmaCreated);
     if (!alarmaCreated) {
+      
       return { alarmaCreated: false, emailSent: false };
     }
 

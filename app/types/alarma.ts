@@ -24,3 +24,13 @@ export interface Alarma {
   usuario?: UsuarioInfo | null;
   tipo_alerta?: TipoAlerta | null;
 }
+
+export interface NotificationUpdate {
+  usuarioId: string;
+  unreadCount: number;
+}
+
+export interface NotificationContextType {
+  unreadCount: number;
+  refreshCount: () => Promise<void>;
+}

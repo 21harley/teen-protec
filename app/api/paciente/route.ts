@@ -7,6 +7,8 @@ import { setImmediate } from 'timers/promises';
 import RegistroUsuarioService from "../../lib/registro/registro-usuario"
 import RegistroTestService,{CreateRegistroTestInput} from "../../lib/registro/registro-test"
 import { EstadoTestRegistro } from '@/app/types/registros';
+//import { emitToUser, getIO, initSocketIO } from "./../../lib/socket";
+import { Server as HttpServer } from "http";
 
 const prisma = new PrismaClient();
 
@@ -240,6 +242,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+
   try {
     const cookieStore = await cookies();
     const authToken = cookieStore.get('auth-token')?.value;
@@ -514,11 +517,28 @@ export async function POST(request: Request) {
       ...nuevoTest,
       progreso: await calcularProgreso(nuevoTest.id, nuevoTest.id_usuario ?? undefined)
     };
-
+      console.log("validando Usuaio,paciente",usuarioAutenticado!= undefined && paciente != undefined,usuarioAutenticado,paciente);
     // Notificaciones y registros
-    if (usuarioAutenticado && paciente) {
+    if (usuarioAutenticado!= undefined && paciente != undefined) {
       // Crear email de notificación
+      await prisma.alarma.create({
+            data: {
+              id_usuario: paciente.id || null,
+              id_tipo_alerta: 8,
+              mensaje: "Tienes un nuevo test asignado",
+              vista: false,
+              correo_enviado: false
+            }
+      });
+      /*
+      emitToUser(paciente.id.toString(),'notificationUpdate',{
+         usuarioId: paciente.id.toString(),
+        unreadCount: 1
+      });
+      */
       setImmediate(async () => {
+
+        console.log("Entro a crear alama elmail");
         const result_email = await create_alarma_email({
           id_usuario: paciente.id,
           id_tipo_alerta: 8,
@@ -572,6 +592,8 @@ export async function POST(request: Request) {
           console.error('Error al crear registro test:', error);
         }
       });
+    }else{
+      console.log("Error no se tiene usuario-autenticado o paciente-test-asignado")
     }
     
     return NextResponse.json(

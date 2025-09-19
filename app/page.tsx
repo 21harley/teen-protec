@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { StorageManager } from "@/app/lib/storageManager"
 import { UsuarioInfo} from "./types/user"
-
+import LayoutPage from '@/components/layoutPage/layoutPage';
 export default function Home() {
     const [isClient, setIsClient] = useState(false)
     const router = useRouter()
@@ -32,10 +32,9 @@ export default function Home() {
     
   return (
     <>
-<Header />
-<main>
+<LayoutPage>
   {/* Primera sección - Consulta */}
-  <section className='_color_one  min-h-[100dvh] flex flex-col-reverse sm:flex-col md:flex-row-reverse items-center justify-center gap-8 md:gap-16 p-4 md:p-8'>
+  <section className='_color_one  min-h-[100dvh] flex flex-col-reverse sm:flex-col md:flex-row-reverse items-center justify-center gap-8 md:gap-16 p-4 md:p-8 w-full'>
       <div className="md:w-1/2 flex justify-center order-2 sm:order-1 md:order-1">
       <div>
       <Cart_Home  /> 
@@ -75,8 +74,7 @@ export default function Home() {
       />
     </div>
   </section>
-</main>
-<Footer />
+</LayoutPage>
     </>
   );
 }

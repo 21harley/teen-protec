@@ -42,7 +42,7 @@ export default function UserAlert() {
       try {
         setLoading(true)
         const response = await fetch(
-          `/api/alerta?usuarioId=${userId}&noVistas=true&page=${pagination.page}&pageSize=${pagination.pageSize}`
+          `/api/alerta?usuarioId=${userId}&page=${pagination.page}&pageSize=${pagination.pageSize}`
         )
         
         if (!response.ok) {
