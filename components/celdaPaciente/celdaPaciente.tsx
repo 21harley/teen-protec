@@ -156,7 +156,7 @@ const PacienteCell: React.FC<PacienteCellProps> = ({
         
         <div className="relative w-full">
           <Image
-            className="absolute w-[200px] h-[160px] right-0 button-[5px] top-[-130px]"
+            className="absolute w-[200px] h-[140px] right-0 button-[5px] top-[-110px]"
             src={IconCardPacientes}
             width={180}
             height={90}

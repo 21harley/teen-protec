@@ -558,15 +558,19 @@ export async function POST(request: Request) {
         })) || []
       };
     }
-
+    await prisma.alarma.create({
+            data: {
+              id_usuario: usuarioCompleto.id || null,
+              id_tipo_alerta: 8,
+              mensaje: "Registro completado con exito",
+              vista: false,
+              correo_enviado: true
+            }
+      });
+      
   //crear email
   setImmediate().then(async () => {
        const result_email = await  create_alarma_email({
-       id_usuario: usuarioCompleto.id,
-       id_tipo_alerta: 8,
-       mensaje: "Registro completado con exito",
-       vista: false,
-       correo_enviado: true,
        emailParams: {
          to: usuarioCompleto.email,
          subject: "Tienes una nueva alerta",

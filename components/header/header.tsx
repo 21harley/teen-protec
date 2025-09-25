@@ -52,7 +52,7 @@ export default function Header() {
     loadUserData()
   }, [login])
 
-  /*
+  
   // Efecto para conectar al WebSocket y manejar notificaciones en tiempo real
 useEffect(() => {
   if (!user?.id) return;
@@ -97,7 +97,7 @@ useEffect(() => {
     socket?.disconnect();
   };
 }, [user?.id]);
-*/
+
   // Función para obtener el contador de alertas
   const fetchAlertCount = async (userId: number) => {
     try {
@@ -167,10 +167,10 @@ useEffect(() => {
             >
               {item.name}
               {item.name === "Alertas" && alertCount > 0 && (user?.id_tipo_usuario !== 1) && pathname != "/alertas" && (
-                <div className="absolute top-[5px] transform translate-x-9/5">
+                <div className="absolute top-[5px] transform translate-x-10">
                   <div className="relative">
-                    <Image src={IconAlerta} alt="Alerta" width={24} height={24} />
-                    <span className="absolute top-[1px] w-full left-[-5px] text-white text-xs font-bold rounded-full h-5 flex items-center justify-center transform translate-x-1/4 -translate-y-1/4">
+                    <Image src={IconAlerta} alt="Alerta" width={28} height={28} />
+                    <span className="absolute top-[4px] left-[-1px] text-white text-sm font-bold rounded-full h-5 w-5 flex items-center justify-center transform translate-x-1/4 -translate-y-1/4">
                       {alertCount > 9 ? '9+' : alertCount}
                     </span>
                   </div>
@@ -216,9 +216,9 @@ useEffect(() => {
             <button onClick={toggleModal} aria-label="Toggle menu" className="p-1 focus:outline-none cursor-pointer">
               {(user?.id_tipo_usuario !== 1) && !isModalOpen && alertCount > 0 && pathname != "/alertas" && (
                 <div className="absolute">
-                  <div className="absolute left-[10px] top-[-10px] z-10 w-[21px] h-6">
-                    <Image src={IconAlerta} alt="Alerta" width={24} height={24} />
-                    <span className="absolute top-[1px] left-[-5px] text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center transform translate-x-1/4 -translate-y-1/4">
+                  <div className="absolute left-[10px] top-[-10px] z-10 w-[25px] h-6">
+                    <Image src={IconAlerta} alt="Alerta" width={28} height={28} />
+                    <span className="absolute top-[3px] left-[-2px] text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center transform translate-x-1/4 -translate-y-1/4">
                       {alertCount > 9 ? '9+' : alertCount}
                     </span>
                   </div>

@@ -7,7 +7,7 @@ import { setImmediate } from 'timers/promises';
 import RegistroUsuarioService from "../../lib/registro/registro-usuario"
 import RegistroTestService,{CreateRegistroTestInput} from "../../lib/registro/registro-test"
 import { EstadoTestRegistro } from '@/app/types/registros';
-//import { emitToUser, getIO, initSocketIO } from "./../../lib/socket";
+import { emitToUser, getIO, initSocketIO } from "../../../pages/api/socket";
 import { Server as HttpServer } from "http";
 
 const prisma = new PrismaClient();
@@ -349,15 +349,18 @@ export async function POST(request: Request) {
           console.error('Error al crear registro:', error);
         }     
       });
-
-      // Crear email asignación psicólogo
-      setImmediate(async () => {
-        const result_email = await create_alarma_email({
-          id_usuario: usuarioActualizado.id,
+      await prisma.alarma.create({
+        data: {
+          id_usuario: usuarioActualizado.id || null,
           id_tipo_alerta: 1,
           mensaje: `El psicólogo ${usuarioAutenticado.nombre} te atenderá próximamente.`,
           vista: false,
           correo_enviado: true,
+        }
+      });
+      
+      // Crear email asignación psicólogo
+      const result_email = await create_alarma_email({
           emailParams: {
             to: usuarioActualizado.email,
             subject: "Tienes una nueva alerta",
@@ -371,7 +374,6 @@ export async function POST(request: Request) {
         });
         
         if (!result_email.emailSent) console.error('Error al enviar email, test.', result_email); 
-      });
 
       return NextResponse.json(
         { 
@@ -530,21 +532,16 @@ export async function POST(request: Request) {
               correo_enviado: false
             }
       });
-      /*
+      
       emitToUser(paciente.id.toString(),'notificationUpdate',{
          usuarioId: paciente.id.toString(),
         unreadCount: 1
       });
-      */
+      
       setImmediate(async () => {
 
         console.log("Entro a crear alama elmail");
         const result_email = await create_alarma_email({
-          id_usuario: paciente.id,
-          id_tipo_alerta: 8,
-          mensaje: "Tienes un nuevo test asignado",
-          vista: false,
-          correo_enviado: true,
           emailParams: {
             to: paciente.email,
             subject: "Tienes una nueva alerta",

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient,EstadoCita } from "../../generated/prisma";
 import { setImmediate } from 'timers/promises';
 import { registroCitaService,CreateRegistroCitaInput } from "../../lib/registro/registro-cita"
+import { create_alarma_email } from '@/app/lib/alertas';
 
 // Configuración de Prisma
 const prisma = new PrismaClient()
@@ -379,7 +380,23 @@ export async function POST(request: Request) {
           motivo_cancelacion:  null,
           registro_usuario_id: null
         }
-        const cita = await registroCitaService.createRegistroCita(nuevaCitaObj)       
+        const cita = await registroCitaService.createRegistroCita(nuevaCitaObj) 
+        //enviar email de cita.
+        console.log(paciente,"PACIENTE-REGISTRAR-CITA");
+        if(paciente){
+        const result_email = await create_alarma_email({
+          emailParams: {
+            to: paciente.email,
+            subject: "Tiene una nueva cita registrada.",
+            template: "cita_asignada",
+            props: {
+              name: paciente.nombre,
+              psicologo_name: psicologo.nombre,
+              alertMessage: `Se a registrado una cita con el psicologo: ${psicologo.nombre}, para la fecha ${nuevaCita.fecha_inicio}.`
+            }
+          }  
+        }) 
+        }  
         console.log('Registro cita creada:', cita);
       } catch (error) {
         console.error('Error al crear registro test:', error);

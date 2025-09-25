@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from "./../../generated/prisma";
-import { emitNotification } from '@/app/lib/utils';
 
 const prisma = new PrismaClient();
 
@@ -217,7 +216,6 @@ export async function POST(request: Request) {
     // Si la alarma está asociada a un usuario, emitir notificación
     if (alarmaData.id_usuario) {
       const unreadCount = await getUnreadCount(alarmaData.id_usuario);
-      emitNotification(alarmaData.id_usuario.toString(), unreadCount);
     }
 
     return NextResponse.json(nuevaAlarma, { status: 201 });
@@ -297,7 +295,6 @@ export async function PATCH(request: Request) {
       const userId = id_usuario || alarmaExistente.id_usuario;
       if (userId) {
         const unreadCount = await getUnreadCount(userId);
-        emitNotification(userId.toString(), unreadCount);
       }
     }
 

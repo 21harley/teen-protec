@@ -1,13 +1,4 @@
 import { LoginResponse,UsuarioCompleto,TipoUsuario,Tutor,Psicologo } from "./../types/user/index";
-import { getIO } from './socket';
-
-export function emitNotification(userId: string, unreadCount: number) {
-  getIO().to(`user-${userId}`).emit('notificationUpdate', {
-    usuarioId: userId,
-    unreadCount: unreadCount
-  });
-  console.log(`Notificación emitida para usuario ${userId}: ${unreadCount} no leídas`);
-}
 
 export function adaptLoginResponseToUsuarioCompleto( {user} : LoginResponse): UsuarioCompleto {
     //console.log(user, "Hola");

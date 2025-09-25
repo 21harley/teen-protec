@@ -57,14 +57,19 @@ export async function POST(request: Request) {
             }
         });
 
+        await prisma.alarma.create({
+            data: {
+              id_usuario: usuario.id || null,
+              id_tipo_alerta: 9,
+              mensaje: "Recuperacion de contraseña",
+              vista: false,
+              correo_enviado: true
+            }
+        });
+
         //Enviar correo
         setImmediate().then(async () => {
             const result_email = await  create_alarma_email({
-            id_usuario: usuario.id,
-            id_tipo_alerta: 9,
-            mensaje: "Recuperacion de contraseña",
-            vista: false,
-            correo_enviado: true,
             emailParams: {
                   to: usuario.email,
                   subject: "Se a creado un codigo de recuperacion de clave.",

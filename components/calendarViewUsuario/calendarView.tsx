@@ -82,7 +82,6 @@ const CalendarViewReadOnly: React.FC<CitaProps> = ({usuario}) => {
         // Cargar citas
         const citas = await fetchData(`/api/cita?pacienteId=${usuario.id}`);
         formatEvents(citas.data);
-        if(events.length == 0) alert("No se tiene citas registradas");
       } catch (error) {
         console.error('Error loading initial data:', error);
       } finally {
@@ -91,7 +90,7 @@ const CalendarViewReadOnly: React.FC<CitaProps> = ({usuario}) => {
     };
 
     loadInitialData();
-    //if(events.length == 0) alert("No se tiene citas registradas");
+   
   }, []);
 
   const formatEvents = (citas: Cita[]) => {
@@ -106,6 +105,7 @@ const CalendarViewReadOnly: React.FC<CitaProps> = ({usuario}) => {
       color: cita.tipo?.color_calendario || '#3788d8',
       textColor: '#ffffff'
     }));
+    if(formattedEvents.length == 0) alert("No se tiene citas registradas");
     setEvents(formattedEvents);
   };
 

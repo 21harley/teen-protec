@@ -95,6 +95,10 @@ const TEMPLATES: Templates = {
   psicologo_asignado:(props)=>({
     text: `Psicologo asignado.`,
     html: baseEmail(`<h1>El psicologo ${props.psicologo_name} te atendera prontamente</h1><p> Ingresa al sistema para completar el test.</p>`),
+  }),
+  cita_asignada:(props)=>({
+    text:`Cita registrada.`,
+    html: baseEmail(`<h1>Tiene una cita  con el psicologo:${props.psicologo_name} </h1><p> Ingresa al sistema para mas informacion.</p>`)
   })
 };
 

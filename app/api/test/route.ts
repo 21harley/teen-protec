@@ -602,13 +602,17 @@ export async function POST(request: Request) {
         });
         if(usuarioExistente && psicologoExistente){
         console.log("crea alarma de test");
+        await prisma.alarma.create({
+          data: {
+            id_usuario: id_usuario || null,
+            id_tipo_alerta: 1,
+            mensaje:  `Tiene asignado un test.`,
+            vista: false,
+            correo_enviado: true
+          }
+        });
         setImmediate().then(async () => {
           const result_email = await  create_alarma_email({
-          id_usuario: id_usuario ,
-          id_tipo_alerta: 1,
-          mensaje: `Tiene asignado un test.`,
-          vista: false,
-          correo_enviado: true,
           emailParams: {
             to: usuarioExistente.email,
             subject: "Tienes una nueva alerta",
@@ -869,11 +873,6 @@ async function handleEvaluacionPsicologo(
         const psicologoNombre = test.psicologo?.usuario?.nombre || 'el psicólogo';
         
         const result_email = await create_alarma_email({
-          id_usuario: id_usuario,
-          id_tipo_alerta: 3,
-          mensaje: `${psicologoNombre} ha evaluado tu test.`,
-          vista: false,
-          correo_enviado: true,
           emailParams: {
             to: test.usuario.email,
             subject: "Tu test ha sido evaluado",
@@ -887,13 +886,14 @@ async function handleEvaluacionPsicologo(
         });
 
         notificacionEnviada = result_email.emailSent;
-
-        await create_alarma({
-          id_usuario: id_usuario,
-          id_tipo_alerta: 3,
-          mensaje: `${psicologoNombre} ha evaluado tu test.`,
-          vista: false,
-          correo_enviado: true
+        await prisma.alarma.create({
+                data: {
+                  id_usuario: id_usuario || null,
+                  id_tipo_alerta: 3,
+                  mensaje:  `${psicologoNombre} ha evaluado tu test.`,
+                  vista: false,
+                  correo_enviado: true
+                }
         });
 
       } catch (error) {
@@ -1236,13 +1236,18 @@ export async function PUT(request: Request) {
            where: { id: usuarioExistente.id_psicologo }
          });
          if(psicologoExistente && usuarioExistente){
+          await prisma.alarma.create({
+                data: {
+                  id_usuario: psicologoExistente.id || null,
+                  id_tipo_alerta: 2,
+                  mensaje: `El paciente ${usuarioExistente.nombre}, completo el test.`,
+                  vista: false,
+                  correo_enviado: true,
+                }
+          });
+      
           setImmediate().then(async () => {
            const result_email = await create_alarma_email({
-             id_usuario: psicologoExistente.id,
-            id_tipo_alerta: 2,
-            mensaje: `El paciente ${usuarioExistente.nombre}, completo el test.`,
-            vista: false,
-            correo_enviado: true,
             emailParams: {
               to: psicologoExistente.email,
               subject: "Tienes una nueva alerta",

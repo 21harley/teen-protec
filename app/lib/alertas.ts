@@ -1,14 +1,13 @@
 import { PrismaClient } from "./../../app/generated/prisma";
 import { sendEmail } from "./email_template"; // Asegúrate de que este path sea correcto
 import Mailjet from 'node-mailjet';
-import { emitNotification } from '@/app/lib/utils';
 
 const prisma = new PrismaClient();
 
 interface AlarmaData {
   id_usuario?: number | null;
   id_tipo_alerta?: number | null;
-  mensaje: string;
+  mensaje?: string;
   vista?: boolean;
   correo_enviado?: boolean;
 }
@@ -58,23 +57,9 @@ export async function create_alarma(alarmaData: AlarmaData): Promise<boolean> {
   }
 }
 
-export async function create_alarma_email(params: AlarmaWithEmailParams): Promise<{ alarmaCreated: boolean; emailSent: boolean }> {
+export async function create_alarma_email(params: AlarmaWithEmailParams): Promise<{ emailSent: boolean }> {
   try {
-    // 1. Primero creamos la alarma
-    const alarmaCreated = await create_alarma({
-      id_usuario: params.id_usuario,
-      id_tipo_alerta: params.id_tipo_alerta,
-      mensaje: params.mensaje,
-      vista: params.vista,
-      correo_enviado: true
-    });
-    console.log(alarmaCreated);
-    if (!alarmaCreated) {
-      
-      return { alarmaCreated: false, emailSent: false };
-    }
-
-    // 2. Preparamos los parámetros del email
+ 
     const emailOptions = {
       to: params.emailParams.to,
       subject: params.emailParams.subject,
@@ -90,25 +75,15 @@ export async function create_alarma_email(params: AlarmaWithEmailParams): Promis
     
         if (error) {
           console.error('Error al enviar el email:', error);
-          // Opcional: Actualizar la alarma para marcar que el email falló
-          await prisma.alarma.updateMany({
-            where: {
-              id_usuario: params.id_usuario,
-              mensaje: params.mensaje
-            },
-            data: {
-              correo_enviado: false
-            }
-          });
-          return { alarmaCreated: true, emailSent: false };
+          return {  emailSent: false };
         }
     }
 
-    return { alarmaCreated: true, emailSent: true };
+    return {  emailSent: true };
 
   } catch (error) {
     console.error('Error en create_alarma_email:', error);
-    return { alarmaCreated: false, emailSent: false };
+    return {  emailSent: false };
   }
 }
 
