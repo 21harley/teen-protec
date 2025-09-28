@@ -48,7 +48,7 @@ export default function Register() {
       <Header />
       <main>
         <section className="_color_four h-full min-h-[84dvh] grid place-items-center p-5">
-          <FormUser />
+          <FormUser isAuthRegister={true} />
         </section>
       </main>
       <Footer />

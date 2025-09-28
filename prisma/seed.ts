@@ -248,7 +248,7 @@ function generarCitasDeEjemplo() {
   return citas;
 }
 
-const contraseñaEncriptada = encriptar("123456789J*Aa");
+const contraseñaEncriptada = encriptar("123456789J*a");
 
 const dataUsuarios = [
   // Administrador

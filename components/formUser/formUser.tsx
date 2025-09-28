@@ -19,6 +19,7 @@ type Errors = {
 type FormUserProps = {
   user?: UsuarioInfo;
   isEdit?: boolean;
+  isAuthRegister?:boolean;
   onSubmit?: (data: any) => void;
   tipoRegistro?: TipoRegistro;
   endEditandCreate?: boolean;
@@ -38,7 +39,8 @@ function formatDateForInput(date: string | Date | undefined): string {
 
 export default function FormUser({ 
   user, 
-  isEdit = false, 
+  isEdit = false,
+  isAuthRegister = false, 
   tipoRegistro = 'usuario',
   onToggleEditAndCreate
 }: FormUserProps) {
@@ -389,7 +391,7 @@ export default function FormUser({
     };
   
     try {
-      const endpoint = isEdit ? '/api/usuario' : '/api/usuario';
+      const endpoint = isEdit ? '/api/usuario' : (isAuthRegister ? '/api/usuario?isAuthRegister=true' : '/api/usuario');
       const method = isEdit ? 'PUT' : 'POST';
       
       console.log(requestData);
@@ -420,6 +422,7 @@ export default function FormUser({
             : new Date()
         );
         storageManager.save<UsuarioInfo>("userData", data.user);
+        router.push('/');
       }
       
       if (!isEdit) {
@@ -459,8 +462,6 @@ export default function FormUser({
         setOtherParentescoValue('');
         setShowOtherSexoTutor(false);
         setOtherSexoTutorValue('');
-
-        if(user_stora == null ) router.push('/');
         
         if( typeof onToggleEditAndCreate === 'function'){
           onToggleEditAndCreate(true);

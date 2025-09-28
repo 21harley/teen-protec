@@ -341,14 +341,13 @@ export async function POST(request: Request) {
       });
 
       // Registro de asignación de psicólogo
-      setImmediate(async () => {
-        try {
+      try {
           const cambioPsicologo = await RegistroUsuarioService.cambiarPsicologo(data.id_paciente, idPsicologo);  
           console.log('cambioPsicologo registro:', cambioPsicologo);
-        } catch (error) {
+      } catch (error) {
           console.error('Error al crear registro:', error);
-        }     
-      });
+      }     
+      
       await prisma.alarma.create({
         data: {
           id_usuario: usuarioActualizado.id || null,
@@ -538,7 +537,7 @@ export async function POST(request: Request) {
         unreadCount: 1
       });
       
-      setImmediate(async () => {
+     
 
         console.log("Entro a crear alama elmail");
         const result_email = await create_alarma_email({
@@ -555,10 +554,7 @@ export async function POST(request: Request) {
         });
       
         if (!result_email.emailSent) console.error('Error enviando email de notificación', result_email); 
-      });
 
-      // Crear registro en registro-usuario
-      setImmediate(async () => {
         try {
           const updateRegistro = await RegistroUsuarioService.agregarTestARegistroUsuario(
             paciente.id, 
@@ -568,10 +564,7 @@ export async function POST(request: Request) {
         } catch (error) {
           console.error('Error al crear registro:', error);
         }
-      });
 
-      // Crear registro de test
-      setImmediate(async () => {
         try {
           const testData = {
             test_id: nuevoTest.id,
@@ -588,7 +581,7 @@ export async function POST(request: Request) {
         } catch (error) {
           console.error('Error al crear registro test:', error);
         }
-      });
+      
     }else{
       console.log("Error no se tiene usuario-autenticado o paciente-test-asignado")
     }
@@ -806,7 +799,7 @@ export async function DELETE(request: Request) {
       data: { id_psicologo: null }
     });
     //alarma
-    setImmediate().then(async ()=>{
+    
       const result_email = await  create_alarma({
         id_usuario: paciente.id ,
         id_tipo_alerta: null,
@@ -816,17 +809,15 @@ export async function DELETE(request: Request) {
       });
       
     if (!result_email) console.error('Error al enviar email, test.',result_email); 
-    });
+ 
 
     //update registro dar alta
-    setImmediate().then(async ()=>{
     try {
       const updateRegistro = await RegistroUsuarioService.cambiarPsicologo(paciente.id,null);  
       console.log('Update a registro:', updateRegistro);
     } catch (error) {
       console.error('Error al crear registro:', error);
-    }
-    });  
+    } 
     return NextResponse.json(
       { 
         message: 'Paciente desasignado correctamente',

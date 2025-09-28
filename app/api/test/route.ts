@@ -1308,11 +1308,13 @@ export async function PUT(request: Request) {
     
     // Update registro de test
     setImmediate().then(async () => {
+      console.log("update a test-registro");
       if(!testCompleto){
         console.log('Error al obtener el testCompleto al Registro test.');
         return;
       }
       try {
+        console.log("update a test-registro-tri");
           const test: CreateRegistroTestInput = {
             test_id: testCompleto.id,
             usuario_id: testCompleto.id_usuario!,

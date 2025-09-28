@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { create_alarma_email,create_alarma } from '@/app/lib/alertas';
 import RegistroUsuarioService from "../../lib/registro/registro-usuario"
 import { setImmediate } from 'timers/promises';
+import RegistroSesionService from "../../../app/lib/registro/registro-sesion";
 
 const prisma = new PrismaClient();
 
@@ -316,7 +317,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+
   try {
+
+    const { searchParams } = new URL(request.url);
+    const includePassword = searchParams.get('isAuthRegister') === 'true';
     const { tipoRegistro, usuarioData, tutorData, psicologoData } = await request.json();
 
     if (!usuarioData.email || !usuarioData.password) {
@@ -598,7 +603,24 @@ export async function POST(request: Request) {
       total_tests: 0,
     });
     
+   if(includePassword){
+        const ip_address = request.headers.get('x-forwarded-for') || 'Desconocido';
+        const user_agent = request.headers.get('user-agent') || 'Desconocido';
+      try {
+        await RegistroSesionService.cerrarSesionesActivas(usuarioCompleto.id);
 
+        const nuevaSesion = await RegistroSesionService.createRegistroSesion({
+          usuario_id:usuarioCompleto.id,
+          ip_address,
+          user_agent
+        });        
+
+        console.log("registro nueva sesion:",nuevaSesion);
+        } catch (error) {
+          console.error('Error al crear registro nueva sesion:', error);
+        }
+
+   }
 
     console.log('Registro creado:', nuevoRegistro);
   } catch (error) {
