@@ -129,7 +129,8 @@ export default function UserTests() {
 
   if (loading) {
     return (
-      <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
+      <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+              <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-medium">Tests</h1>
           <div className="animate-pulse bg-gray-200 h-6 w-24 rounded"></div>
@@ -141,12 +142,15 @@ export default function UserTests() {
           ))}
         </div>
       </div>
+      </section>
+
     )
   }
 
   if (error) {
     return (
-      <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
+      <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+              <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-medium">Tests</h1>
         </div>
@@ -162,11 +166,14 @@ export default function UserTests() {
           </button>
         </div>
       </div>
+      </section>
+
     )
   }
 
   return (
-    <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
+    <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+          <div className="w-full h-full max-w-[1000px] mx-auto flex flex-col justify-start p-4">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-xl font-medium">Tests</h1>
@@ -242,5 +249,6 @@ export default function UserTests() {
         </>
       )}
     </div>
+    </section>
   )
 }

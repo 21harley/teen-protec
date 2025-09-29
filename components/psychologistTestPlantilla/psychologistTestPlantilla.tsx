@@ -95,15 +95,18 @@ export default function TestsPlantillaPage() {
 
   if (loading) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
+      <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+              <div className="w-full h-full flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
+      </section>
     );
   }
 
   if (error) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center text-red-500">
+      <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+              <div className="w-full h-full flex flex-col items-center justify-center text-red-500">
         <p>Error: {error}</p>
         <button 
           onClick={() => window.location.reload()}
@@ -112,11 +115,13 @@ export default function TestsPlantillaPage() {
           Reintentar
         </button>
       </div>
+      </section>
     );
   }
 
   return (
-    <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start p-4">
+    <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+          <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start p-4">
       <div className="flex justify-between flex-col  mb-4">
         <h1 className="text-xl font-medium mb-4">Test</h1>
         <hr className="w-full max-h-[600px] h-[0.5px] bg-black" />
@@ -164,5 +169,7 @@ export default function TestsPlantillaPage() {
         onSubmit={handleCreatePlantilla}
       />
     </div>
+    </section>
+
   );
 }

@@ -84,7 +84,8 @@ export default function Perfil() {
   }
 
   return (
-      <div className="container  px-4 py-8 w-full max-w-[1200px] ">
+    <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+            <div className="container  px-4 py-8 w-full max-w-[1200px] ">
        <div className="w-full max-w-[1200px] mx-auto flex flex-col justify-center">
         <FormUser 
           user={user} 
@@ -93,5 +94,6 @@ export default function Perfil() {
         />
        </div>
       </div>
+    </section>
   );
 }

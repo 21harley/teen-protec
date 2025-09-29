@@ -64,11 +64,7 @@ const storeUser = useUserStore((state) => state.user);
         className={`${geistSans.variable} ${geistMono.variable} antialiased ${roboto.className}`}
       >
         <Header></Header>
-       <main>
-        <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
           {children}
-        </section>
-      </main>
         <Footer></Footer>
       </body>
     </html>

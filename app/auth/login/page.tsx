@@ -154,7 +154,8 @@ export default function Login() {
         '',
         expiryDate
       );
-      handleNavigation("/")
+      router.push("/")
+      router.refresh()
     } catch (err: any) {
       console.error('Login error:', err);
       setApiError(err.response?.data?.message || 'Credenciales incorrectas. Por favor verifique su email y contraseña.');

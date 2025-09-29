@@ -15,6 +15,7 @@ export default function Register() {
     const checkActiveSession = () => {
       if (storeUser) {
         router.push("/");
+        router.refresh();
         return;
       }
 
@@ -22,6 +23,7 @@ export default function Register() {
       const userData = storageManager.load<UsuarioInfo>('userData');
       if (userData) {
         router.push("/");
+        router.refresh();
         return;
       }
 

@@ -76,26 +76,31 @@ export default function UserAlert() {
 
   if (loading) {
     return (
-      <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start">
+      <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+        <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start">
         <h1 className="text-xl font-medium mb-4">Alertas</h1>
         <hr className="mb-4" />
         <p>Cargando alertas...</p>
       </div>
+      </section>
     )
   }
 
   if (error) {
     return (
-      <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start">
+      <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+        <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start">
         <h1 className="text-xl font-medium mb-4">Alertas</h1>
         <hr className="mb-4" />
         <p className="text-red-500">{error}</p>
       </div>
+      </section>
     )
   }
 
   return (
-    <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start">
+    <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+      <div className="w-full h-full max-w-[1000px] m-auto mt-3 p-[30px] flex flex-col justify-start  lg:p-0">
       <h1 className="text-xl font-medium mb-4">Alertas</h1>
       <hr className="mb-4" />
       
@@ -143,5 +148,6 @@ export default function UserAlert() {
         </>
       )}
     </div>
+    </section>
   )
 }

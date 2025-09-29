@@ -43,7 +43,6 @@ export function LogoutButton({ onLogoutComplete }: LogoutButtonProps) {
       
     } catch (error) {
       console.error('Error durante logout:', error);
-      logout()
       onLogoutComplete()
       setIsLoggingOut(false);
     }

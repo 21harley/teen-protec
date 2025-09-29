@@ -365,15 +365,18 @@ export default function CrudAlert() {
   };
 
   if (loading.initial) return (
-    <div className="flex justify-center items-center h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
+    <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    </section>
   );
 
   if (error) return <div className="text-red-500 p-4">{error}</div>;
 
   return (
-    <div className="p-4 max-w-6xl mx-auto">
+    <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+          <div className="p-4 max-w-6xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-medium">Alertas</h1>
         <hr className="w-full max-h-[600px] h-[0.5px] bg-black" />
@@ -752,5 +755,6 @@ export default function CrudAlert() {
         </div>
       )}
     </div>
+    </section>
   );
 }

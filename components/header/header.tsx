@@ -3,11 +3,12 @@ import React, { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { LogoutButton } from "../logoutButton/logoutButton"
-
+import { useRouter } from "next/navigation"
 import useUserStore from "@/app/store/store"
 import { UsuarioInfo } from "./../../app/types/user"
 import { StorageManager } from "@/app/lib/storageManager"
 import { usePathname } from 'next/navigation'
+
 import io from "socket.io-client"
 // Definir el tipo Socket correctamente
 type SocketType = typeof io.Socket;
@@ -19,8 +20,10 @@ export default function Header() {
   const [socket, setSocket] = useState<SocketType | null>(null)
   const user = useUserStore((state) => state.user)
   const login = useUserStore((state) => state.login)
+  const logout = useUserStore((state) => state.logout)
   const storageManager = new StorageManager("local")
   const pathname = usePathname()
+  const router = useRouter()
 
   // Efecto para hidratar el store con los datos del localStorage
   useEffect(() => {
@@ -117,7 +120,11 @@ useEffect(() => {
 
   const toggleModal = () => setIsModalOpen(!isModalOpen)
   const closeModal = () => setIsModalOpen(false)
-
+  const logoutEffect = () => {
+    router.push("/");
+    router.refresh();
+    closeModal();
+  }
   const ajustarNombre = (user: UsuarioInfo) => {
     if (user?.nombre) {
       if (user.nombre.length > 3) {
@@ -177,7 +184,7 @@ useEffect(() => {
           </li>
         ))}
         <li>
-          <LogoutButton onLogoutComplete={toggleModal}/>
+          <LogoutButton onLogoutComplete={logoutEffect}/>
         </li>
       </>
     )

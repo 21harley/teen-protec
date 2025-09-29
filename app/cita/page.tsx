@@ -27,7 +27,9 @@ const [isClient, setIsClient] = useState(false)
     switch(data.tipoUsuario.nombre){
       case "administrador":
         return (
-          <CalendarViewSecretaria />
+          <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+            <CalendarViewSecretaria />
+          </section>
         )
       case "psicologo":
         return (
@@ -35,16 +37,21 @@ const [isClient, setIsClient] = useState(false)
             {/*
              <PsychologistTest/>
             */}
+            <section className="_color_four h-auto min-h-[80dvh] grid place-items-center"></section>
             <CalendarViewPsicologo usuario={data} />
           </>
         )
       case "secretaria":
         return (
-           <CalendarViewSecretaria />
+          <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+            <CalendarViewSecretaria />
+          </section>
         )
       case "usuario": case "adolecente":
         return (
-            <CalendarViewUsuario usuario={data}/>
+          <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+              <CalendarViewUsuario usuario={data}/>
+          </section>
         )
     }
   } else {
