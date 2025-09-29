@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TestPlantilla } from './../../app/types/plantilla/index';
 import ModalRegistraTestPlantilla from './../modalRegistrarTestPlantilla/modalRegistrarTestPlantilla';
-import IconLogoEditar from "./../../app/public/logos/icon_editar.svg";
-import IconLogoEliminar from "./../../app/public/logos/icon_eliminar.svg";
-import Image from "next/image";
 import { UsuarioCompleto } from '@/app/types/gestionPaciente';
 
 interface ModalGestionTestPacientesProps {

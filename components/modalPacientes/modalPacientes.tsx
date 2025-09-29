@@ -3,10 +3,6 @@ import React, { useState, useEffect } from 'react'
 import { UsuarioData, PsicologoData, PreguntaData, RespuestaData, TestStatus, PesoPreguntaTipo } from "@/app/types/test"
 import { UsuarioCompleto, TutorInfo } from "./../../app/types/gestionPaciente/index"
 import Image from 'next/image'
-import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg"
-import IconLogoEditar from "./../../app/public/logos/icon_editar.svg"
-import IconLupa from "./../../app/public/logos/lupa.svg"
-import IconLogoDarAlta from "./../../app/public/logos/user-dar-alta.svg.svg"
 import { ModalVerPacientesTestResultados } from './../modalVerPacientesTestResultados/modalVerPacientesTestResultados'
 import FormPacientes from './../formPacientes/formPacientes'
 
@@ -371,7 +367,7 @@ export default function ModalPaciente({
                               title="Ver resultados"
                               aria-label="Ver resultados del test"
                             >
-                              <Image src={IconLupa} width={20} height={20} alt="Ver test" />
+                              <Image src="/logos/lupa.svg" className='w-[20px] h-[20px]' width={0} height={0} alt="Ver test" />
                             </button>
                           )}
                           
@@ -385,7 +381,7 @@ export default function ModalPaciente({
                             {deletingTestId === test.id ? (
                               <span className="inline-block h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></span>
                             ) : (
-                              <Image src={IconLogoCerrar} width={20} height={20} alt="Eliminar test" />
+                              <Image src="/logos/icon_eliminar.svg" className='w-[20px] h-[20px]' width={0} height={0} alt="Eliminar test" />
                             )}
                           </button>
                         </div>
@@ -405,7 +401,7 @@ export default function ModalPaciente({
                 className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 bg-[#E0F8F0] rounded-md hover:bg-[#C0F0E0] transition-colors"
                 aria-label="Editar paciente"
               >
-                <Image src={IconLogoEditar} width={16} height={16} alt="Editar" />
+                <Image src="/logos/icon_editar.sv" className='w-[16px] h-[16px]' width={0} height={0} alt="Editar" />
                 Editar Paciente
               </button>
             )}
@@ -428,9 +424,10 @@ export default function ModalPaciente({
               ) : (
                 <>
                   <Image 
-                    src={IconLogoDarAlta} 
-                    width={16} 
-                    height={16} 
+                    src="/logos/user-dar-alta.svg"
+                    width={0} 
+                    height={0}
+                    className='w-[16px] h-[16px]' 
                     alt={esAsignacion ? "Asignar" : "Dar de alta"} 
                   />
                   {esAsignacion ? 'Asignar Paciente' : 'Dar de Alta'}

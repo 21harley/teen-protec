@@ -1,8 +1,6 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import IconEditar from "./../../app/public/logos/icon_editar.svg";
-import IconEliminar from "./../../app/public/logos/icon_eliminar.svg";
 import Image from "next/image";
 import FormUserAdmin from "./../formUserAdmin/formUserAdmin";
 import { Usuario } from "@/app/types/user";
@@ -366,14 +364,14 @@ const fetchUsuarios = async () => {
                               onClick={() => handleEditUsuario(usuario)}
                               title="Editar"
                             >
-                              <Image src={IconEditar} alt="editar" width={20} height={20} />
+                              <Image src="/logos/icon_editar.svg" className="w-[20px] h-[20px]" alt="editar" width={0} height={0} />
                             </button>
                             <button
                               className="p-1 bg-red-100 rounded hover:bg-red-200 transition-colors"
                               onClick={() => confirmDelete(usuario.id)}
                               title="Eliminar"
                             >
-                              <Image src={IconEliminar} alt="eliminar" width={20} height={20} />
+                              <Image src="/logos/icon_eliminar.svg" className="w-[20px] h-[20px]" alt="eliminar" width={0} height={0} />
                             </button>
                           </div>
                         </td>

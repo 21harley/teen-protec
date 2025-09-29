@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { Document, Page, Text, View, StyleSheet, pdf, Image } from '@react-pdf/renderer';
 // Cambiado a imagen PNG en lugar de SVG
-import Logo from "./../../app/public/logos/logo_texto.svg";
 
 // Estilos mejorados para el PDF
 const styles = StyleSheet.create({
@@ -98,7 +97,7 @@ const PDFDocument = ({
       <Page size="A4" style={styles.page}>
         {/* Marca de agua ajustada */}
         <View style={styles.watermark} fixed>
-          <Image src={{ uri: Logo.src }}  style={styles.watermarkImage} />
+          <Image src={{ uri: "/logos/logo_texto.svg" }}  style={styles.watermarkImage} />
         </View>
 
         {/* Encabezado con fecha */}

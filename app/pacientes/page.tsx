@@ -1,5 +1,4 @@
 'use client'
-import LayoutPage from "@/components/layoutPage/layoutPage"
 import { useEffect, useState } from 'react'
 import ModalAgregarPaciente from "@/components/modalAgregarPaciente/modalAgregarPaciente"
 import PacienteCell from "./../../components/celdaPaciente/celdaPaciente"
@@ -83,7 +82,6 @@ export default function Pacientes() {
 
   return (
     <>
-      <LayoutPage>
         <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start p-4">
           <div className="flex justify-between flex-col mb-4">
             <h1 className="text-xl font-medium mb-4">Pacientes</h1>
@@ -140,7 +138,6 @@ export default function Pacientes() {
             />
           )}
         </div>
-      </LayoutPage>
     </>
   )
 }

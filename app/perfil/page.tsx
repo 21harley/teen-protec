@@ -1,11 +1,9 @@
 'use client'
 import { StorageManager } from "@/app/lib/storageManager"
 import { UsuarioInfo } from "./../types/user"
-import LayoutPage from "@/components/layoutPage/layoutPage";
 import useUserStore from "../store/store";
 import FormUser from "@/components/formUser/formUser";
 import { useEffect, useState } from "react";
-import { UsuarioCompleto } from "./../types/user/index";
 import { useRouter } from "next/navigation";
 
 export default function Perfil() {
@@ -72,11 +70,11 @@ export default function Perfil() {
 
   if (loading) {
     return (
-      <LayoutPage>
+        <>
         <div className="flex justify-center items-center h-64">
           <p>Cargando perfil...</p>
         </div>
-      </LayoutPage>
+        </>
     );
   }
 
@@ -86,7 +84,6 @@ export default function Perfil() {
   }
 
   return (
-    <LayoutPage>
       <div className="container  px-4 py-8 w-full max-w-[1200px] ">
        <div className="w-full max-w-[1200px] mx-auto flex flex-col justify-center">
         <FormUser 
@@ -96,6 +93,5 @@ export default function Perfil() {
         />
        </div>
       </div>
-    </LayoutPage>
   );
 }

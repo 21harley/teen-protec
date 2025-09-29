@@ -1,15 +1,15 @@
 import Image from "next/image"; 
-import svg from "./../../app/public/logos/logo_texto.svg";
 
 export default function Cart_Home() {
   return(
     <div className="p-4 max-w-[400px] mx-auto flex flex-col items-center justify-center gap-4 _color_seven rounded-[10px]">
         <div>
            <Image
-              src={svg}
+              src="/logos/logo_texto.svg"
               width={180}
               height={90}
               alt="Picture of the author"
+              className="w-[180px] h-[90px]"
            ></Image>
         </div>
         <div className="flex flex-col items-center gap-4">

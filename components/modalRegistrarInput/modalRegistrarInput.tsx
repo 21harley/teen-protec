@@ -6,7 +6,6 @@ import {
   TipoPreguntaNombre,
   PesoPreguntaTipo
 } from './../../app/types/test/index';
-import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
 import Image from "next/image";
 import { PesoPreguntaTipoPlantilla, PreguntaPlantillaBase, TipoPreguntaPlantilla } from '@/app/types/plantilla';
 
@@ -445,9 +444,9 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
                       >
                         <Image
                           className="m-auto w-[20px] h-[20px] cursor-pointer"
-                          src={IconLogoCerrar}
-                          width={20}
-                          height={20}
+                          src="/logos/icon_eliminar.svg"
+                          width={0}
+                          height={0}
                           alt="Eliminar"
                         />
                       </button>

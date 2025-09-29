@@ -1,7 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { PreguntaData, RespuestaData, TipoPreguntaNombre, OpcionData, TipoPregunta } from "@/app/types/test"
-import svg from "./../../app/public/logos/logo_texto.svg"
 import Image from 'next/image'
 
 interface ModalFormularioTestProps {
@@ -342,10 +341,11 @@ export function ModalFormularioTest({
           <div className="flex justify-between items-start">
             <div className='flex flex-col m-auto'>
               <Image
-                src={svg}
+                src="/logos/logo_texto.svg"
                 width={180}
                 height={90}
                 alt="Logo de la empresa"
+                className='w-[180px] h-[90px]'
                 priority
               />
             </div>

@@ -1,7 +1,6 @@
 'use client'
 import { StorageManager } from "@/app/lib/storageManager"
 import { UsuarioInfo } from "./../types/user"
-import LayoutPage from "@/components/layoutPage/layoutPage"
 import CalendarViewPsicologo from "@/components/calendarViewPsicologo/calendarView"
 import CalendarViewSecretaria from "@/components/calendarViewSecretaria/calendarView"
 import CalendarViewUsuario from "@/components/calendarViewUsuario/calendarView"
@@ -28,30 +27,24 @@ const [isClient, setIsClient] = useState(false)
     switch(data.tipoUsuario.nombre){
       case "administrador":
         return (
-          <LayoutPage>
-           <CalendarViewSecretaria />
-          </LayoutPage>
+          <CalendarViewSecretaria />
         )
       case "psicologo":
         return (
-          <LayoutPage>
+          <>
             {/*
              <PsychologistTest/>
             */}
             <CalendarViewPsicologo usuario={data} />
-          </LayoutPage>
+          </>
         )
       case "secretaria":
         return (
-          <LayoutPage>
            <CalendarViewSecretaria />
-          </LayoutPage>
         )
       case "usuario": case "adolecente":
         return (
-          <LayoutPage>
             <CalendarViewUsuario usuario={data}/>
-          </LayoutPage>
         )
     }
   } else {

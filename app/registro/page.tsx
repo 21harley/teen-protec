@@ -1,12 +1,12 @@
 'use client'
 import { StorageManager } from "@/app/lib/storageManager"
-import LayoutPage from "@/components/layoutPage/layoutPage";
 import useUserStore from "../store/store";
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react";
 import { UsuarioInfo } from "./../../app/types/user"
 import RegistroPsicologo from "@/components/registroPsicologo/registroPsicologo";
 import RegistroAdmin from "@/components/registroAmin/registroAmin";
+
 export default function Registro() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -40,11 +40,11 @@ export default function Registro() {
 
   if (loading) {
     return (
-      <LayoutPage>
+       <>
         <div className="flex justify-center items-center h-64">
           <p>Cargando...</p>
         </div>
-      </LayoutPage>
+        </>
     );
   }
 
@@ -57,21 +57,17 @@ export default function Registro() {
   switch(user.tipoUsuario?.nombre ?? "usuario") {
     case "administrador":
       return (
-        <LayoutPage>
           <RegistroAdmin usuario={user}  />
-        </LayoutPage>
       );
     case "psicologo":
       return (
-        <LayoutPage>
          <RegistroPsicologo usuario={user} />
-        </LayoutPage>
       );
     case "secretaria":
       return(
-        <LayoutPage>
+        <>
           <h1>Registro secretaria</h1>
-        </LayoutPage>
+        </>
       )
       
     case "usuario":

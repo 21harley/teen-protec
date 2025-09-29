@@ -5,7 +5,6 @@ import CrudTest from "@/components/crudTest/crudTest";
 //import PsychologistTest from "@/components/psychologistTest/psychologistTest";
 import PsychologistTestPlantilla from "@/components/psychologistTestPlantilla/psychologistTestPlantilla";
 import UserTest from "@/components/testUser/testUser";
-import LayoutPage from "@/components/layoutPage/layoutPage";
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
@@ -29,24 +28,20 @@ export default function Test(){
     switch(data.tipoUsuario.nombre){
       case "administrador":
         return (
-          <LayoutPage>
             <CrudTest/>
-          </LayoutPage>
         )
       case "psicologo":
         return (
-          <LayoutPage>
+          <>
             {/*
              <PsychologistTest/>
             */}
             <PsychologistTestPlantilla/>
-          </LayoutPage>
+          </>
         )
       case "usuario": case "adolecente":
         return (
-          <LayoutPage>
             <UserTest/>
-          </LayoutPage>
         )
     }
   } else {

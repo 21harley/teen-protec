@@ -3,9 +3,6 @@ import { TestStatus, PreguntaPlantillaBase, TestPlantilla } from "@/app/types/pl
 import { Usuario } from "../../app/types/plantilla";
 import ModalRegistraTestPlantilla from "./../modalRegistrarTestPlantilla/modalRegistrarTestPlantilla";
 import { ModalVerPreguntasPlantilla } from "./../modalVerPreguntasPlantilla/modalVerPreguntasPlantilla";
-import IconEditar from "./../../app/public/logos/icon_editar.svg";
-import IconLupa from "./../../app/public/logos/lupa.svg";
-import IconCardPacientes from "./../../app/public/logos/logo_card_pacientes.svg";
 import Image from "next/image";
 
 interface Psicologo {
@@ -140,10 +137,10 @@ const handleEditPlantilla = async (plantillaData: any) => {
       <div className="rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow bg-white">
         <div className="relative">
           <Image
-            className="absolute w-[200px] h-[150px] right-0 button-[5px] top-[-20px]"
-            src={IconCardPacientes}
-            width={180}
-            height={90}
+            className="absolute w-[180px] h-[90px] right-0 button-[5px] top-[-20px]"
+            src="logos/logo_card_pacientes.svg"
+            width={0}
+            height={0}
             alt="Logo"
           />
         </div>
@@ -177,7 +174,7 @@ const handleEditPlantilla = async (plantillaData: any) => {
               aria-label="Editar test"
               disabled={isLoading}
             >
-              Editar <Image src={IconEditar} alt="Icono de editar" width={20} height={20} />
+              Editar <Image src="logos/icon_editar.svg" className='w-[20px] h-[20px]' alt="Icono de editar" width={0} height={0} />
             </button>
             <button 
               onClick={() => setIsViewModalOpen(true)}
@@ -185,7 +182,7 @@ const handleEditPlantilla = async (plantillaData: any) => {
               aria-label="Ver detalles del test"
               disabled={isLoading}
             >
-              Ver más <Image src={IconLupa} alt="Icono de ver más" width={20} height={20} />
+              Ver más <Image src="logos/lupa.svg" className='w-[20px] h-[20px]' alt="Icono de ver más" width={0} height={0} />
             </button>
           </div>
         </div>

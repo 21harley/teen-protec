@@ -4,8 +4,6 @@ import { TestStatus, FullTestData, RespuestaData } from "./../../app/types/test"
 import { ModalFormularioTest } from "./../modalFormulrioTestProps/modalFormularioTestProps"
 import { ModalVerRespuestas } from "./../modalVerRepuestasProps/modalVerRespuestasProps"
 import Image from "next/image"
-import svgAzul from "./../../app/public/logos/fondo_azul_logo_celda.svg"
-import svgBlanco from "./../../app/public/logos/fondo_blanco_logo_celda.svg"
 
 interface CeldaTestProps extends FullTestData {
   onTestUpdated?: (nuevoEstado?: TestStatus) => Promise<void>;
@@ -106,7 +104,7 @@ export default function CeldaTest({
         <div className="relative">
           <Image
             className="absolute w-[200px] h-[200px] right-0 button-[10px]"
-            src={estado === TestStatus.COMPLETADO || estado === TestStatus.EVALUADO ? svgBlanco : svgAzul}
+            src={estado === TestStatus.COMPLETADO || estado === TestStatus.EVALUADO ? "/logos/fondo_blanco_logo_celda.svg" : "/logos/fondo_azul_logo_celda.svg"}
             width={180}
             height={90}
             alt="Logo"

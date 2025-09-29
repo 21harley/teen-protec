@@ -59,17 +59,13 @@ export default function Alert() {
   switch(user.tipoUsuario?.nombre ?? "usuario") {
     case "administrador":
       return (
-        <LayoutPage>
           <CrudAlert/>
-        </LayoutPage>
       );
     case "usuario":
     case "adolecente":
     case "psicologo":
       return (
-        <LayoutPage>
           <UserAlert/>
-        </LayoutPage>
       );
     default:
       router.push("/");

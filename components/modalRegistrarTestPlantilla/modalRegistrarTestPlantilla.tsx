@@ -8,8 +8,6 @@ import {
   PesoPreguntaTipoPlantilla
 } from './../../app/types/plantilla/index';
 import ModalRegistrarInput from './../modalRegistrarInput/modalRegistrarInput';
-import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
-import IconLogoEditar from "./../../app/public/logos/icon_editar.svg";
 import Image from "next/image";
 import { TipoPreguntaNombre, PreguntaData, OpcionData, PesoPreguntaTipo } from '@/app/types/test/index';
 
@@ -555,9 +553,9 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
                                   >
                                     <Image
                                       className="m-auto w-[20px] h-[20px] cursor-pointer"
-                                      src={IconLogoEditar}
-                                      width={20}
-                                      height={20}
+                                      src="/logos/icon_editar.svg"
+                                      width={0}
+                                      height={0}
                                       alt="Editar"
                                     />
                                   </button>
@@ -568,9 +566,9 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
                                   >
                                     <Image
                                       className="m-auto w-[20px] h-[20px] cursor-pointer"
-                                      src={IconLogoCerrar}
-                                      width={20}
-                                      height={20}
+                                      src="/logos/icon_eliminar.svg"
+                                      width={0}
+                                      height={0}
                                       alt="Eliminar"
                                     />
                                   </button>
@@ -618,9 +616,9 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
                   Eliminar {isTextAmin}    
                   <Image
                     className="m-auto w-[20px] h-[20px] cursor-pointer"
-                    src={IconLogoCerrar}
-                    width={20}
-                    height={20}
+                    src="/logos/icon_eliminar.svg"
+                    width={0}
+                    height={0}
                     alt="Eliminar"
                   />
                 </button>

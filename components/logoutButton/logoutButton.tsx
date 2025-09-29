@@ -2,11 +2,17 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { UsuarioInfo } from "./../../app/types/user"
 import { StorageManager } from "@/app/lib/storageManager"
+import useUserStore from "@/app/store/store"
 
-export function LogoutButton() {
+interface LogoutButtonProps {
+  onLogoutComplete: () => void;
+}
+
+export function LogoutButton({ onLogoutComplete }: LogoutButtonProps) {
+
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
+  const logout = useUserStore((state) => state.logout)
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
@@ -22,16 +28,24 @@ export function LogoutButton() {
         });
         if (response.ok) {
           // Redirigir o actualizar el estado de la UI
-          window.location.href = '/';
+          router.push('/');
+          logout()
+          onLogoutComplete()
+          setIsLoggingOut(false);
         }
       } catch (error) {
         console.error('Logout failed:', error);
+        logout()
+        onLogoutComplete()
         setIsLoggingOut(false);
+
       }
       
     } catch (error) {
       console.error('Error durante logout:', error);
-      //setIsLoggingOut(false);
+      logout()
+      onLogoutComplete()
+      setIsLoggingOut(false);
     }
   };
 

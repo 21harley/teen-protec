@@ -2,9 +2,6 @@
 import React from 'react'
 import { PreguntaPlantilla, TestPlantilla } from "@/app/types/plantilla"
 import { TipoPreguntaNombre } from '@/app/types/test';
-import IconLogoTexto from "./../../app/public/logos/logo_texto.svg";
-import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
-import IconLogoEditar from "./../../app/public/logos/icon_editar.svg";
 import Image from 'next/image'
 
 interface ModalVerPreguntasPlantillaProps {
@@ -90,9 +87,10 @@ export function ModalVerPreguntasPlantilla({ plantilla, onClose, onEdit, onDelet
             <div className='flex flex-col m-auto'>
               <div>
                 <Image
-                  src={IconLogoTexto}
+                  src="/logos/logo_texto.svg"
                   width={180}
                   height={90}
+                  className='w-[180px] h-[90px]'
                   alt="Logo de la empresa"
                   priority
                 />
@@ -170,9 +168,9 @@ export function ModalVerPreguntasPlantilla({ plantilla, onClose, onEdit, onDelet
               Editar
               <Image
                 className="w-[20px] h-[20px] cursor-pointer"
-                src={IconLogoEditar}
-                width={20}
-                height={20}
+                src="/logos/icon_editar.svg"
+                width={0}
+                height={0}
                 alt="Editar"
               />
             </button>
@@ -186,9 +184,9 @@ export function ModalVerPreguntasPlantilla({ plantilla, onClose, onEdit, onDelet
               {isDeleting ? 'Eliminando...' : 'Eliminar'}
               <Image
                 className="w-[20px] h-[20px] cursor-pointer"
-                src={IconLogoCerrar}
-                width={20}
-                height={20}
+                src="/logos/icon_eliminar.svg"
+                width={0}
+                height={0}
                 alt="Eliminar"
               />
             </button>

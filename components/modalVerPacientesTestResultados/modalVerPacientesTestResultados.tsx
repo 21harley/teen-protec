@@ -1,7 +1,6 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
 import { PreguntaData, RespuestaData, TestStatus, PesoPreguntaTipo, TipoPreguntaNombre, TipoPreguntaMap } from "@/app/types/test"
-import svg from "./../../app/public/logos/logo_texto.svg"
 import Image from 'next/image'
 
 interface GrupoData {
@@ -420,12 +419,12 @@ export function ModalVerPacientesTestResultados({
           <div className="flex justify-between items-start mb-6">
             <div className="flex flex-col items-center mx-auto">
               <Image
-                src={svg}
+                src="/logos/logo_texto.svg"
                 width={180}
                 height={90}
                 alt="Logo de la empresa"
                 priority
-                className="mb-2"
+                className="mb-2 w-[180px] h-[90px]"
               />
               <h2 className="text-xl font-semibold text-gray-800">
                 {estado === 'EVALUADO' ? 'Resultados Evaluados' : 'Resultados del Test'}

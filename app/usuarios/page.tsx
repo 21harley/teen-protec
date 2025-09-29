@@ -5,9 +5,7 @@ import CrudUser from "@/components/crudUser/crudUser"
 export default function Usuarios(){
   return (
     <>
-      <LayoutPage>
         <CrudUser/>
-      </LayoutPage>
     </>
   )
 }

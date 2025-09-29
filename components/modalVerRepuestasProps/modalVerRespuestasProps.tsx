@@ -1,7 +1,6 @@
 'use client'
 import React from 'react'
 import { PreguntaData, RespuestaData, TipoPreguntaNombre, OpcionData } from "@/app/types/test"
-import svg from "./../../app/public/logos/logo_texto.svg"
 import Image from 'next/image'
 
 interface ModalVerRespuestasProps {
@@ -84,11 +83,12 @@ export function ModalVerRespuestas({ preguntas, respuestas, onClose }: ModalVerR
           <div className="flex justify-between items-start">
             <div className='flex flex-col m-auto'>
               <Image
-                src={svg}
+                src="/logos/logo_texto.svg"
                 width={180}
                 height={90}
                 alt="Logo de la empresa"
                 priority
+                className='w-[180px] h-[90px]'
               />
               <h2 className="text-xl font-medium text-gray-900 mt-2">Respuestas del Test</h2>
             </div>

@@ -1,8 +1,5 @@
 'use client'
-import Header from "@/components/header/header"
-import Footer from "@/components/footer/footer"
 import Image from "next/image"
-import svg from "./../../public/logos/logo_texto.svg"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import PasswordField from "@/components/passwordField/passwordField"
@@ -260,7 +257,6 @@ export default function PasswordRecovery() {
 
   return (
     <>
-      <Header />
       <main>
         <section className="_color_four h-full min-h-[80dvh] grid place-items-center p-5">
           <form 
@@ -269,11 +265,12 @@ export default function PasswordRecovery() {
           >
             <div>
               <Image
-                src={svg}
-                width={180}
-                height={90}
+                src="/logos/logo_texto.svg"
+                width={0}
+                height={0}
                 alt="Logo de TeenProtec"
                 priority
+                className="w-[180px] h-[90px]"
               />
             </div>
             
@@ -312,7 +309,6 @@ export default function PasswordRecovery() {
           </form>
         </section>
       </main>
-      <Footer />
     </>
   )
 }

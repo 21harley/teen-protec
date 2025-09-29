@@ -2,9 +2,6 @@
 import React from 'react'
 import { PreguntaData, TipoPreguntaNombre, OpcionData, TipoPreguntaMap } from "@/app/types/test"
 import Image from 'next/image'
-import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
-import IconLogoEditar from "./../../app/public/logos/icon_editar.svg";
-import svg from "./../../app/public/logos/logo_texto.svg"
 
 interface ModalVerPreguntasProps {
   preguntas: PreguntaData[]
@@ -102,11 +99,12 @@ case TipoPreguntaNombre.OPCION_UNICA:
           <div className="flex justify-between items-start">
             <div className='flex flex-col m-auto'>
               <Image
-                src={svg}
+                src="/logos/logo_texto.svg"
                 width={180}
                 height={90}
                 alt="Logo de la empresa"
                 priority
+                className='w-[180px] h-[90px]'
               />
               <h2 className="text-xl font-medium text-gray-900 mt-2">Preguntas del Test</h2>
             </div>
@@ -176,9 +174,9 @@ case TipoPreguntaNombre.OPCION_UNICA:
                 aria-label="Editar test"
               >
                 <Image
-                  src={IconLogoEditar}
-                  width={16}
-                  height={16}
+                  src="/logos/icon_editar.svg"
+                  width={0}
+                  height={0}
                   alt="Icono editar"
                   className="w-4 h-4"
                 />
@@ -196,9 +194,9 @@ case TipoPreguntaNombre.OPCION_UNICA:
                   <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                 ) : (
                   <Image
-                    src={IconLogoCerrar}
-                    width={16}
-                    height={16}
+                    src="/logos/icon_eliminar.svg"
+                    width={0}
+                    height={0}
                     alt="Icono eliminar"
                     className="w-4 h-4"
                   />

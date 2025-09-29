@@ -1,5 +1,4 @@
 import Image from "next/image"; 
-import svg from "./../../app/public/logos/logo_texto.svg";
 
 export default function Cart_Home_Mini() {
   return(

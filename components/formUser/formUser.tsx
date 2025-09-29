@@ -1,6 +1,5 @@
 'use client'
 import Image from "next/image"
-import svg from "./../../app/public/logos/logo_texto.svg"
 import Link from "next/link"
 import React, { useState, useEffect } from "react"
 import { TipoRegistro, UsuarioBase } from "./../../app/types/user/index"
@@ -482,10 +481,11 @@ export default function FormUser({
     >
       <div>
         <Image
-          src={svg}
-          width={180}
-          height={90}
+          src="/logos/logo_texto.svg"
+          width={0}
+          height={0}
           alt="Logo"
+          className="w-[180px] h-[90px]"
         />
       </div>
       {successMessage && (

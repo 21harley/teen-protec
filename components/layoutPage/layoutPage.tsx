@@ -4,7 +4,6 @@ import Header from '../header/header';
 import Footer from '../footer/footer';
 import useUserStore from '@/app/store/store';
 import { UsuarioInfo } from '@/app/types/user';
-import { ContextAlertasProvider } from '@/context/ContextAlertas';
 import { StorageManager } from "@/app/lib/storageManager"
 
 export default function LayoutPage({ children }: { children: ReactNode }) {

@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { TestStatus, PreguntaData, TipoPreguntaNombre, Test, PsicologoData, UsuarioData } from "@/app/types/test";
 import ModalRegistraTest from "./../modalRegistrarTest/modalRegistraTest";
 import { ModalVerPreguntas } from "./../modalVerPreguntas/modalVerPreguntas";
-import IconEditar from "./../../app/public/logos/icon_editar.svg";
-import IconLupa from "./../../app/public/logos/lupa.svg";
-import IconCardPacientes from "./../../app/public/logos/logo_card_pacientes.svg";
 import Image from "next/image";
 
 interface CeldaTestPsychologistTestProps {
@@ -130,10 +127,10 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
       <div className="rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
         <div className="relative">
           <Image
-            className="absolute w-[200px] h-[200px] right-0 button-[5px] top-[-30px]"
-            src={IconCardPacientes}
-            width={180}
-            height={90}
+            className="absolute w-[180px] h-[90px] right-0 button-[5px] top-[-30px]"
+            src="logos/logo_card_pacientes.svg"
+            width={0}
+            height={0}
             alt="Logo"
           />
         </div>
@@ -167,7 +164,7 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
               aria-label="Editar test"
               disabled={isLoading}
             >
-              Editar <Image src={IconEditar} alt="Icono de crear alerta" width={20} height={20} />
+              Editar <Image src="logos/icon_editar.svg" className='w-[20px] h-[20px]' alt="Icono de crear alerta" width={0} height={0} />
             </button>
             <button 
               onClick={() => setIsViewModalOpen(true)}
@@ -175,7 +172,7 @@ const CeldaTestPsychologistTest: React.FC<CeldaTestPsychologistTestProps> = ({
               aria-label="Ver detalles del test"
               disabled={isLoading}
             >
-              Ver mas <Image src={IconLupa} alt="Icono de crear alerta" width={20} height={20} />
+              Ver mas <Image src="logos/lupa.svg" className='w-[20px] h-[20px]' alt="Icono de crear alerta" width={0} height={0} />
             </button>
           </div>
         </div>

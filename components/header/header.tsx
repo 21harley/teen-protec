@@ -2,17 +2,13 @@
 import React, { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import logo from "./../../app/public/logos/logo_header.svg"
-import menu from "./../../app/public/logos/menu.svg"
-import close_menu from "./../../app/public/logos/close_menu.svg"
 import { LogoutButton } from "../logoutButton/logoutButton"
-import IconAlerta from "./../../app/public/logos/icono_alerta.svg"
+
 import useUserStore from "@/app/store/store"
 import { UsuarioInfo } from "./../../app/types/user"
 import { StorageManager } from "@/app/lib/storageManager"
 import { usePathname } from 'next/navigation'
 import io from "socket.io-client"
-import type { Socket } from "socket.io-client"
 // Definir el tipo Socket correctamente
 type SocketType = typeof io.Socket;
 
@@ -54,6 +50,7 @@ export default function Header() {
 
   
   // Efecto para conectar al WebSocket y manejar notificaciones en tiempo real
+  /*
 useEffect(() => {
   if (!user?.id) return;
 
@@ -97,7 +94,7 @@ useEffect(() => {
     socket?.disconnect();
   };
 }, [user?.id]);
-
+*/
   // Función para obtener el contador de alertas
   const fetchAlertCount = async (userId: number) => {
     try {
@@ -169,7 +166,7 @@ useEffect(() => {
               {item.name === "Alertas" && alertCount > 0 && (user?.id_tipo_usuario !== 1) && pathname != "/alertas" && (
                 <div className="absolute top-[5px] transform translate-x-10">
                   <div className="relative">
-                    <Image src={IconAlerta} alt="Alerta" width={28} height={28} />
+                    <Image src="/logos/icono_alerta.svg" alt="Alerta" className="w-[28px] h-[28px]" width={0} height={0} />
                     <span className="absolute top-[4px] left-[-1px] text-white text-sm font-bold rounded-full h-5 w-5 flex items-center justify-center transform translate-x-1/4 -translate-y-1/4">
                       {alertCount > 9 ? '9+' : alertCount}
                     </span>
@@ -180,7 +177,7 @@ useEffect(() => {
           </li>
         ))}
         <li>
-          <LogoutButton/>
+          <LogoutButton onLogoutComplete={toggleModal}/>
         </li>
       </>
     )
@@ -191,7 +188,7 @@ useEffect(() => {
       <header className="max-w-[1250px] m-auto p-2">
         <div className="w-full flex justify-between items-center">
           <Link href="/">
-            <Image src={logo} width={70} height={40} alt="Website logo" priority />
+            <Image src="/logos/logo_header.svg" className="w-[70px] h-[40px]" width={0} height={0} alt="Website logo" />
           </Link>
         </div>
       </header>
@@ -202,7 +199,7 @@ useEffect(() => {
     <header className="max-w-[1250px] m-auto p-2">
       <div className="w-full flex justify-between items-center">
         <Link href="/">
-          <Image src={logo} width={70} height={40} alt="Website logo" priority />
+          <Image src="/logos/logo_header.svg" className="w-[70px] h-[40px]" width={0} height={0} alt="Website logo"  />
         </Link>
         
         <div className="flex items-center gap-4">
@@ -217,14 +214,14 @@ useEffect(() => {
               {(user?.id_tipo_usuario !== 1) && !isModalOpen && alertCount > 0 && pathname != "/alertas" && (
                 <div className="absolute">
                   <div className="absolute left-[10px] top-[-10px] z-10 w-[25px] h-6">
-                    <Image src={IconAlerta} alt="Alerta" width={28} height={28} />
+                    <Image src="/logos/icono_alerta.svg" alt="Alerta" className="w-[28px] h-[28px]" width={28} height={28} />
                     <span className="absolute top-[3px] left-[-2px] text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center transform translate-x-1/4 -translate-y-1/4">
                       {alertCount > 9 ? '9+' : alertCount}
                     </span>
                   </div>
                 </div>
               )}
-              <Image src={isModalOpen ? close_menu : menu} width={20} height={20} alt="Menu icon" />
+              <Image src={isModalOpen ? "/logos/close_menu.svg": "/logos/menu.svg"} width={0} height={0} alt="Menu icon" className="w-[20px] h-[20px]" />
             </button>
           </div>
         </div>

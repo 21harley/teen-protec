@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {  PreguntaPlantillaBase, OpcionPlantillaBase } from './../../app/types/plantilla/index';
 import { TipoPreguntaNombre } from '@/app/types/test';
-import IconLogoCerrar from "./../../app/public/logos/icon_eliminar.svg";
 import Image from "next/image";
 
 interface ModalRegistrarInputProps {
@@ -271,9 +270,9 @@ const ModalRegistrarInputPlantilla: React.FC<ModalRegistrarInputProps> = ({
                       >
                         <Image
                           className="m-auto w-[20px] h-[20px] cursor-pointer"
-                          src={IconLogoCerrar}
-                          width={20}
-                          height={20}
+                          src="/logos/icon_eliminar.svg"
+                          width={0}
+                          height={0}
                           alt="Eliminar"
                         />
                       </button>

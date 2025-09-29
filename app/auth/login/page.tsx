@@ -1,9 +1,5 @@
 'use client'
-
-import Header from "@/components/header/header"
-import Footer from "@/components/footer/footer"
 import Image from "next/image"
-import svg from "./../../public/logos/logo_texto.svg"
 import Link from "next/link"
 import { apiPost } from './../../lib/apiClient';
 import { StorageManager } from "@/app/lib/storageManager"
@@ -18,6 +14,17 @@ export default function Login() {
   const { login, user: storeUser } = useUserStore();
   const router = useRouter();
   const [loading, setLoading] = useState(true); // Para evitar render prematuro
+
+  const handleNavigation = async (path:string) => {
+    try {
+      await router.push(path)
+    } catch (error) {
+      console.error('Error en navegación:', error)
+      // Fallback: recargar la página o alternativa
+      window.location.href = path
+    }
+  }
+
 
   // ========== VERIFICAR SESIÓN ACTIVA ========== //
   useEffect(() => {
@@ -140,14 +147,14 @@ export default function Login() {
       const expiryDate = typeof response.user.tokenExpiry === 'string' 
             ? new Date(response.user.tokenExpiry) 
             : response.user.tokenExpiry;
+      
+      // Redireccionar
       login(
         response.user,
         '',
         expiryDate
       );
-
-      // Redireccionar
-      router.push('/');
+      handleNavigation("/")
     } catch (err: any) {
       console.error('Login error:', err);
       setApiError(err.response?.data?.message || 'Credenciales incorrectas. Por favor verifique su email y contraseña.');
@@ -168,7 +175,6 @@ export default function Login() {
 
   return (
     <>
-      <Header />
       <main>
         <section className="_color_four h-full min-h-[80dvh] grid place-items-center p-5">
           <form 
@@ -177,10 +183,11 @@ export default function Login() {
           >
             <div>
               <Image
-                src={svg}
-                width={180}
-                height={90}
+                src="/logos/logo_texto.svg"
+                width={0}
+                height={0}
                 alt="Logo de la empresa"
+                className="w-[180px] h-[90px]"
                 priority
               />
             </div>
@@ -264,7 +271,6 @@ export default function Login() {
           </form>
         </section>
       </main>
-      <Footer />
     </>
   );
 }

@@ -1,9 +1,6 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import IconEditar from "./../../app/public/logos/icon_editar.svg";
-import IconEliminar from "./../../app/public/logos/icon_eliminar.svg";
-import IconMas from "./../../app/public/logos/icon_mas.svg";
 import Image from "next/image";
 import ModalRegistraTestPlantilla from "./../modalRegistrarTestPlantilla/modalRegistrarTestPlantilla";
 import ModalRegistraTest from "./../modalRegistrarTest/modalRegistraTest";
@@ -620,14 +617,14 @@ const formatDate = (dateInput: string | Date | null | undefined) => {
                               }
                               title="Editar"
                             >
-                              <Image src={IconEditar} alt="editar" width={20} height={20} />
+                              <Image src="/logos/icon_editar.svg" alt="editar" className="w-[20px] h-[20px]" width={0} height={0} />
                             </button>
                             <button
                               className="p-1 bg-red-100 rounded hover:bg-red-200 transition-colors"
                               onClick={() => typeof item.id === 'number' && confirmDelete(item.id)}
                               title="Eliminar"
                             >
-                              <Image src={IconEliminar} alt="eliminar" width={20} height={20} />
+                              <Image src="/logos/icon_eliminar.svg" className="w-[20px] h-[20px]" alt="eliminar" width={0} height={0} />
                             </button>
                           </div>
                         </td>

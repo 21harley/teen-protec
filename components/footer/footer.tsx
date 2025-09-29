@@ -1,16 +1,16 @@
 
 import Image from "next/image"; 
-import svg from "./../../app/public/logos/logo-footer.svg";
 
 export default function Footer() {
   return (
       <footer className="w-full  grid place-items-center footer_components  sm:flex sm:justify-center pt-5 pb-5">
         <div>
            <Image
-              src={svg}
-              width={180}
-              height={90}
+              src="/logos/logo-footer.svg"
+              width={0}
+              height={0}
               alt="Picture of the author"
+              className="w-[180px] h-[90px]"
            ></Image>
         </div>
         <div className="mt-2">
