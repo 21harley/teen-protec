@@ -6,7 +6,6 @@ import { TipoRegistro, UsuarioBase } from "./../../app/types/user/index"
 import { TutorData, PsicologoData } from "./../../app/types/user/dataDB"
 import useUserStore from "./../../app/store/store"
 import { StorageManager } from "@/app/lib/storageManager"
-import { useRouter } from "next/navigation"
 import { UsuarioInfo } from "./../../app/types/user"
 import PasswordField from "@/components/passwordField/passwordField" // Ajusta la ruta según tu estructura
 
@@ -46,7 +45,6 @@ export default function FormUser({
   const { login } = useUserStore()
   const storageManager = new StorageManager("local");
   const user_stora = storageManager.load<UsuarioInfo>("userData");
-  const router = useRouter()
   
   const [userData, setUserData] = useState<UsuarioBase>({
     email: '',
@@ -421,7 +419,6 @@ export default function FormUser({
             : new Date()
         );
         storageManager.save<UsuarioInfo>("userData", data.user);
-        router.push('/');
       }
       
       if (!isEdit) {

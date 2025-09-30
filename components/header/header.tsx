@@ -2,25 +2,30 @@
 import React, { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { LogoutButton } from "../logoutButton/logoutButton"
 import { useRouter } from "next/navigation"
 import useUserStore from "@/app/store/store"
 import { UsuarioInfo } from "./../../app/types/user"
 import { StorageManager } from "@/app/lib/storageManager"
 import { usePathname } from 'next/navigation'
 
-import io from "socket.io-client"
-// Definir el tipo Socket correctamente
-type SocketType = typeof io.Socket;
-
 export default function Header() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [alertCount, setAlertCount] = useState(0)
   const [isHydrated, setIsHydrated] = useState(false)
-  const [socket, setSocket] = useState<SocketType | null>(null)
-  const user = useUserStore((state) => state.user)
-  const login = useUserStore((state) => state.login)
-  const logout = useUserStore((state) => state.logout)
+  
+  // Usar el store unificado con socket integrado
+  const { 
+    user, 
+    login, 
+    logout, 
+    setLoading, 
+    setLogouting, 
+    isLogout,
+    alertCount,
+    connectSocket,
+    disconnectSocket,
+    fetchAlertCount
+  } = useUserStore()
+  
   const storageManager = new StorageManager("local")
   const pathname = usePathname()
   const router = useRouter()
@@ -49,82 +54,48 @@ export default function Header() {
     }
 
     loadUserData()
-  }, [login])
+  }, [login, user])
 
-  
-  // Efecto para conectar al WebSocket y manejar notificaciones en tiempo real
-  /*
-useEffect(() => {
-  if (!user?.id) return;
-
-  console.log("Intentando conectar Socket.io...");
-
-  // Llamada para preparar el servidor
-  fetch("/api/socket").then(() => {
-    const newSocket = io({
-      path: "/api/socket",
-      transports: ["websocket", "polling"],
-      timeout: 15000,
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
-    });
-
-    newSocket.on("connect", () => {
-      console.log("✅ Conectado al servidor Socket.io");
-      newSocket.emit("join-user-room", user.id.toString());
-    });
-
-    newSocket.on("connect_error", (err:any) => {
-      console.error("❌ Error de conexión:", err.message);
-    });
-
-    newSocket.on("disconnect", (reason:any) => {
-      console.log("🔌 Desconectado:", reason);
-    });
-
-    newSocket.on("notificationUpdate", (data: any) => {
-      if (data.usuarioId === user.id.toString()) {
-        fetchAlertCount(data.usuarioId);
-      }
-    });
-
-    setSocket(newSocket);
-  });
-
-  return () => {
-    console.log("Limpiando socket...");
-    socket?.disconnect();
-  };
-}, [user?.id]);
-*/
-  // Función para obtener el contador de alertas
-  const fetchAlertCount = async (userId: number) => {
-    try {
-      const response = await fetch(`/api/alerta?usuarioId=${userId}&noVistas=true`)
-      if (response.ok) {
-        const data = await response.json()
-        setAlertCount(data.data.length)
-      }
-    } catch (error) {
-      console.error('Error fetching alert count:', error)
-    }
-  }
-
-  // Efecto para cargar las alertas iniciales
+  // Efecto para manejar la conexión del socket cuando el usuario cambia
   useEffect(() => {
     if (user?.id) {
-      fetchAlertCount(user.id)
+      console.log("🔗 Conectando socket para usuario:", user.id)
+      connectSocket()
+    } else {
+      console.log("🔗 Desconectando socket - usuario no autenticado")
+      disconnectSocket()
     }
-  }, [user?.id])
+
+    return () => {
+      // No desconectamos aquí para mantener la conexión activa entre rutas
+      // La desconexión se maneja en el logout y cuando el usuario cambia
+    }
+  }, [user?.id, connectSocket, disconnectSocket])
+
+  // Efecto para cargar las alertas iniciales cuando el usuario cambia
+  useEffect(() => {
+    if (user?.id) {
+      fetchAlertCount()
+    }
+  }, [user?.id, fetchAlertCount])
+
+  useEffect(() => {
+    if (!user) {
+      router.push("/")
+      router.refresh()
+      setLoading(false)
+      setLogouting(false)
+    }
+  }, [user, router, setLoading, setLogouting])
 
   const toggleModal = () => setIsModalOpen(!isModalOpen)
   const closeModal = () => setIsModalOpen(false)
-  const logoutEffect = () => {
-    router.push("/");
-    router.refresh();
-    closeModal();
+  
+  const logoutEffect = async () => {
+    closeModal()
+    logout() // Esto ahora también desconecta el socket automáticamente
   }
+
   const ajustarNombre = (user: UsuarioInfo) => {
     if (user?.nombre) {
       if (user.nombre.length > 3) {
@@ -183,11 +154,33 @@ useEffect(() => {
             </Link>
           </li>
         ))}
-        <li>
-          <LogoutButton onLogoutComplete={logoutEffect}/>
-        </li>
       </>
     )
+  }
+
+  const handleLogout = async () => {
+    setLogouting(true)
+    try {
+      const storageManager = new StorageManager('local')
+      const data = storageManager.load<UsuarioInfo>('userData')
+      
+      // Eliminar datos de almacenamiento local
+      localStorage.removeItem('userData')
+      sessionStorage.removeItem('tempData')
+
+      try {
+        const response = await fetch(`/api/auth/logout?id=${data?.id}`, {
+          method: 'POST',
+        })
+        if (response.ok) {
+          logoutEffect()
+        }
+      } catch (error) {
+        console.error('Logout failed:', error)
+      }
+    } catch (error) {
+      console.error('Error durante logout:', error)
+    }
   }
 
   if (!isHydrated) {
@@ -242,9 +235,32 @@ useEffect(() => {
               <nav>
                 <ul className="space-y-4">
                   {generateLinks()}
+                  <li className={user? "block" : "hidden"} >
+                     <button 
+                        onClick={handleLogout}
+                        className="w-full py-3 px-4 rounded text-center transition bg-stone-50 cursor-pointer"
+                        disabled={isLogout}
+                      >
+                        {isLogout ? 'Cerrando sesión...' : 'Cerrar sesión'}
+                      </button>
+                  </li>
                 </ul>
               </nav>
             </div>
+          </div>
+        </div>
+      )}
+      {isLogout && (
+        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-35 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+            <div className="mb-4">
+              <svg className="animate-spin h-12 w-12 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#6DC7E4" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="#6DC7E4" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">Cerrando sesión</h3>
+            <p className="mt-2 text-sm text-gray-500">Por favor espera mientras terminamos tu sesión...</p>
           </div>
         </div>
       )}

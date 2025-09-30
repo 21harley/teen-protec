@@ -5,6 +5,7 @@ import useUserStore from "../store/store";
 import FormUser from "@/components/formUser/formUser";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import LoadingCar from "@/components/loadingCar/loadingCar";
 
 export default function Perfil() {
   const router = useRouter();
@@ -80,7 +81,7 @@ export default function Perfil() {
 
   if (!user || !user.tipoUsuario?.nombre) {
     // El efecto de useEffect ya maneja la redirección
-    return null;
+    return <LoadingCar redirect={true}></LoadingCar>;
   }
 
   return (

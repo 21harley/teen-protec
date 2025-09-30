@@ -9,46 +9,21 @@ import { useRouter } from "next/navigation"
 import { UsuarioInfo, LoginResponse } from "./../../types/user"
 import { useEffect, useState } from "react";
 import PasswordField from "@/components/passwordField/passwordField" // Ajusta la ruta según tu estructura
+import LoadingCar from "@/components/loadingCar/loadingCar";
 
 export default function Login() {
-  const { login, user: storeUser } = useUserStore();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true); // Para evitar render prematuro
-
-  const handleNavigation = async (path:string) => {
-    try {
-      await router.push(path)
-    } catch (error) {
-      console.error('Error en navegación:', error)
-      // Fallback: recargar la página o alternativa
-      window.location.href = path
-    }
-  }
+  const { login, user: user,isLoading:loading,setLoading } = useUserStore();
+  const router = useRouter()
 
 
   // ========== VERIFICAR SESIÓN ACTIVA ========== //
   useEffect(() => {
-    const checkActiveSession = () => {
       // Si hay usuario en Zustand, redirige
-      if (storeUser) {
-        router.push("/");
-        return;
+      if (user) {
+        router.push("/")
+        router.refresh()
       }
-
-      // Si hay datos en localStorage, redirige
-      const storageManager = new StorageManager('local');
-      const userData = storageManager.load<UsuarioInfo>('userData');
-      if (userData) {
-        router.push("/");
-        return;
-      }
-
-      // Si no hay sesión, permite mostrar el login
-      setLoading(false);
-    };
-
-    checkActiveSession();
-  }, [storeUser, router]);
+  }, [user]);
 
   // ========== ESTADOS DEL FORMULARIO ========== //
   const [loginData, setLoginData] = useState<LoginRequest>({
@@ -61,7 +36,7 @@ export default function Login() {
     password: ''
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+
   const [apiError, setApiError] = useState<string | null>(null);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
 
@@ -128,7 +103,7 @@ export default function Login() {
     
     if (!validateForm()) return;
     
-    setIsLoading(true);
+    setLoading(true);
     setApiError(null);
     
     try {
@@ -154,13 +129,12 @@ export default function Login() {
         '',
         expiryDate
       );
-      router.push("/")
-      router.refresh()
+      setLoading(false);
     } catch (err: any) {
       console.error('Login error:', err);
       setApiError(err.response?.data?.message || 'Credenciales incorrectas. Por favor verifique su email y contraseña.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -168,13 +142,12 @@ export default function Login() {
   // Evita renderizar el formulario hasta verificar la sesión
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[80dvh]">
-        <p>Cargando...</p>
-      </div>
+      <LoadingCar redirect={false}></LoadingCar>
     );
   }
 
-  return (
+  if(!user){
+     return (
     <>
       <main>
         <section className="_color_four h-full min-h-[80dvh] grid place-items-center p-5">
@@ -208,7 +181,7 @@ export default function Login() {
                 id="email" 
                 value={loginData.email}
                 onChange={handleChange}
-                disabled={isLoading}
+                disabled={loading}
                 className={`w-full border ${errors.email ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2 disabled:opacity-75`}
               />
               {errors.email && (
@@ -225,16 +198,16 @@ export default function Login() {
               label="Contraseña"
               error={errors.password}
               name="password"
-              disabled={isLoading}
+              disabled={loading}
             />
 
             <div className="w-full flex justify-center"> 
               <button
                 type="submit"
-                disabled={isLoading || !isPasswordValid}
+                disabled={loading || !isPasswordValid}
                 className="bg-blue-300 cursor-pointer text-stone-50 text-center rounded transition max-w-[180px] w-full h-8 hover:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                {isLoading ? (
+                {loading ? (
                   <div className="flex items-center justify-center">
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -274,4 +247,9 @@ export default function Login() {
       </main>
     </>
   );
+  }else{
+    return(
+      <LoadingCar redirect={false}></LoadingCar>
+    )
+  }
 }

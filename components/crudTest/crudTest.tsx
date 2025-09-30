@@ -1,6 +1,5 @@
 'use client'
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import ModalRegistraTestPlantilla from "./../modalRegistrarTestPlantilla/modalRegistrarTestPlantilla";
 import ModalRegistraTest from "./../modalRegistrarTest/modalRegistraTest";
@@ -10,7 +9,6 @@ import { Test } from './../../app/types/test/index';
 type CrudMode = 'tests' | 'plantillas';
 
 export default function CrudTestsPlantillas() {
-  const router = useRouter();
   const [mode, setMode] = useState<CrudMode>('tests');
   const [tests, setTests] = useState<Test[]>([]);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);

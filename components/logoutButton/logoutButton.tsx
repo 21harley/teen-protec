@@ -1,5 +1,4 @@
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+'use client'
 import { UsuarioInfo } from "./../../app/types/user"
 import { StorageManager } from "@/app/lib/storageManager"
 import useUserStore from "@/app/store/store"
@@ -9,12 +8,11 @@ interface LogoutButtonProps {
 }
 
 export function LogoutButton({ onLogoutComplete }: LogoutButtonProps) {
-
-  const router = useRouter();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const logout = useUserStore((state) => state.logout)
+  const isLoading = useUserStore((state) => state.setLoading);
+  const isloading = useUserStore((state)=> state.isLoading);
   const handleLogout = async () => {
-    setIsLoggingOut(true);
+    isLoading(true);
     try {
       const storageManager = new StorageManager('local');
       const data = storageManager.load<UsuarioInfo>('userData');
@@ -28,23 +26,22 @@ export function LogoutButton({ onLogoutComplete }: LogoutButtonProps) {
         });
         if (response.ok) {
           // Redirigir o actualizar el estado de la UI
-          router.push('/');
+          isLoading(true);
           logout()
-          onLogoutComplete()
-          setIsLoggingOut(false);
+          onLogoutComplete();
         }
       } catch (error) {
         console.error('Logout failed:', error);
+        isLoading(true);
         logout()
         onLogoutComplete()
-        setIsLoggingOut(false);
-
       }
       
     } catch (error) {
       console.error('Error durante logout:', error);
+      isLoading(true);
+      logout();
       onLogoutComplete()
-      setIsLoggingOut(false);
     }
   };
 
@@ -53,13 +50,13 @@ export function LogoutButton({ onLogoutComplete }: LogoutButtonProps) {
       <button 
         onClick={handleLogout}
         className="w-full py-3 px-4 rounded text-center transition bg-stone-50 cursor-pointer"
-        disabled={isLoggingOut}
+        disabled={isloading}
       >
-        {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
+        {isloading ? 'Cerrando sesión...' : 'Cerrar sesión'}
       </button>
 
       {/* Modal de carga */}
-      {isLoggingOut && (
+      {isloading && (
         <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-35 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg text-center">
             <div className="mb-4">

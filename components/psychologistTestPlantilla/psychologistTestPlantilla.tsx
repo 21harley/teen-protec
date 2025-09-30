@@ -6,8 +6,6 @@ import { TestStatus, TestPlantilla, TestPlantillaInput } from "@/app/types/plant
 import useUserStore from "@/app/store/store";
 import ModalRegistraTestPlantilla from "./../modalRegistrarTestPlantilla/modalRegistrarTestPlantilla";
 import CeldaTestPlantillaPsgychologist from "./../celdaTestPlantillaPsgychologist/celdaTestPlantillaPsgychologist"; // Asegúrate de que la ruta sea correcta
-import IconMas from "./../../app/public/logos/icon_mas.svg";
-import Image from "next/image";
 
 export default function TestsPlantillaPage() {
   const [plantillas, setPlantillas] = useState<TestPlantilla[]>([]);

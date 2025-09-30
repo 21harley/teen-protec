@@ -7,68 +7,43 @@ import useUserStore from "../store/store";
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react";
 import { UsuarioInfo } from "./../../app/types/user"
+import LoadingCar from "@/components/loadingCar/loadingCar";
 
 export default function Alert() {
+  const user = useUserStore((state) => state.user)
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  
-  const storeUser = useUserStore((state) => state.user);
-  const [user, setUser] = useState<UsuarioInfo | null>(null);
+  const loading = useUserStore((state)=>state.isLoading);
 
+  // Redirección en useEffect
   useEffect(() => {
-    const loadUserData = () => {
-      // First try with store
-      if (storeUser) {
-        setUser(storeUser);
-        setLoading(false);
-        return;
-      }
-
-      // If not in store, check localStorage
-      const storageManager = new StorageManager('local');
-      const data = storageManager.load<UsuarioInfo>('userData');
-      
-      if (data) {
-        setUser(data);
-        setLoading(false);
-      } else {
-        // Redirect if no authenticated user
-        router.push("/");
-      }
-    };
-
-    loadUserData();
-  }, [storeUser, router]);
+    if (!user) {
+      router.push("/");
+      router.refresh();
+    }
+  }, [ user ])
 
   if (loading) {
     return (
-      <LayoutPage>
-        <div className="flex justify-center items-center h-64">
-          <p>Cargando...</p>
-        </div>
-      </LayoutPage>
+      <LoadingCar redirect={false}></LoadingCar>
     );
   }
 
   if (!user) {
     // The useEffect already handles redirection
-    return null;
+    return <LoadingCar redirect={true}></LoadingCar>;
   }
 
   // Determine which alert to show based on user type
-  switch(user.tipoUsuario?.nombre ?? "usuario") {
-    case "administrador":
+  switch(user.id_tipo_usuario) {
+    case 1:
       return (
           <CrudAlert/>
       );
-    case "usuario":
-    case "adolecente":
-    case "psicologo":
+    case 2:case 3:case 4:case 5:
       return (
           <UserAlert/>
       );
     default:
-      router.push("/");
-      return null;
+      return  <LoadingCar redirect={true}></LoadingCar>;
   }
 }
