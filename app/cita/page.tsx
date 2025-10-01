@@ -6,10 +6,13 @@ import CalendarViewSecretaria from "@/components/calendarViewSecretaria/calendar
 import CalendarViewUsuario from "@/components/calendarViewUsuario/calendarView"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import useUserStore from "../store/store"
+import LoadingCar from "@/components/loadingCar/loadingCar"
 
 export default function Cita() {
 const [isClient, setIsClient] = useState(false)
   const router = useRouter()
+  const {user,isLogout} = useUserStore();
 
   useEffect(() => {
     setIsClient(true)
@@ -19,44 +22,44 @@ const [isClient, setIsClient] = useState(false)
     return null // o un loader mientras se carga
   }
 
-  const storageManager = new StorageManager('local')
-  const data = storageManager.load<UsuarioInfo>('userData')
+ if(isLogout){
+    return  <LoadingCar redirect={isLogout}></LoadingCar>;
+ }
 
-  if(data){
+  if(user?.id){
     //console.log(data);
-    switch(data.tipoUsuario.nombre){
-      case "administrador":
+    switch(user?.id_tipo_usuario){
+      case 1:
         return (
           <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
             <CalendarViewSecretaria />
           </section>
         )
-      case "psicologo":
+      case 2:
         return (
           <>
             {/*
              <PsychologistTest/>
             */}
             <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
-              <CalendarViewPsicologo usuario={data} />
+              <CalendarViewPsicologo usuario={user} />
             </section>
           </>
         )
-      case "secretaria":
+      case 5:
         return (
           <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
             <CalendarViewSecretaria />
           </section>
         )
-      case "usuario": case "adolecente":
+      case 6: case 4:
         return (
           <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
-              <CalendarViewUsuario usuario={data}/>
+              <CalendarViewUsuario usuario={user}/>
           </section>
         )
     }
   } else {
-    router.push("/")
-    return null
+    return  <LoadingCar redirect={true}></LoadingCar>;
   }
 }

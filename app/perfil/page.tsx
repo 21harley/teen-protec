@@ -9,58 +9,11 @@ import LoadingCar from "@/components/loadingCar/loadingCar";
 
 export default function Perfil() {
   const router = useRouter();
-  const {isLogout} = useUserStore();
-  const [loading, setLoading] = useState(true);
-  const storeUser = useUserStore((state) => state.user);
-  const updateUser = useUserStore((state) => state.updateUser);
-  const [user, setUser] = useState<UsuarioInfo | null>(null);
-
-  useEffect(() => {
-    const loadUserData = () => {
-      // Primero intentar con el store
-      if (storeUser) {
-        setUser(storeUser);
-        setLoading(false);
-        return;
-      }
-
-      // Si no hay en store, buscar en localStorage
-      const storageManager = new StorageManager('local');
-      const data = storageManager.load<UsuarioInfo>('userData');
-      
-      if (data) {
-        setUser(data);
-        setLoading(false);
-      } else {
-        // Redirigir si no hay usuario autenticado
-        router.push("/");
-      }
-    };
-
-    loadUserData();
-  }, [storeUser, router]);
+  const {user,isLogout} = useUserStore();
 
   const handleSubmit = async (formData: any) => {
     try {
       if (!user) return;
-
-      // Actualizar en el store
-      updateUser(formData.usuarioData);
-      
-      // Actualizar en localStorage
-      const storageManager = new StorageManager('local');
-      const currentData = storageManager.load<UsuarioInfo>('userData');
-      
-      if (currentData) {
-        const updatedData = {
-          ...currentData,
-          user: {
-            ...currentData,
-            ...formData.usuarioData
-          }
-        };
-        storageManager.save('userData', updatedData);
-      }
 
       // Feedback al usuario
       alert('Perfil actualizado correctamente');
@@ -70,18 +23,10 @@ export default function Perfil() {
     }
   };
 
-  if (loading) {
-    return (
-        <>
-        <div className="flex justify-center items-center h-64">
-          <p>Cargando perfil...</p>
-        </div>
-        </>
-    );
-  }
+
 
   if ( isLogout) {
-    return <LoadingCar redirect={true}></LoadingCar>;
+    return <LoadingCar redirect={isLogout}></LoadingCar>;
   }
 
   if(user?.id){
