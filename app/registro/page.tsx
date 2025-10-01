@@ -6,74 +6,47 @@ import { useEffect, useState } from "react";
 import { UsuarioInfo } from "./../../app/types/user"
 import RegistroPsicologo from "@/components/registroPsicologo/registroPsicologo";
 import RegistroAdmin from "@/components/registroAmin/registroAmin";
+import LoadingCar from "@/components/loadingCar/loadingCar";
 
 export default function Registro() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const storeUser = useUserStore((state) => state.user);
-  const [user, setUser] = useState<UsuarioInfo | null>(null);
+  const {user,isLogout} = useUserStore();
 
-  useEffect(() => {
-    const loadUserData = () => {
-      // First try with store
-      if (storeUser) {
-        setUser(storeUser);
-        setLoading(false);
-        return;
-      }
 
-      // If not in store, check localStorage
-      const storageManager = new StorageManager('local');
-      const data = storageManager.load<UsuarioInfo>('userData');
-      
-      if (data) {
-        setUser(data);
-        setLoading(false);
-      } else {
-        // Redirect if no authenticated user
-        router.push("/");
-      }
-    };
+    useEffect(() => {
+    if (!user) {
+      router.push("/");
+      router.refresh();
+    }
+  }, [ user ])
 
-    loadUserData();
-  }, [storeUser, router]);
-
-  if (loading) {
+  if (isLogout) {
     return (
-       <>
-        <div className="flex justify-center items-center h-64">
-          <p>Cargando...</p>
-        </div>
-        </>
+      <LoadingCar redirect={isLogout}></LoadingCar>
     );
   }
 
-  if (!user) {
-    // The useEffect already handles redirection
-    return null;
-  }
-
   // Determine which alert to show based on user type
-  switch(user.tipoUsuario?.nombre ?? "usuario") {
-    case "administrador":
+  switch(user?.id_tipo_usuario) {
+    case 1:
       return (
+        <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
           <RegistroAdmin usuario={user}  />
+        </section>
       );
-    case "psicologo":
+    case 2:
       return (
-         <RegistroPsicologo usuario={user} />
+        <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+          <RegistroPsicologo usuario={user} />
+        </section>
       );
-    case "secretaria":
+    case 5:
       return(
         <>
           <h1>Registro secretaria</h1>
         </>
       )
-      
-    case "usuario":
-    case "adolecente":  
-    default:
-      router.push("/");
-      return null;
+    case 4:case 3:default:
+        return  <LoadingCar redirect={true}></LoadingCar>;
   }
 }

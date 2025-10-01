@@ -12,18 +12,20 @@ import PasswordField from "@/components/passwordField/passwordField" // Ajusta l
 import LoadingCar from "@/components/loadingCar/loadingCar";
 
 export default function Login() {
-  const { login, user: user,isLoading:loading,setLoading } = useUserStore();
+  const { 
+    login, 
+    user,
+    isLoading,
+    isAuthenticated,
+    setLoading 
+  } = useUserStore();
   const router = useRouter()
 
 
   // ========== VERIFICAR SESIÓN ACTIVA ========== //
   useEffect(() => {
-      // Si hay usuario en Zustand, redirige
-      if (user) {
-        router.push("/")
-        router.refresh()
-      }
-  }, [user]);
+      setLoading(false);
+  }, [user?.id]);
 
   // ========== ESTADOS DEL FORMULARIO ========== //
   const [loginData, setLoginData] = useState<LoginRequest>({
@@ -102,11 +104,10 @@ export default function Login() {
     e.preventDefault();
     
     if (!validateForm()) return;
-    
-    setLoading(true);
     setApiError(null);
     
     try {
+      setLoading(true);
       const response = await apiPost<LoginResponse>('/auth/login', loginData);
  
       if (!response) {
@@ -133,6 +134,7 @@ export default function Login() {
     } catch (err: any) {
       console.error('Login error:', err);
       setApiError(err.response?.data?.message || 'Credenciales incorrectas. Por favor verifique su email y contraseña.');
+      setLoading(false);
     } finally {
       setLoading(false);
     }
@@ -140,9 +142,12 @@ export default function Login() {
 
   // ========== RENDERIZADO ========== //
   // Evita renderizar el formulario hasta verificar la sesión
-  if (loading) {
+  if (isLoading && !isAuthenticated) {
+    console.log("Loading-Activo",isLoading);
     return (
-      <LoadingCar redirect={false}></LoadingCar>
+      <>
+        <LoadingCar redirect={isAuthenticated}></LoadingCar>
+      </>
     );
   }
 
@@ -179,9 +184,10 @@ export default function Login() {
                 type="email" 
                 name="email" 
                 id="email" 
+                autoComplete="email"
                 value={loginData.email}
                 onChange={handleChange}
-                disabled={loading}
+                disabled={isLoading}
                 className={`w-full border ${errors.email ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2 disabled:opacity-75`}
               />
               {errors.email && (
@@ -198,16 +204,16 @@ export default function Login() {
               label="Contraseña"
               error={errors.password}
               name="password"
-              disabled={loading}
+              disabled={isLoading}
             />
 
             <div className="w-full flex justify-center"> 
               <button
                 type="submit"
-                disabled={loading || !isPasswordValid}
+                disabled={isLoading || !isPasswordValid}
                 className="bg-blue-300 cursor-pointer text-stone-50 text-center rounded transition max-w-[180px] w-full h-8 hover:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                {loading ? (
+                {isLoading ? (
                   <div className="flex items-center justify-center">
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -249,7 +255,7 @@ export default function Login() {
   );
   }else{
     return(
-      <LoadingCar redirect={false}></LoadingCar>
+      <LoadingCar redirect={true}></LoadingCar>
     )
   }
 }

@@ -474,7 +474,7 @@ export default function FormUser({
   return (
     <form
       onSubmit={handleSubmit}
-      className="md:p-6 w-auto flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto"
+      className="md:p-6 w-auto flex flex-col items-center justify-between _color_seven rounded-[10px] m-auto p-5"
     >
       <div>
         <Image
@@ -506,6 +506,7 @@ export default function FormUser({
               type="email" 
               name="email" 
               id="email" 
+              autoComplete="email"
               value={userData.email}
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
@@ -519,6 +520,7 @@ export default function FormUser({
               type="text" 
               name="nombre" 
               id="nombre" 
+              autoComplete="username"
               value={userData.nombre}
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
@@ -527,7 +529,7 @@ export default function FormUser({
 
           <div className="w-full max-w-[190px]">
             <label htmlFor="cedula" className="text-sm">Cédula:</label>
-            <input 
+             <input 
               required 
               type="text" 
               name="cedula" 
@@ -536,7 +538,12 @@ export default function FormUser({
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
               readOnly={isEdit}
-            />
+              placeholder="Ingrese su cédula"
+              autoComplete="on"
+              pattern="[0-9]{6,12}"
+              maxLength={12}
+              />
+
           </div>
 
           <div className="w-full max-w-[190px]">
@@ -546,6 +553,7 @@ export default function FormUser({
               type="text" 
               name="telefono" 
               id="telefono" 
+              autoComplete="tel"
               value={userData.telefono}
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
@@ -587,6 +595,7 @@ export default function FormUser({
               type="date" 
               name="fecha_nacimiento" 
               id="fecha_nacimiento" 
+              autoComplete="bday"
               value={formatDateForInput(userData.fecha_nacimiento ?? undefined)}
               onChange={handleUserChange}
               className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
@@ -620,6 +629,7 @@ export default function FormUser({
                   type="password"
                   name="confirmPassword" 
                   id="confirmPassword" 
+                  autoComplete="current-password"
                   value={confirmPassword}
                   onChange={handleConfirmPasswordChange}
                   className={`max-w-[300px] w-full border ${errors.confirmPassword ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}
@@ -645,6 +655,7 @@ export default function FormUser({
                   type="password" 
                   name="password" 
                   id="password" 
+                  autoComplete="new-password"
                   value={userData.password}
                   onChange={handleUserChange}
                   className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
@@ -657,6 +668,7 @@ export default function FormUser({
                   type="password" 
                   name="confirmPassword" 
                   id="confirmPassword" 
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className={`max-w-[300px] w-full border ${errors.confirmPassword ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2`}

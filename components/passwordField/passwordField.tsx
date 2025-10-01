@@ -109,6 +109,7 @@ export default function PasswordField({
             value={value}
             onChange={handlePasswordChange}
             disabled={disabled}
+            autoComplete="new-password"
             className={`w-full border ${error && touched ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2 pr-8 disabled:opacity-75`}
           />
           <button
@@ -167,6 +168,7 @@ export default function PasswordField({
               value={confirmValue}
               onChange={handleConfirmChange}
               disabled={disabled}
+              autoComplete="new-password"
               className={`w-full border ${(!isConfirmValid && confirmTouched) ? 'border-red-500' : 'border-[#8f8f8f]'} rounded-[0.4rem] h-8 px-2 pr-8 disabled:opacity-75`}
             />
             <button

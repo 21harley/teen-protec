@@ -401,7 +401,7 @@ export default function ModalPaciente({
                 className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 bg-[#E0F8F0] rounded-md hover:bg-[#C0F0E0] transition-colors"
                 aria-label="Editar paciente"
               >
-                <Image src="/logos/icon_editar.sv" className='w-[16px] h-[16px]' width={0} height={0} alt="Editar" />
+                <Image src="/logos/icon_editar.svg" className='w-[16px] h-[16px]' width={0} height={0} alt="Editar" />
                 Editar Paciente
               </button>
             )}

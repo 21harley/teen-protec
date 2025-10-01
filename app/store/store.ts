@@ -217,7 +217,7 @@ const useUserStore = create<UserState>((set, get) => ({
     }
 
     console.log("Intentando conectar Socket.io...");
-
+   try{
     fetch("/api/socket").then(() => {
       const newSocket = io({
         path: "/api/socket",
@@ -258,6 +258,9 @@ const useUserStore = create<UserState>((set, get) => ({
     }).catch(error => {
       console.error("Error inicializando socket:", error);
     });
+   }catch(e){
+     console.log(e);
+   }
   },
 
   disconnectSocket: () => {

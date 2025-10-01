@@ -1,18 +1,17 @@
 'use client'
-import { StorageManager } from "@/app/lib/storageManager"
 import UserAlert from "@/components/alertUser/userAlert";
 import CrudAlert from "@/components/crudAlert/crudAlert";
-import LayoutPage from "@/components/layoutPage/layoutPage";
 import useUserStore from "../store/store";
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react";
-import { UsuarioInfo } from "./../../app/types/user"
 import LoadingCar from "@/components/loadingCar/loadingCar";
 
 export default function Alert() {
   const user = useUserStore((state) => state.user)
+  const fetchAlertCount = useUserStore((state)=> state.fetchAlertCount);
   const router = useRouter();
   const loading = useUserStore((state)=>state.isLoading);
+  fetchAlertCount()//actualizar el total de alertas
 
   // Redirección en useEffect
   useEffect(() => {

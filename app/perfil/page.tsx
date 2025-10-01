@@ -9,6 +9,7 @@ import LoadingCar from "@/components/loadingCar/loadingCar";
 
 export default function Perfil() {
   const router = useRouter();
+  const {isLogout} = useUserStore();
   const [loading, setLoading] = useState(true);
   const storeUser = useUserStore((state) => state.user);
   const updateUser = useUserStore((state) => state.updateUser);
@@ -79,22 +80,25 @@ export default function Perfil() {
     );
   }
 
-  if (!user || !user.tipoUsuario?.nombre) {
-    // El efecto de useEffect ya maneja la redirección
+  if ( isLogout) {
     return <LoadingCar redirect={true}></LoadingCar>;
   }
 
-  return (
-    <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
-            <div className="container  px-4 py-8 w-full max-w-[1200px] ">
-       <div className="w-full max-w-[1200px] mx-auto flex flex-col justify-center">
-        <FormUser 
-          user={user} 
-          isEdit={true} 
-          onSubmit={handleSubmit}
-        />
-       </div>
-      </div>
-    </section>
-  );
+  if(user?.id){
+    return (
+      <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+              <div className="container  px-4 py-8 w-full max-w-[1200px] ">
+         <div className="w-full max-w-[1200px] mx-auto flex flex-col justify-center">
+          <FormUser 
+            user={user} 
+            isEdit={true} 
+            onSubmit={handleSubmit}
+          />
+         </div>
+        </div>
+      </section>
+    );
+  }else{
+    return <LoadingCar redirect={true}></LoadingCar>;
+  }
 }

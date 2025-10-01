@@ -3,9 +3,6 @@ import Image from 'next/image';
 import ModalPaciente from './../modalPacientes/modalPacientes';
 import ModalGestionTestPacientes from './../modalGestionTestPacientes/modalGestionTestPacientes';
 import { UsuarioCompleto } from './../../app/types/gestionPaciente/index';
-import IconPacienteAddTest from "./../../app/public/logos/logo_asignar_test.svg";
-import IconCardPacientes from "./../../app/public/logos/logo_card_pacientes.svg";
-import IconAssignUser from "./../../app/public/logos/logo_asignar_test.svg";
 import { TestStatus } from './../../app/types/test';
 
 interface PacienteCellProps {
@@ -157,9 +154,9 @@ const PacienteCell: React.FC<PacienteCellProps> = ({
         <div className="relative w-full">
           <Image
             className="absolute w-[200px] h-[140px] right-0 button-[5px] top-[-110px]"
-            src={IconCardPacientes}
-            width={180}
-            height={90}
+            src="/logos/logo_card_pacientes.svg"
+            width={0}
+            height={0}
             alt="Logo"
           />
         </div>
@@ -183,14 +180,14 @@ const PacienteCell: React.FC<PacienteCellProps> = ({
               }`}
             >
               {isAssigning ? 'Asignando...' : 'Asignar paciente'}
-              {!isAssigning && <Image src={IconAssignUser} alt="Asignar" width={16} height={16} />}
+              {!isAssigning && <Image src="/logos/logo_asignar_test.svg" alt="Asignar" className='w-[16px] h-[16px]' width={16} height={16} />}
             </button>
           ) : (
             <button
               onClick={() => setShowTestsModal(true)}
               className="m-auto sm:m-0 w-full max-w-[200px] cursor-pointer p-2 px-4 text-black-700 border border-black text-sm rounded-md transition flex justify-center gap-1 items-center hover:bg-gray-100"
             >
-              Gestionar tests <Image src={IconPacienteAddTest} alt="Icono de ver más" width={16} height={16} />
+              Gestionar tests <Image src="/logos/logo_asignar_test.svg" className='w-[16px] h-[16px]' alt="Icono de ver más" width={16} height={16} />
             </button>
           )}
         </div>

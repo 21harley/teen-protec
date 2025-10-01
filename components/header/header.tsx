@@ -60,24 +60,17 @@ export default function Header() {
   useEffect(() => {
     if (user?.id) {
       console.log("🔗 Conectando socket para usuario:", user.id)
+      fetchAlertCount()
       connectSocket()
     } else {
       console.log("🔗 Desconectando socket - usuario no autenticado")
       disconnectSocket()
     }
-
     return () => {
       // No desconectamos aquí para mantener la conexión activa entre rutas
       // La desconexión se maneja en el logout y cuando el usuario cambia
     }
-  }, [user?.id, connectSocket, disconnectSocket])
-
-  // Efecto para cargar las alertas iniciales cuando el usuario cambia
-  useEffect(() => {
-    if (user?.id) {
-      fetchAlertCount()
-    }
-  }, [user?.id, fetchAlertCount])
+  }, [user?.id])
 
   useEffect(() => {
     if (!user) {

@@ -37,8 +37,9 @@ const [isClient, setIsClient] = useState(false)
             {/*
              <PsychologistTest/>
             */}
-            <section className="_color_four h-auto min-h-[80dvh] grid place-items-center"></section>
-            <CalendarViewPsicologo usuario={data} />
+            <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+              <CalendarViewPsicologo usuario={data} />
+            </section>
           </>
         )
       case "secretaria":

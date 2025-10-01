@@ -5,10 +5,12 @@ import PacienteCell from "./../../components/celdaPaciente/celdaPaciente"
 import { StorageManager } from "@/app/lib/storageManager"
 import { UsuarioInfo } from "./../types/user"
 import { UsuarioCompleto } from "./../types/gestionPaciente/index"
-import IconUsesrPlus from "./../../app/public/logos/user-plus.svg";
 import Image from "next/image";
+import useUserStore from '../store/store'
+import LoadingCar from '@/components/loadingCar/loadingCar'
 
 export default function Pacientes() {
+   const {user,isLogout} = useUserStore();
   const [showModal, setShowModal] = useState(false)
   const [pacientes, setPacientes] = useState<UsuarioCompleto[]>([])
   const [loading, setLoading] = useState(true)
@@ -80,9 +82,14 @@ export default function Pacientes() {
     setShowSinAsignar(!showSinAsignar)
   }
 
+  if (isLogout) {
+    return <LoadingCar redirect={isLogout}></LoadingCar>
+  }
+  if(user?.id){
   return (
     <>
-        <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start p-4">
+      <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
+                <div className="w-full h-full max-w-[1000px] m-auto flex flex-col justify-start p-4">
           <div className="flex justify-between flex-col mb-4">
             <h1 className="text-xl font-medium mb-4">Pacientes</h1>
             <hr className="w-full max-h-[600px] h-[0.5px] bg-black" />
@@ -94,7 +101,7 @@ export default function Pacientes() {
               className="w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center cursor-pointer"
             >
               {showSinAsignar ? 'Asignar Paciente' : 'Agregar Paciente'} 
-              <Image src={IconUsesrPlus} alt="Icono de crear alerta" width={20} height={20} />
+              <Image src="/logos/user-plus.svg" className='w-[20px] h-[20px]'  alt="Icono de crear alerta" width={0} height={0} />
             </button>
           </div>
 
@@ -138,6 +145,11 @@ export default function Pacientes() {
             />
           )}
         </div>
+      </section>
     </>
   )
+  }else{
+    return <LoadingCar redirect={true}></LoadingCar>
+  }
+
 }

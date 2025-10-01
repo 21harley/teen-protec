@@ -1,23 +1,36 @@
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import Link from 'next/link';
+import { useEffect, useRef } from 'react';
 type LoadingProps = {
   redirect: boolean;
+  route?:string;
 };
 export default function LoadingCar({
-    redirect=false
+    redirect=false,
+    route="/"
 }:LoadingProps){
-    
-    const router = useRouter();
+  const linkRef = useRef<HTMLAnchorElement>(null);
+
+  const triggerLinkClick = () => {
+    if (linkRef.current) {
+      linkRef.current.click();
+    }
+  };
    
     useEffect(() => {
+        console.log("useEffect-LoadingCar-",redirect);
         if(redirect){
-            router.push("/");
-            router.refresh();
+            console.log("Click")
+            setInterval(()=>{
+                triggerLinkClick()
+            },1000);
         }
-    }, [router])
+    }, [redirect])
 
   return(
     <main>
+       <Link href={route} ref={linkRef} style={{ display: 'none' }}>
+        Link oculto
+      </Link>
         <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
             <svg className="animate-spin h-12 w-12 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#6DC7E4" strokeWidth="4"></circle>

@@ -447,6 +447,7 @@ const formatDate = (dateInput: string | Date | null | undefined) => {
         </div>
       </div>
       <hr className="w-full max-h-[600px] h-[0.5px] bg-black mb-6" />
+      <>{/*
       <div className="flex flex-col md:flex-row gap-4 justify-end items-center mb-6">
         <button
           className="cursor-pointer w-full md:w-[200px] px-4 py-2 h-[40px] bg-[#6DC7E4] text-white rounded hover:bg-blue-700 transition-colors flex justify-center gap-1 items-center"
@@ -456,6 +457,7 @@ const formatDate = (dateInput: string | Date | null | undefined) => {
           <span className="font-bold text-2xl">+</span>
         </button>
       </div>
+      */}</>
       <div 
         className="mb-6 p-4 bg-gray-50 rounded-lg"
         style={{ width: containerWidth }}

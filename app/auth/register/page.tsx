@@ -7,7 +7,7 @@ import LoadingCar from "@/components/loadingCar/loadingCar";
 
 export default function Register() {
   const router = useRouter();
-  const { user,isLoading:loading } = useUserStore(); 
+  const { user,isLoading, } = useUserStore(); 
 
   useEffect(() => {
       if (user) {
@@ -17,7 +17,7 @@ export default function Register() {
       }
   }, [user]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <LoadingCar redirect={false}></LoadingCar>
     );
