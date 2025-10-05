@@ -51,6 +51,7 @@ interface TestBase {
   fecha_evaluacion?:    Date;
   ponderacion_final?:      number;           
   comentarios_psicologo?: string;  
+  interp_resul_sis?:     string;
 }
 
 interface PreguntaData {
@@ -1220,7 +1221,7 @@ export async function PUT(request: Request) {
     });
     
     const validacionGrupos = await validateTestAndUpdateGroups(testId);
-    
+  
     if (validacionGrupos.success) {
       console.log('Validación de grupos exitosa:', validacionGrupos.results);
     } else {

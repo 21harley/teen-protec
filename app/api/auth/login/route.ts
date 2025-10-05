@@ -184,7 +184,7 @@ export async function POST(request: Request) {
           user_agent
         });        
 
-        console.log("registro nueva sesion:",nuevaSesion);
+          console.log("registro nueva sesion:",nuevaSesion);
         } catch (error) {
           console.error('Error al crear registro nueva sesion:', error);
         }

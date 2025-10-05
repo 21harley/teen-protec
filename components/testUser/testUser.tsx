@@ -96,7 +96,8 @@ export default function UserTests() {
           usuario: test.usuario
         }
       })
-
+     
+      console.log(processedTests,"ProcessedTests");
       setTests(processedTests)
       setPagination(prev => ({
         ...prev,
@@ -209,6 +210,8 @@ export default function UserTests() {
       await handleTestUpdated(test.id, nuevoEstado);
     }
   }}
+  comentarios_psicologo={test.comentarios_psicologo}
+  interp_resul_sis={test.interp_resul_sis}
 />
             ))}
           </div>

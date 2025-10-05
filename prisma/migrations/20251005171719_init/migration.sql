@@ -47,6 +47,7 @@ CREATE TABLE "Test" (
     "fecha_evaluacion" DATETIME,
     "ponderacion_final" REAL,
     "comentarios_psicologo" TEXT,
+    "interp_resul_sis" TEXT,
     CONSTRAINT "Test_id_psicologo_fkey" FOREIGN KEY ("id_psicologo") REFERENCES "Psicologo" ("id_usuario") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Test_id_usuario_fkey" FOREIGN KEY ("id_usuario") REFERENCES "Usuario" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
@@ -328,7 +329,8 @@ CREATE TABLE "RegistroTest" (
     "valor_total" REAL,
     "nota_psicologo" REAL,
     "evaluado" BOOLEAN NOT NULL DEFAULT false,
-    "fecha_evaluacion" DATETIME
+    "fecha_evaluacion" DATETIME,
+    "interp_resul_sis" TEXT
 );
 
 -- CreateTable

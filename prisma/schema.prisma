@@ -90,7 +90,8 @@ model Test {
   fecha_evaluacion    DateTime?
   ponderacion_final      Float?           
   comentarios_psicologo String?        
-
+  interp_resul_sis     String?
+  
   // Relaciones
   psicologo           Psicologo?       @relation("TestPsicologo", fields: [id_psicologo], references: [id_usuario])
   usuario             Usuario?         @relation("TestUsuario", fields: [id_usuario], references: [id])
@@ -494,6 +495,7 @@ model RegistroTest {
   nota_psicologo   Float?
   evaluado         Boolean             @default(false)
   fecha_evaluacion DateTime?
+  interp_resul_sis     String?
 
   @@index([test_id])
   @@index([evaluado, fecha_completado]) 

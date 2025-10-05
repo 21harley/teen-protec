@@ -19,6 +19,9 @@ interface ModalVerPacientesTestResultadosProps {
   onClose: () => void
   onEvaluar: (preguntasActualizadas: PreguntaData[], comentario: string, totalPuntaje: number) => Promise<void>
   grupos?: GrupoData[] | undefined
+  comentarios_psicologo? : string
+  interp_resul_sis?: string
+  total_resultados?: number
 }
 
 export function ModalVerPacientesTestResultados({ 
@@ -28,8 +31,22 @@ export function ModalVerPacientesTestResultados({
   pesoPreguntas,
   onClose, 
   onEvaluar,
-  grupos = []
+  grupos = [],
+  comentarios_psicologo = "",
+  interp_resul_sis = "",
+  total_resultados = 0
 }: ModalVerPacientesTestResultadosProps) {
+  console.log(
+    { 
+  preguntas, 
+  respuestas, 
+  estado,
+  pesoPreguntas,
+  onClose, 
+  onEvaluar,
+  grupos
+}
+  )
   const [evaluacionesPsi, setEvaluacionesPsi] = useState<Record<number, number | null>>({})
   const [comentario, setComentario] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -101,7 +118,7 @@ export function ModalVerPacientesTestResultados({
       initialExpanded[grupo.id] = false
     })
     setExpandedGroups(initialExpanded)
-  }, []) // Empty dependency array means this runs only once
+  }, []) 
 
   // Initialize evaluations with question values
   useEffect(() => {
@@ -166,7 +183,7 @@ export function ModalVerPacientesTestResultados({
           : null
       }))
       
-      await onEvaluar(preguntasActualizadas, comentario, puntajeActual);
+      await onEvaluar(preguntasActualizadas, comentario, total_resultados);
     } finally {
       setIsLoading(false)
     }
@@ -429,6 +446,13 @@ export function ModalVerPacientesTestResultados({
               <h2 className="text-xl font-semibold text-gray-800">
                 {estado === 'EVALUADO' ? 'Resultados Evaluados' : 'Resultados del Test'}
               </h2>
+              {
+                
+                <h2 className="text-xl font-semibold text-gray-800">
+                  {interp_resul_sis}, con el puntaje {total_resultados.toString()}
+                 </h2>
+                
+              }
             </div>
             <button
               onClick={onClose}
@@ -440,10 +464,35 @@ export function ModalVerPacientesTestResultados({
               </svg>
             </button>
           </div>
-
+          
+          {(estado === 'COMPLETADO' || estado  === 'EVALUADO')&&(
+              <div className='grid place-items-center'>
+                <Image
+                src="/imagenes/imagen_tabla_Brown.png"
+                width={600}
+                height={300}
+                alt="tabla-brown"
+                priority
+                className="mb-2 w-[600px] h-[300px]"
+                />
+              </div>
+          )}
+ 
           {groupQuestions()}
 
+          {comentarios_psicologo != "" && comentarios_psicologo != undefined &&(
+             <div className='m-4'>
+                <p className='text-sm text-gray-600'>
+                  Comentario al evaluar el test: 
+                </p>
+                <p>
+                  {comentarios_psicologo}
+                </p>
+              </div>
+          )}
+
           {estado === 'COMPLETADO' && (
+            
             <div className="mt-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

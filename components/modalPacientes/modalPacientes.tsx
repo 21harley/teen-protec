@@ -18,6 +18,9 @@ interface TestAsignado {
   id_usuario?: number
   id_psicologo?: number
   grupos?: GrupoData[] | undefined
+  comentarios_psicologo?: string
+  interp_resul_sis?:string
+  ponderacion_final?:Number
 }
 
 
@@ -448,6 +451,9 @@ export default function ModalPaciente({
           onClose={() => setShowTestModal(false)}
           onEvaluar={handleEvaluarTest}
           grupos={selectedTest.grupos ? selectedTest.grupos :  undefined}
+          comentarios_psicologo={selectedTest.comentarios_psicologo}
+          interp_resul_sis= {selectedTest.interp_resul_sis}
+          total_resultados={selectedTest.ponderacion_final}
         />
       )}
 

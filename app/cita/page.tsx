@@ -52,7 +52,7 @@ const [isClient, setIsClient] = useState(false)
             <CalendarViewSecretaria />
           </section>
         )
-      case 6: case 4:
+      case 6: case 4: case 3:
         return (
           <section className="_color_four h-auto min-h-[80dvh] grid place-items-center">
               <CalendarViewUsuario usuario={user}/>

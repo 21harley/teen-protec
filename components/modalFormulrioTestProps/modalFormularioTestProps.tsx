@@ -27,6 +27,7 @@ export function ModalFormularioTest({
     });
     return initialData;
   })
+  console.log(preguntas);
   const [error, setError] = useState<string | null>(null)
   const [progreso, setProgreso] = useState(0)
   const [estaCompletado, setEstaCompletado] = useState(false)
@@ -196,6 +197,27 @@ export function ModalFormularioTest({
     }
   }
 
+  const autoComplete = async ()=>{
+    let aux = preguntas
+        .map(p => {
+            const opcion = p.opciones?.[Math.floor(Math.random() * p.opciones.length)];
+            return opcion ? {
+                id_pregunta: p.id,
+                id_opcion: opcion.id,
+                texto_respuesta: opcion.texto,
+                valor_rango: null
+            } : null;
+        })
+        .filter(Boolean) as RespuestaData[];
+    try {
+      await onSave(aux);
+      setRespuestasGuardadas(true);
+    } catch (err) {
+      setError('Error al guardar las respuestas. Por favor intenta nuevamente.');
+      console.error('Error saving answers:', err);
+    }
+  }
+
   const isOptionChecked = (idPregunta: number, idOpcion: number) => {
     return (respuestas[idPregunta] || []).some(r => r.id_opcion === idOpcion)
   }
@@ -348,6 +370,7 @@ export function ModalFormularioTest({
                 className='w-[180px] h-[90px]'
                 priority
               />
+              <button className='cursor-pointer p-2 px-5 text-white text-sm rounded-md transition bg-green-500 hover:bg-green-600' onClick={autoComplete}>Auto Completado</button>
             </div>
             <button
               onClick={onClose}

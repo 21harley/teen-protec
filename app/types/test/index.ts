@@ -49,6 +49,7 @@ export interface TestBase {
   fecha_evaluacion?:    Date;
   ponderacion_final?:      number;           
   comentarios_psicologo?: string; 
+  interp_resul_sis?:     string;
 }
 
 export interface PreguntaData {

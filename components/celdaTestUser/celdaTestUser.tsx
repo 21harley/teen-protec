@@ -7,6 +7,7 @@ import Image from "next/image"
 
 interface CeldaTestProps extends FullTestData {
   onTestUpdated?: (nuevoEstado?: TestStatus) => Promise<void>;
+  comentarios_psicologo?:string
 }
 
 export default function CeldaTest({
@@ -19,8 +20,20 @@ export default function CeldaTest({
   fecha_creacion = new Date().toISOString(),
   fecha_ultima_respuesta,
   nombre = 'Test sin nombre',
+  comentarios_psicologo = "",
+  interp_resul_sis = "",
   onTestUpdated
 }: CeldaTestProps) {
+  console.log(  id,
+  psicologo,
+  usuario,
+  estado ,
+  preguntas ,
+  respuestas ,
+  fecha_creacion ,
+  fecha_ultima_respuesta,
+  nombre ,
+  comentarios_psicologo)
   const [showFormModal, setShowFormModal] = useState(false)
   const [showRespuestasModal, setShowRespuestasModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -141,6 +154,20 @@ export default function CeldaTest({
           <p className="text-sm">
             <span className="font-semibold">Paciente:</span> {nombreUsuario}
           </p>
+          {
+            comentarios_psicologo != "" && comentarios_psicologo != undefined &&(
+            <p className="text-sm">
+              <span className="font-semibold">Comentario del Psicólogo:</span> {comentarios_psicologo}
+            </p>
+            )
+          }
+          {
+            interp_resul_sis != "" && interp_resul_sis != undefined && comentarios_psicologo != "" && comentarios_psicologo != undefined &&(
+              <p className="text-sm" >
+                  <span className="font-semibold">Resultado:</span> {interp_resul_sis}   
+              </p>
+              )
+          }
         </div>
 
         {safeFechaUltimaRespuesta && (

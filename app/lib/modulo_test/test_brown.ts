@@ -6,6 +6,8 @@ interface TestValidationResult {
   success: boolean;
   message?: string;
   results?: GroupResult[];
+  interpretacion?:String;
+  total_puntos?:Number;
 }
 
 interface GroupResult {
@@ -50,6 +52,17 @@ const INTERPRETATION_MATRIX = {
     { min: 13, max: 14, interpretation: 'Debajo del promedio' },
     { min: 12, max: 12, interpretation: 'Bajo' },
     { min: 0, max: 11, interpretation: 'Muy bajo' }
+  ],
+  'Calificación Total en habilidades':[
+    { min: 57, max: 60, interpretation: 'Muy alto' },
+    { min: 52, max: 56, interpretation: 'Alto' },
+    { min: 50, max: 51, interpretation: 'Encima del promedio' },
+    { min: 48, max: 49, interpretation: 'Promedio alto' },
+    { min: 43, max: 47, interpretation: 'Promedio' },
+    { min: 39, max: 42, interpretation: 'Promedio bajo' },
+    { min: 37, max: 38, interpretation: 'Debajo del promedio' },
+    { min: 34, max: 36, interpretation: 'Bajo' },
+    { min: 0, max: 33, interpretation: 'Muy bajo' }
   ]
 };
 
@@ -137,10 +150,27 @@ export async function validateTestAndUpdateGroups(testId: number): Promise<TestV
       });
     }
 
+    let total_resultado = 0;
+    for(const grupoId of results) total_resultado += grupoId.respuestasNegativas;
+    
+    let interpretacion_test = getInterpretationForGroup('Calificación Total en habilidades', total_resultado);
+
+
+    //8. actualizo test
+    await prisma.test.update({
+        where: { id: testId },
+        data: {
+          ponderacion_final:total_resultado,
+          interp_resul_sis:interpretacion_test,
+        }
+    });
+
     return {
       success: true,
       message: 'Test validado exitosamente',
-      results
+      results,
+      interpretacion: interpretacion_test,
+      total_puntos:total_resultado
     };
 
   } catch (error: any) {
