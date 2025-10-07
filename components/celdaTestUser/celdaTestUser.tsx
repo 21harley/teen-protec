@@ -155,10 +155,22 @@ export default function CeldaTest({
             <span className="font-semibold">Paciente:</span> {nombreUsuario}
           </p>
           {
+            estado === TestStatus.COMPLETADO && (
+              <p className="text-sm">
+              <span className="font-semibold">Nota:</span> El psicólogo revisara su test y apenas tenga una evalución su estado cambiara a evaluado.
+            </p>
+            )
+          }
+          {
             comentarios_psicologo != "" && comentarios_psicologo != undefined &&(
+            <>
+            <h3 className="text-xm font-semibold text-gray-800">
+              Resultados de test:
+            </h3>  
             <p className="text-sm">
               <span className="font-semibold">Comentario del Psicólogo:</span> {comentarios_psicologo}
             </p>
+             </>
             )
           }
           {

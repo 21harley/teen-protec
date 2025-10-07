@@ -257,6 +257,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (new Date(fecha_inicio).toDateString() !== new Date().toDateString()) {
+      return NextResponse.json(
+        { error: 'La fecha de inicio debe ser del día de hoy' },
+        { status: 400 }
+      );
+    }
+
     if (new Date(fecha_inicio) >= new Date(fecha_fin)) {
       return NextResponse.json(
         { error: 'La fecha de inicio debe ser anterior a la fecha de fin' },

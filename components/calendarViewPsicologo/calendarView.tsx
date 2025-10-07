@@ -82,17 +82,31 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
   const [isSearching, setIsSearching] = useState(false);
   const calendarRef = useRef<any>(null);
 
-  // Estados para pacientes asignados
   const [pacientesAsignados, setPacientesAsignados] = useState<PacienteAsignado[]>([]);
   const [loadingPacientes, setLoadingPacientes] = useState(false);
   const [psicologoSeleccionado, setPsicologoSeleccionado] = useState<number | null>(null);
 
-  // Estados para el buscador
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<Cita[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
-  // Fetch con manejo de errores
+  const [duracionSeleccionada, setDuracionSeleccionada] = useState<number>(30);
+
+  const duraciones = [
+    { value: 15, label: '15 minutos' },
+    { value: 30, label: '30 minutos' },
+    { value: 60, label: '1 hora' },
+    { value: 120, label: '2 horas' },
+    { value: 180, label: '3 horas' },
+    { value: 240, label: '4 horas' },
+    { value: 300, label: '5 horas' }
+  ];
+
+  // Función para deshabilitar fechas pasadas
+  const disabledDate = (current: Dayjs) => {
+    return current && current < moment().startOf('day');
+  };
+
   const fetchData = async (url: string, options?: RequestInit) => {
     try {
       const response = await fetch(url, options);
@@ -107,20 +121,16 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
     }
   };
 
-  // Cargar datos iniciales
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        // Cargar citas del psicólogo actual
         const citas = await fetchData(`/api/cita?psicologoId=${usuario.id}&all=true`);
         formatEvents(citas.data);
 
-        // Cargar tipos de cita
         const tipos = await fetchData('/api/tipo-cita');
         setTiposCita(tipos.data);
 
-        // Cargar pacientes asignados al psicólogo actual
         setPsicologoSeleccionado(usuario.id);
         await cargarPacientesAsignados(usuario.id);
 
@@ -134,7 +144,6 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
     loadInitialData();
   }, []);
 
-  // Cargar pacientes asignados al psicólogo seleccionado
   const cargarPacientesAsignados = async (idPsicologo: number) => {
     setLoadingPacientes(true);
     try {
@@ -165,28 +174,68 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
     setEvents(formattedEvents);
   };
 
+  const handleCalendarClose = () => {
+    setTimeout(() => {
+      const activeElement = document.activeElement as HTMLElement;
+      if (activeElement && activeElement.blur) {
+        activeElement.blur();
+      }
+    }, 10);
+  };
+
+  const calcularFechaFin = (fechaInicio: Dayjs, duracion: number): Dayjs => {
+    return fechaInicio.add(duracion, 'minutes');
+  };
+
+  const handleDuracionChange = (valor: number) => {
+    setDuracionSeleccionada(valor);
+    const fechaInicio = form.getFieldValue('fecha_inicio');
+    if (fechaInicio) {
+      const fechaFin = calcularFechaFin(fechaInicio, valor);
+      form.setFieldsValue({ fecha_fin: fechaFin });
+    }
+  };
+
+  const handleFechaInicioChange = (fecha: Dayjs | null) => {
+    if (fecha) {
+      const fechaFin = calcularFechaFin(fecha, duracionSeleccionada);
+      form.setFieldsValue({ fecha_fin: fechaFin });
+    }
+  };
+
   const handleDateClick = (arg: any) => {
     setCurrentEvent(null);
     form.resetFields();
+    
     form.setFieldsValue({
       titulo: '',
       descripcion: '',
-      fecha_inicio: moment(arg.date),
-      fecha_fin: moment(arg.date).add(30, 'minutes'),
+      fecha_inicio: null,
+      fecha_fin: null,
       id_psicologo: usuario.id,
       estado: 'PENDIENTE'
     });
     setPsicologoSeleccionado(usuario.id);
+    setDuracionSeleccionada(30);
     setIsModalVisible(true);
   };
 
   const handleEventClick = (clickInfo: any) => {
     const eventData = clickInfo.event.extendedProps;
     setCurrentEvent(eventData);
+    
+    const fechaInicio = moment(eventData.fecha_inicio).utc();
+    const fechaFin = moment(eventData.fecha_fin).utc();
+    
+    const duracion = fechaFin.diff(fechaInicio, 'minutes');
+    const duracionEnLista = duraciones.find(d => d.value === duracion)?.value || 30;
+    
+    setDuracionSeleccionada(duracionEnLista);
+    
     form.setFieldsValue({
       ...eventData,
-      fecha_inicio: moment(eventData.fecha_inicio),
-      fecha_fin: moment(eventData.fecha_fin),
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
       id_paciente: eventData.paciente?.id || null
     });
     setPsicologoSeleccionado(usuario.id);
@@ -231,16 +280,27 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
     let result;
     try {
       const values = await form.validateFields();
+      
+      if (!values.fecha_inicio) {
+        message.error('La fecha y hora de inicio es requerida');
+        return;
+      }
+      
+      // Validación adicional para fecha pasada (por si acaso)
+      if (values.fecha_inicio < moment().startOf('day')) {
+        message.error('No puede seleccionar fechas pasadas');
+        return;
+      }
+      
       const formattedValues = {
         ...values,
         fecha_inicio: values.fecha_inicio.toISOString(),
-        fecha_fin: values.fecha_fin.toISOString(),
+        fecha_fin: values.fecha_fin ? values.fecha_fin.toISOString() : calcularFechaFin(values.fecha_inicio, duracionSeleccionada).toISOString(),
         id_paciente: values.id_paciente || null,
         id_tipo_cita: values.id_tipo_cita || null,
-        id_psicologo: usuario.id // Siempre asignar al psicólogo actual
+        id_psicologo: usuario.id
       };
       if (currentEvent) {
-        // Actualizar cita existente
         formattedValues.id = currentEvent.id;
         response = await fetch(`/api/cita?id=${currentEvent.id}`, {
           method: 'PUT',
@@ -250,7 +310,6 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
           body: JSON.stringify(formattedValues)
         });
       } else {
-        // Crear nueva cita
         response = await fetch('/api/cita', {
           method: 'POST',
           headers: {
@@ -265,7 +324,6 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
       console.log(response,"Hola");
       message.success(currentEvent ? 'Cita actualizada' : 'Cita creada');
 
-      // Refrescar eventos
       const citasResponse = await fetch(`/api/cita?psicologoId=${usuario.id}&all=true`);
       const citasData = await citasResponse.json();
       formatEvents(citasData.data);
@@ -273,8 +331,6 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
     } catch (error) {
       console.log(result);
       if(result.error) alert(result.error)
-      //console.error('Error submitting form:', error,response);
-      //message.error('Error al guardar la cita');
     }
     limpiarSearch();
   };
@@ -291,7 +347,6 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
 
       message.success('Cita eliminada');
       
-      // Refrescar eventos
       const citasResponse = await fetch(`/api/cita?psicologoId=${usuario.id}`);
       const citasData = await citasResponse.json();
       formatEvents(citasData.data);
@@ -307,6 +362,15 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
     setSearchResults([]);
     setShowSearchResults(false);
     setSearchTerm("");
+  };
+
+  const handleModalClose = () => {
+    form.resetFields();
+    setDuracionSeleccionada(30);
+    setIsModalVisible(false);
+    setTimeout(() => {
+      setCurrentEvent(null);
+    }, 100);
   };
 
   return (
@@ -364,10 +428,18 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
                             const calendarApi = calendarRef.current.getApi();
                             calendarApi.gotoDate(cita.fecha_inicio);
                             setCurrentEvent(cita);
+                            
+                            const fechaInicio = moment(cita.fecha_inicio).utc();
+                            const fechaFin = moment(cita.fecha_fin).utc();
+                            const duracion = fechaFin.diff(fechaInicio, 'minutes');
+                            const duracionEnLista = duraciones.find(d => d.value === duracion)?.value || 30;
+                            
+                            setDuracionSeleccionada(duracionEnLista);
+                            
                             form.setFieldsValue({
                               ...cita,
-                              fecha_inicio: moment(cita.fecha_inicio),
-                              fecha_fin: moment(cita.fecha_fin),
+                              fecha_inicio: fechaInicio,
+                              fecha_fin: fechaFin,
                               id_paciente: cita.paciente?.id || null
                             });
                             setPsicologoSeleccionado(usuario.id);
@@ -432,15 +504,19 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
         title={currentEvent ? 'Editar Cita' : 'Nueva Cita'}
         open={isModalVisible}
         onOk={handleFormSubmit}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={handleModalClose}
         width={700}
+        afterClose={() => {
+          form.resetFields();
+          setDuracionSeleccionada(30);
+        }}
         footer={[
           currentEvent && (
             <Button danger key="delete" onClick={handleDelete}>
               Eliminar
             </Button>
           ),
-          <Button key="cancel" onClick={() => setIsModalVisible(false)}>
+          <Button key="cancel" onClick={handleModalClose}>
             Cancelar
           </Button>,
           <Button key="submit" type="primary" onClick={handleFormSubmit}>
@@ -480,23 +556,36 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
                 rules={[{ required: true, message: 'La fecha es requerida' }]}
               >
                 <DatePicker
-                  showTime
+                  showTime={{
+                    format: 'HH:mm',
+                    showSecond: false,
+                    hideDisabledOptions: true,
+                  }}
                   format="YYYY-MM-DD HH:mm"
                   style={{ width: '100%' }}
+                  getPopupContainer={(trigger) => trigger.parentElement}
+                  placeholder="Seleccione fecha y hora"
+                  onOpenChange={(open) => !open && handleCalendarClose()}
+                  onChange={handleFechaInicioChange}
+                  disabledDate={disabledDate} // ← BLOQUEA FECHAS PASADAS
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
-                name="fecha_fin"
-                label="Fecha y Hora de Fin"
-                rules={[{ required: true, message: 'La fecha es requerida' }]}
+                label="Duración"
               >
-                <DatePicker
-                  showTime
-                  format="YYYY-MM-DD HH:mm"
+                <Select
+                  value={duracionSeleccionada}
+                  onChange={handleDuracionChange}
                   style={{ width: '100%' }}
-                />
+                >
+                  {duraciones.map((duracion) => (
+                    <Option key={duracion.value} value={duracion.value}>
+                      {duracion.label}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
           </Row>
@@ -574,6 +663,10 @@ const CalendarView: React.FC<CitaProps> = ({usuario})  => {
               </Form.Item>
             </>
           )}
+
+          <Form.Item name="fecha_fin" hidden>
+            <Input />
+          </Form.Item>
         </Form>
       </Modal>
     </div>
