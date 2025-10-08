@@ -811,6 +811,13 @@ export async function DELETE(request: Request) {
     if (!result_email) console.error('Error al enviar email, test.',result_email); 
  
 
+    const result = await prisma.cita.deleteMany({
+     where: {
+      id_paciente: paciente.id,
+      id_psicologo: parseInt(id_psicologo)
+    }
+    });
+
     //update registro dar alta
     try {
       const updateRegistro = await RegistroUsuarioService.cambiarPsicologo(paciente.id,null);  

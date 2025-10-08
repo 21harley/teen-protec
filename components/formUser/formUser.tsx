@@ -529,6 +529,11 @@ export default function FormUser({
 
           <div className="w-full max-w-[190px]">
             <label htmlFor="cedula" className="text-sm">Cédula:</label>
+            {
+              isEdit?(
+                <span className="text-xs" >No editable</span>
+              ):(<></>)
+            }
              <input 
               required 
               type="text" 
@@ -536,7 +541,7 @@ export default function FormUser({
               id="cedula" 
               value={userData.cedula}
               onChange={handleUserChange}
-              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              className={`max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 ` + (isEdit? " bg-gray-300" : "") }
               readOnly={isEdit}
               placeholder="Ingrese su cédula"
               autoComplete="on"
@@ -548,6 +553,11 @@ export default function FormUser({
 
           <div className="w-full max-w-[190px]">
             <label htmlFor="telefono" className="text-sm">Telefono:</label>
+            {
+              isEdit?(
+                <span className="text-xs" >No editable</span>
+              ):(<></>)
+            }
             <input 
               required 
               type="text" 
@@ -556,7 +566,7 @@ export default function FormUser({
               autoComplete="tel"
               value={userData.telefono}
               onChange={handleUserChange}
-              className="max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2"
+              className={`max-w-[300px] w-full border border-[#8f8f8f] rounded-[0.4rem] h-8 px-2 ` + (isEdit? " bg-gray-300" : "") }
               readOnly={isEdit}
             />
           </div>

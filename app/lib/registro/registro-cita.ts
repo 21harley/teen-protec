@@ -120,7 +120,7 @@ class RegistroCitaService {
  * @returns RegistroCita creado
  */
 async createRegistroCita(data: CreateRegistroCitaInput): Promise<RegistroCita> {
-  console.log(data,"cita-data-createRegistroCita");
+  console.log(data, "cita-data-createRegistroCita");
   try {
     // Validaciones básicas
     if (data.duracion_planeada <= 0) {
@@ -129,18 +129,18 @@ async createRegistroCita(data: CreateRegistroCitaInput): Promise<RegistroCita> {
 
     // Verificar si se proporcionó un ID de paciente
     if (data.id_paciente) {
-      // Verificar si existe un registro de usuario para este paciente
-      let registroUsuario = await prisma.registroUsuario.findUnique({
-        where: { id: data.id_paciente },
+      // Buscar si ya existe un registro de usuario para este paciente
+      let registroUsuario = await prisma.registroUsuario.findFirst({
+        where: { usuario_id: data.id_paciente },
       });
+
       const usuarioExistente = await prisma.usuario.findUnique({
         where: { id: data.id_paciente }
       });
 
-      // Si no existe, crear un nuevo registro de usuario
-      if (!registroUsuario ) {
-      if(usuarioExistente){
-          registroUsuario = await prisma.registroUsuario.create({
+      // Si no existe registro de usuario pero sí existe el usuario, crear el registro
+      if (!registroUsuario && usuarioExistente) {
+        registroUsuario = await prisma.registroUsuario.create({
           data: {
             usuario_id: usuarioExistente.id,
             sexo: usuarioExistente.sexo ?? "",
@@ -151,12 +151,12 @@ async createRegistroCita(data: CreateRegistroCitaInput): Promise<RegistroCita> {
             total_tests: 0,
           },
         });
-        data.registro_usuario_id = registroUsuario.id;
-      }
       }
 
-      // Asignar el ID del registro de usuario a la cita
-      
+      // Asignar el ID del registro de usuario a la cita si se encontró o creó
+      if (registroUsuario) {
+        data.registro_usuario_id = registroUsuario.id;
+      }
     }
 
     // Si se proporcionó un registro_usuario_id, validar que exista
@@ -171,7 +171,7 @@ async createRegistroCita(data: CreateRegistroCitaInput): Promise<RegistroCita> {
     }
 
     // Crear el registro de la cita
-    console.log(data,"cita");
+    console.log(data, "cita");
     const registro = await prisma.registroCita.create({
       data: {
         cita_id: data.cita_id,
@@ -180,8 +180,8 @@ async createRegistroCita(data: CreateRegistroCitaInput): Promise<RegistroCita> {
         id_paciente: data.id_paciente ?? null,
         nombre_paciente: data.nombre_paciente ?? null,
         fecha_cita: data.fecha_cita,
-        duracion_planeada: 1,
-        duracion_real:1,
+        duracion_planeada: data.duracion_planeada, // Usar el valor real, no hardcodeado
+        duracion_real: data.duracion_real ?? null, // Usar el valor real o null
         estado: data.estado as EstadoCita,
         tipo_cita: data.tipo_cita ?? null,
         color_calendario: data.color_calendario ?? null,
@@ -198,7 +198,6 @@ async createRegistroCita(data: CreateRegistroCitaInput): Promise<RegistroCita> {
     throw new Error(`Error al crear registro de cita: ${message}`);
   }
 }
-
   /**
    * Obtiene un registro de cita por su ID
    * @param id ID del registro
@@ -442,9 +441,10 @@ async createRegistroCita(data: CreateRegistroCitaInput): Promise<RegistroCita> {
     citaData: CreateRegistroCitaInput
   ): Promise<RegistroCita> {
     try {
+      console.log(citaId);
       // Verificar si ya existe un registro para esta cita
       const registroExistente = await prisma.registroCita.findFirst({
-        where: { cita_id: citaId },
+        where: { cita_id: citaId }
       });
       if (registroExistente) {
         citaData.registro_usuario_id = registroExistente.id

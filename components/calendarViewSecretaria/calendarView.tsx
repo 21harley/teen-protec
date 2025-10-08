@@ -17,7 +17,8 @@ import {
   Card,
   Space,
   Divider,
-  Skeleton
+  Skeleton,
+  TimePicker
 } from 'antd';
 import moment from 'moment';
 import type { Dayjs } from 'dayjs';
@@ -92,6 +93,7 @@ const CalendarView = () => {
   const [showSearchResults, setShowSearchResults] = useState(false);
 
   const [duracionSeleccionada, setDuracionSeleccionada] = useState<number>(30);
+  const [fechaHoraInicio, setFechaHoraInicio] = useState<Dayjs | null>(null);
 
   const duraciones = [
     { value: 15, label: '15 minutos' },
@@ -106,6 +108,35 @@ const CalendarView = () => {
   // Función para deshabilitar fechas pasadas
   const disabledDate = (current: Dayjs) => {
     return current && current < moment().startOf('day');
+  };
+
+  // Función para deshabilitar horas pasadas
+  const disabledTime = () => {
+    if (!fechaHoraInicio) return {};
+    
+    const now = moment();
+    if (fechaHoraInicio.isSame(now, 'day')) {
+      return {
+        disabledHours: () => {
+          const hours = [];
+          for (let i = 0; i < now.hour(); i++) {
+            hours.push(i);
+          }
+          return hours;
+        },
+        disabledMinutes: (selectedHour: number) => {
+          if (selectedHour === now.hour()) {
+            const minutes = [];
+            for (let i = 0; i < now.minute(); i++) {
+              minutes.push(i);
+            }
+            return minutes;
+          }
+          return [];
+        }
+      };
+    }
+    return {};
   };
 
   const fetchData = async (url: string, options?: RequestInit) => {
@@ -127,8 +158,9 @@ const CalendarView = () => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        // Cargar citas
-        const citas = await fetchData('/api/cita');
+        // Cargar todas las citas sin filtros
+        const citas = await fetchData('/api/cita?all=true');
+        console.log('Citas cargadas:', citas.data);
         formatEvents(citas.data);
 
         // Cargar tipos de cita
@@ -180,18 +212,48 @@ const CalendarView = () => {
   }, [psicologoSeleccionado]);
 
   const formatEvents = (citas: Cita[]) => {
-    const formattedEvents = citas.map((cita: Cita) => ({
-      id: cita.id.toString(),
-      title: cita.titulo,
-      start: cita.fecha_inicio,
-      end: cita.fecha_fin,
-      extendedProps: {
-        ...cita
-      },
-      color: cita.tipo?.color_calendario || '#3788d8',
-      textColor: '#ffffff'
-    }));
+    console.log('Formateando eventos desde citas:', citas);
+    
+    const formattedEvents = citas.map((cita: Cita) => {
+      const start = moment(cita.fecha_inicio).toISOString();
+      const end = moment(cita.fecha_fin).toISOString();
+      
+      console.log(`Cita ${cita.id}:`, {
+        titulo: cita.titulo,
+        fecha_inicio_original: cita.fecha_inicio,
+        fecha_fin_original: cita.fecha_fin,
+        start_formatted: start,
+        end_formatted: end
+      });
+
+      return {
+        id: cita.id.toString(),
+        title: cita.titulo,
+        start: start,
+        end: end,
+        extendedProps: {
+          ...cita
+        },
+        color: cita.tipo?.color_calendario || '#3788d8',
+        textColor: '#ffffff',
+        allDay: false
+      };
+    });
+    
+    console.log('Eventos formateados para FullCalendar:', formattedEvents);
     setEvents(formattedEvents);
+  };
+
+  // Función para recargar todas las citas
+  const reloadCitas = async () => {
+    try {
+      const citas = await fetchData('/api/cita?all=true');
+      formatEvents(citas.data);
+      message.success('Citas actualizadas');
+    } catch (error) {
+      console.error('Error recargando citas:', error);
+      message.error('Error al actualizar citas');
+    }
   };
 
   const handleCalendarClose = () => {
@@ -203,40 +265,70 @@ const CalendarView = () => {
     }, 10);
   };
 
+  // Función para calcular fecha fin basada en fecha inicio y duración
   const calcularFechaFin = (fechaInicio: Dayjs, duracion: number): Dayjs => {
-    return fechaInicio.add(duracion, 'minutes');
+    return fechaInicio.clone().add(duracion, 'minutes');
+  };
+
+  // Función para actualizar las fechas en el formulario
+  const actualizarFechasEnFormulario = (fechaInicio: Dayjs, duracion: number) => {
+    const fechaFin = calcularFechaFin(fechaInicio, duracion);
+    
+    form.setFieldsValue({
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin
+    });
   };
 
   const handleDuracionChange = (valor: number) => {
     setDuracionSeleccionada(valor);
-    const fechaInicio = form.getFieldValue('fecha_inicio');
-    if (fechaInicio) {
-      const fechaFin = calcularFechaFin(fechaInicio, valor);
-      form.setFieldsValue({ fecha_fin: fechaFin });
+    if (fechaHoraInicio) {
+      actualizarFechasEnFormulario(fechaHoraInicio, valor);
     }
   };
 
-  const handleFechaInicioChange = (fecha: Dayjs | null) => {
-    if (fecha) {
-      const fechaFin = calcularFechaFin(fecha, duracionSeleccionada);
-      form.setFieldsValue({ fecha_fin: fechaFin });
-    }
+  const handleHoraInicioChange = (hora: Dayjs | null) => {
+    if (!hora || !fechaHoraInicio) return;
+
+    // Combinar la fecha actual con la nueva hora
+    const nuevaFechaHora = fechaHoraInicio
+      .clone()
+      .set('hour', hora.hour())
+      .set('minute', hora.minute())
+      .set('second', 0)
+      .set('millisecond', 0);
+
+    setFechaHoraInicio(nuevaFechaHora);
+    actualizarFechasEnFormulario(nuevaFechaHora, duracionSeleccionada);
   };
 
   const handleDateClick = (arg: any) => {
+    console.log('Date click info:', arg);
     setCurrentEvent(null);
     form.resetFields();
     
+    // Usar la fecha completa del click
+    const fechaClick = moment(arg.start);
+    console.log('Fecha del click:', fechaClick.format('YYYY-MM-DD HH:mm:ss'));
+    
+    setFechaHoraInicio(fechaClick);
+    setDuracionSeleccionada(30);
+
+    // Calcular fecha fin automáticamente
+    const fechaFin = calcularFechaFin(fechaClick, 30);
+
+    console.log('Fecha inicio:', fechaClick.format('YYYY-MM-DD HH:mm:ss'));
+    console.log('Fecha fin calculada:', fechaFin.format('YYYY-MM-DD HH:mm:ss'));
+
     form.setFieldsValue({
       titulo: '',
       descripcion: '',
-      fecha_inicio: null,
-      fecha_fin: null,
+      fecha_inicio: fechaClick,
+      fecha_fin: fechaFin,
       id_psicologo: psicologos[0]?.id,
       estado: 'PENDIENTE'
     });
     setPsicologoSeleccionado(psicologos[0]?.id || null);
-    setDuracionSeleccionada(30);
     setIsModalVisible(true);
   };
 
@@ -244,15 +336,15 @@ const CalendarView = () => {
     const eventData = clickInfo.event.extendedProps;
     setCurrentEvent(eventData);
     
-    // USANDO UTC COMO EN LA PRIMERA VISTA
-    const fechaInicio = moment(eventData.fecha_inicio).utc();
-    const fechaFin = moment(eventData.fecha_fin).utc();
+    const fechaInicio = moment(eventData.fecha_inicio);
+    const fechaFin = moment(eventData.fecha_fin);
     
     // Calcular duración en minutos
     const duracion = fechaFin.diff(fechaInicio, 'minutes');
     const duracionEnLista = duraciones.find(d => d.value === duracion)?.value || 30;
     
     setDuracionSeleccionada(duracionEnLista);
+    setFechaHoraInicio(fechaInicio);
     
     form.setFieldsValue({
       ...eventData,
@@ -297,31 +389,41 @@ const CalendarView = () => {
     }
   };
 
-  const handleFormSubmit = async () => {
+  const handleFormSubmit = async (values: any) => {
+    console.log("HANDLEFORM - Datos del formulario:", values);
     let response;
     let result;
     try {
-      const values = await form.validateFields();
-      
       // Validar que la fecha de inicio esté presente
       if (!values.fecha_inicio) {
         message.error('La fecha y hora de inicio es requerida');
         return;
       }
       
-      // Validación adicional para fecha pasada (igual que en la primera vista)
-      if (values.fecha_inicio < moment().startOf('day')) {
-        message.error('No puede seleccionar fechas pasadas');
+      // Validación adicional para fecha pasada
+      if (values.fecha_inicio < moment().startOf('minute')) {
+        message.error('No puede seleccionar fechas u horas pasadas');
         return;
       }
+      
+      // Asegurar que siempre se use la duración correcta
+      const fechaFinCalculada = calcularFechaFin(values.fecha_inicio, duracionSeleccionada);
       
       const formattedValues = {
         ...values,
         fecha_inicio: values.fecha_inicio.toISOString(),
-        fecha_fin: values.fecha_fin ? values.fecha_fin.toISOString() : calcularFechaFin(values.fecha_inicio, duracionSeleccionada).toISOString(),
+        fecha_fin: fechaFinCalculada.toISOString(),
         id_paciente: values.id_paciente || null,
         id_tipo_cita: values.id_tipo_cita || null
       };
+
+      console.log('Datos a guardar:', formattedValues);
+      console.log('Duración seleccionada:', duracionSeleccionada);
+      console.log('Fecha inicio ISO:', formattedValues.fecha_inicio);
+      console.log('Fecha fin ISO:', formattedValues.fecha_fin);
+      console.log('Diferencia en minutos:', 
+        moment(formattedValues.fecha_fin).diff(moment(formattedValues.fecha_inicio), 'minutes')
+      );
 
       if (currentEvent) {
         // Actualizar cita existente
@@ -345,18 +447,19 @@ const CalendarView = () => {
       }
 
       result = await response.json();
-      if (!response.ok) throw new Error('Error al guardar la cita');
+      if (!response.ok) throw new Error(result.error || 'Error al guardar la cita');
       
       message.success(currentEvent ? 'Cita actualizada' : 'Cita creada');
 
-      // Refrescar eventos
-      const citasResponse = await fetch('/api/cita');
-      const citasData = await citasResponse.json();
-      formatEvents(citasData.data);
+      // Recargar todas las citas después de guardar
+      await reloadCitas();
+      
+      message.success(currentEvent ? 'Cita actualizada' : 'Cita creada');
+      await reloadCitas();
       setIsModalVisible(false);
     } catch (error) {
-      console.log(result);
-      if(result.error) alert(result.error)
+      console.error('Error saving event:', error);
+      message.error('Error al guardar la cita');
     }
     limpiarSearch();
   };
@@ -372,11 +475,7 @@ const CalendarView = () => {
       if (!response.ok) throw new Error('Error al eliminar la cita');
 
       message.success('Cita eliminada');
-      
-      // Refrescar eventos
-      const citasResponse = await fetch('/api/cita');
-      const citasData = await citasResponse.json();
-      formatEvents(citasData.data);
+      await reloadCitas();
       setIsModalVisible(false);
     } catch (error) {
       console.error('Error deleting event:', error);
@@ -394,15 +493,33 @@ const CalendarView = () => {
   const handleModalClose = () => {
     form.resetFields();
     setDuracionSeleccionada(30);
+    setFechaHoraInicio(null);
     setIsModalVisible(false);
     setTimeout(() => {
       setCurrentEvent(null);
     }, 100);
   };
 
+  // Manejar cambio de vista/mes en el calendario
+  const handleDatesSet = (arg: any) => {
+    console.log('Rango de fechas visible:', {
+      start: arg.start,
+      end: arg.end,
+      startStr: arg.startStr,
+      endStr: arg.endStr
+    });
+  };
+
   return (
     <div style={{ padding: '20px', width: '60%', margin:"auto" }}>
-      <Card title="Calendario de Citas">
+      <Card 
+        title="Calendario de Citas"
+        extra={
+          <Button onClick={reloadCitas} type="primary">
+            Actualizar Citas
+          </Button>
+        }
+      >
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : (
@@ -456,13 +573,13 @@ const CalendarView = () => {
                             calendarApi.gotoDate(cita.fecha_inicio);
                             setCurrentEvent(cita);
                             
-                            // USANDO UTC COMO EN LA PRIMERA VISTA
-                            const fechaInicio = moment(cita.fecha_inicio).utc();
-                            const fechaFin = moment(cita.fecha_fin).utc();
+                            const fechaInicio = moment(cita.fecha_inicio);
+                            const fechaFin = moment(cita.fecha_fin);
                             const duracion = fechaFin.diff(fechaInicio, 'minutes');
                             const duracionEnLista = duraciones.find(d => d.value === duracion)?.value || 30;
                             
                             setDuracionSeleccionada(duracionEnLista);
+                            setFechaHoraInicio(fechaInicio);
                             
                             form.setFieldsValue({
                               ...cita,
@@ -523,6 +640,10 @@ const CalendarView = () => {
               }}
               select={handleDateClick}
               eventClick={handleEventClick}
+              datesSet={handleDatesSet}
+              eventDisplay="block"
+              displayEventTime={true}
+              allDaySlot={false}
             />
           </>
         )}
@@ -531,12 +652,12 @@ const CalendarView = () => {
       <Modal
         title={currentEvent ? 'Editar Cita' : 'Nueva Cita'}
         open={isModalVisible}
-        onOk={handleFormSubmit}
         onCancel={handleModalClose}
         width={700}
         afterClose={() => {
           form.resetFields();
           setDuracionSeleccionada(30);
+          setFechaHoraInicio(null);
         }}
         footer={[
           currentEvent && (
@@ -547,12 +668,20 @@ const CalendarView = () => {
           <Button key="cancel" onClick={handleModalClose}>
             Cancelar
           </Button>,
-          <Button key="submit" type="primary" onClick={handleFormSubmit}>
+          <Button 
+            key="submit" 
+            type="primary" 
+            onClick={() => form.submit()}
+          >
             Guardar
           </Button>
         ]}
       >
-        <Form form={form} layout="vertical">
+        <Form 
+          form={form} 
+          layout="vertical"
+          onFinish={handleFormSubmit}
+        >
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
@@ -578,31 +707,35 @@ const CalendarView = () => {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item
-                name="fecha_inicio"
-                label="Fecha y Hora de Inicio"
-                rules={[{ required: true, message: 'La fecha es requerida' }]}
-              >
-                <DatePicker
-                  showTime={{
-                    format: 'HH:mm',
-                    showSecond: false,
-                    hideDisabledOptions: true,
-                  }}
-                  format="YYYY-MM-DD HH:mm"
-                  style={{ width: '100%' }}
-                  getPopupContainer={(trigger) => trigger.parentElement}
-                  placeholder="Seleccione fecha y hora"
-                  onOpenChange={(open) => !open && handleCalendarClose()}
-                  onChange={handleFechaInicioChange}
-                  disabledDate={disabledDate} // ← BLOQUEA FECHAS PASADAS (IGUAL QUE PRIMERA VISTA)
+              <Form.Item label="Fecha seleccionada">
+                <Input 
+                  value={fechaHoraInicio ? fechaHoraInicio.format('DD/MM/YYYY') : 'No seleccionada'} 
+                  readOnly 
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
-                label="Duración"
+                label="Hora de Inicio"
+                rules={[{ required: true, message: 'La hora de inicio es requerida' }]}
               >
+                <TimePicker
+                  format="HH:mm"
+                  style={{ width: '100%' }}
+                  placeholder="Seleccione la hora"
+                  value={fechaHoraInicio}
+                  disabled={!fechaHoraInicio}
+                  disabledTime={disabledTime}
+                  onChange={handleHoraInicioChange}
+                  onOpenChange={(open) => !open && handleCalendarClose()}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Duración">
                 <Select
                   value={duracionSeleccionada}
                   onChange={handleDuracionChange}
@@ -614,6 +747,18 @@ const CalendarView = () => {
                     </Option>
                   ))}
                 </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Hora de Fin (calculada)">
+                <Input 
+                  value={
+                    form.getFieldValue('fecha_fin') 
+                      ? form.getFieldValue('fecha_fin').format('HH:mm') 
+                      : '--:--'
+                  } 
+                  readOnly 
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -699,7 +844,10 @@ const CalendarView = () => {
             </>
           )}
 
-          {/* Campo oculto para fecha_fin que se calcula automáticamente */}
+          {/* Campos ocultos para fecha_inicio y fecha_fin que se calculan automáticamente */}
+          <Form.Item name="fecha_inicio" hidden>
+            <Input />
+          </Form.Item>
           <Form.Item name="fecha_fin" hidden>
             <Input />
           </Form.Item>

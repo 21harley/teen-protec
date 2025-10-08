@@ -257,12 +257,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (new Date(fecha_inicio).toDateString() !== new Date().toDateString()) {
-      return NextResponse.json(
-        { error: 'La fecha de inicio debe ser del día de hoy' },
-        { status: 400 }
-      );
-    }
 
     if (new Date(fecha_inicio) >= new Date(fecha_fin)) {
       return NextResponse.json(
@@ -589,7 +583,7 @@ export async function PUT(request: Request) {
       }
     });
 
-    setImmediate().then(async () => {
+    //setImmediate().then(async () => {
       if(!id_paciente){console.log("No existe id_paciente"); return}
       const paciente = await prisma.usuario.findUnique({
         where: { id: id_paciente }
@@ -619,12 +613,13 @@ export async function PUT(request: Request) {
           motivo_cancelacion:  null,
           registro_usuario_id: null
         }
+
         const cita = await registroCitaService.upsertRegistroByCitaId(citaActualizada.id,nuevaCitaObj);    
         console.log('Registro cita creada:', cita);
       } catch (error) {
         console.error('Error al crear registro test:', error);
       }
-    })
+    //})
 
     return NextResponse.json(citaActualizada);
 

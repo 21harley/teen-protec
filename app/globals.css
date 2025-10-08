@@ -26,23 +26,30 @@ body {
 }
 ._color_one{
   background-color: var(--color-one);
+  transition: all 0.5s;
 }
 
 ._color_four{
   background-color: var(--color-four);
+  transition: all 0.5s;
 }
 ._color_seven{
   background-color: var(--color-seven);
+  transition: all 0.5s;
 }
 ._color_six{
   background-color: var(--color-six);
+  transition: all 0.5s;
 }
 ._color_three{
   background: var(--color-three);
+  transition: all 0.5s;
 }
 ._color_eight{
   background: var(--color-eight);
+  transition: all 0.5s;
 }
 ._text_color_eight{
   color: var(--color-eight);
+  transition: all 0.5s;
 }
