@@ -605,7 +605,7 @@ export default function CrudAlert() {
       
       {/* Create/Edit Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 _color_four bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">
               {alertaForm.id ? 'Editar Alerta' : 'Crear Nueva Alerta'}
@@ -711,7 +711,7 @@ export default function CrudAlert() {
       
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 _color_four bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Confirmar Eliminación</h2>
             <p>¿Estás seguro de que deseas eliminar esta alerta?</p>

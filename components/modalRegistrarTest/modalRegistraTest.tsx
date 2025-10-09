@@ -185,7 +185,7 @@ const ModalRegistraTest: React.FC<ModalRegistraTestProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
+      <div className="fixed inset-0 _color_four bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
         <div className={`bg-white rounded-lg p-6 w-full max-w-[800px] h-auto flex flex-col scale-[0.85]`}>
           <div className="w-full flex justify-end ">
             <button onClick={onClose} className="text-black hover:text-gray-700 cursor-pointer">
@@ -340,7 +340,7 @@ const ModalRegistraTest: React.FC<ModalRegistraTestProps> = ({
                     <div className='w-full flex flex-col items-end p-[1rem]'>
                       <button
                         onClick={handleAddQuestion}
-                        className="px-3 py-1 bg-[#E0F8F0] rounded text-sm cursor-pointer"
+                        className="px-3 py-1 _color_four rounded text-sm cursor-pointer"
                       >
                         Agregar Pregunta + 
                       </button>

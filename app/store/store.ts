@@ -329,10 +329,10 @@ const useUserStore = create<UserState>((set, get) => ({
         '--color-one':'#AEA8E8',
         '--color-two':'#B8E4CC',
         '--color-three':'#975FCE',
-        '--color-four':'#E0F8F0',
+        '--color-four':'#DAB4E5',
         '--color-five':'#673BB4',
         '--color-six':'#FFFACD',
-        '--color-seven':'#DAB4E5',
+        '--color-seven':'#FFFFFF',
         '--color-eight':'#0059FF'
         },
          usuario: {

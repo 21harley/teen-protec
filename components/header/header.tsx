@@ -222,7 +222,7 @@ export default function Header() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto" onClick={closeModal}>
-          <div className="fixed inset-0 bg-[#ADD8E6] opacity-45 transition-opacity" />
+          <div className="fixed inset-0 _color_one opacity-45 transition-opacity" />
           <div className="flex items-center justify-center min-h-screen p-4">
             <div className="relative rounded-lg max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>   
               <nav>
@@ -244,7 +244,7 @@ export default function Header() {
         </div>
       )}
       {isLogout && (
-        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-35 flex items-center justify-center z-50">
+        <div className="fixed inset-0 _color_four bg-opacity-35 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg text-center">
             <div className="mb-4">
               <svg className="animate-spin h-12 w-12 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

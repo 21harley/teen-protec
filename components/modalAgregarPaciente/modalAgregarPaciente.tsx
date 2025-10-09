@@ -160,7 +160,7 @@ const ModalAgregarPaciente = ({
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex justify-center items-center z-50 p-4">
+    <div className="fixed inset-0 _color_four bg-opacity-50 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col p-4">
         <div className="flex justify-between items-center ">
             <h2 className="text-xl font-medium">

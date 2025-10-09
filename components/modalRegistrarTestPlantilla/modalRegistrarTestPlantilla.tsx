@@ -373,7 +373,7 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
+      <div className="fixed inset-0 _color_four bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
         <div className="bg-white rounded-lg p-6 w-full max-w-[650px] h-auto flex flex-col">
           <div className="w-full flex justify-end">
             <button 
@@ -590,7 +590,7 @@ const ModalRegistraTestPlantilla: React.FC<ModalRegistraPlantillaProps> = ({
                     <div className="w-full flex flex-col items-end p-1 border-t">
                       <button
                         onClick={handleAddQuestion}
-                        className="px-3 py-1 bg-[#E0F8F0] rounded text-sm cursor-pointer hover:bg-[#c8f0e8] transition-colors"
+                        className="px-3 py-1 _color_four rounded text-sm cursor-pointer hover:bg-[#c8f0e8] transition-colors"
                         aria-label="Agregar nueva pregunta"
                       >
                         Agregar Pregunta +

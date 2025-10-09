@@ -259,7 +259,7 @@ export default function ModalPaciente({
   }
 
   return (
-    <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 _color_four bg-opacity-50 flex items-center justify-center p-4 z-50">
       {/* Modal principal */}
       <div className="bg-white rounded-lg shadow-xl max-w-[650px] w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
@@ -401,7 +401,7 @@ export default function ModalPaciente({
             {!esAsignacion && (
               <button
                 onClick={handleEditUser}
-                className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 bg-[#E0F8F0] rounded-md hover:bg-[#C0F0E0] transition-colors"
+                className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 _color_four rounded-md hover:bg-[#C0F0E0] transition-colors"
                 aria-label="Editar paciente"
               >
                 <Image src="/logos/icon_editar.svg" className='w-[16px] h-[16px]' width={0} height={0} alt="Editar" />
@@ -415,7 +415,7 @@ export default function ModalPaciente({
               className={`cursor-pointer flex items-center justify-center gap-2 px-4 py-2 rounded-md transition-colors ${
                 esAsignacion
                   ? 'bg-green-500 hover:bg-green-600 text-white'
-                  : 'bg-[#E0F8F0] hover:bg-[#C0F0E0]'
+                  : '_color_four hover:bg-[#C0F0E0]'
               }`}
               aria-label={esAsignacion ? "Asignar paciente" : "Dar de alta paciente"}
             >
@@ -459,7 +459,7 @@ export default function ModalPaciente({
 
       {/* Modal para editar paciente */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 _color_four bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-2">

@@ -57,7 +57,7 @@ export function LogoutButton({ onLogoutComplete }: LogoutButtonProps) {
 
       {/* Modal de carga */}
       {isloading && (
-        <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-35 flex items-center justify-center z-50">
+        <div className="fixed inset-0 _color_four bg-opacity-35 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg text-center">
             <div className="mb-4">
               {/* Puedes reemplazar esto con tu GIF o animación preferida */}

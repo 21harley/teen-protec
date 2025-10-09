@@ -438,6 +438,22 @@ const dataUsuarios = [
     authTokenExpiry: null,
     resetPasswordToken: null,
     resetPasswordTokenExpiry: null
+  },
+  // Secretaria 
+  {
+    email: "secretaria@example.com",
+    password: contraseñaEncriptada.contenido,
+    password_iv: contraseñaEncriptada.iv,
+    nombre: "Laura Acosta",
+    cedula: "888888888",
+    telefono:"888888888",
+    fecha_nacimiento: new Date("1995-04-30"),
+    id_tipo_usuario: 5,
+    sexo: "Femenino",
+    authToken: null,
+    authTokenExpiry: null,
+    resetPasswordToken: null,
+    resetPasswordTokenExpiry: null
   }
 ];
 

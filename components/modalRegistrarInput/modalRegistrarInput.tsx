@@ -246,7 +246,7 @@ const ModalRegistrarInput: React.FC<ModalRegistrarInputProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#E0F8F0] bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
+    <div className="fixed inset-0 _color_four bg-opacity-50 flex items-center justify-center z-50 w-full h-full">
       <div className={`bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto`}>
         <h2 className="text-xl font-medium mb-4">
           {isEditing ? "Editar Pregunta" : "Agregar Pregunta"}
