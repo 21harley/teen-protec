@@ -98,8 +98,8 @@ export default function PasswordField({
   return (
     <div className="w-full max-w-[300px]">
       {/* Campo de contraseña principal */}
-      <div className="mb-4 relative">
-        <label htmlFor={name} className="text-sm block mb-1">{label}:</label>
+      <div className=" relative">
+        <label htmlFor={name} className="text-sm block mt-1">{label}:</label>
         <div className="relative">
           <input
             required

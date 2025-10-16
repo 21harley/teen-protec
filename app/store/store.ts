@@ -80,9 +80,12 @@ const useUserStore = create<UserState>((set, get) => ({
   colorUser : () =>{
     const { user } = get();
     switch(user?.id_tipo_usuario){
-      case 1:case 3:case 4:case 5: updateRootVariables('usuario');break;
+      case 1:case 3:case 4: updateRootVariables('usuario');break;
       case 2:
         updateRootVariables('psicologo')
+      break;
+      case 5:
+        updateRootVariables('secretaria')
       break;
       default:
         updateRootVariables('usuario');break;
@@ -310,7 +313,7 @@ const useUserStore = create<UserState>((set, get) => ({
   }
 }));
 
-    type ThemeKey = 'psicologo' | 'usuario';
+    type ThemeKey = 'psicologo' | 'usuario' | 'secretaria';
     type ThemeVars = {
       '--color-one': string;
       '--color-two': string;
@@ -345,7 +348,16 @@ const useUserStore = create<UserState>((set, get) => ({
         '--color-seven':'#FFFFFF',
         '--color-eight':'#0059FF'
         },
-        
+        secretaria : {
+        '--color-one':'#e8bfa8',
+        '--color-two':'#e4c9b8',
+        '--color-three':'#ce825f',
+        '--color-four':'#e5c9b4',
+        '--color-five':'#b45f3b',
+        '--color-six':'#FFFACD',
+        '--color-seven':'#FFFFFF',
+        '--color-eight':'#0059FF'
+        }
       };
 
       // Aplicar las variables del tema seleccionado
